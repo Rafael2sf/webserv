@@ -10,155 +10,166 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <sys/socket.h> // Socket functions
-#include <netinet/in.h> // sockaddr_in
-#include <cstdlib> // exit() and EXIT_FAILURE
-#include <iostream> // For cout
-#include <unistd.h> // read
-#include <arpa/inet.h> // htonl, htons, ntohl, ntohs
-#include <cstring> // memset()
-#include <sys/epoll.h> // for epoll_create1(), epoll_ctl(), struct epoll_event
-#include <fcntl.h>
+#include <cstdlib>		// exit() and EXIT_FAILURE
+#include <iostream>		// For cout
+#include <cstring>		// memset()
+#include <cerrno>		// errno
 
-int setnonblocking(int fd)
+extern "C"
 {
-    int flags;
-    if (-1 == (flags = fcntl(fd, F_GETFL, 0)))
-        flags = 0;
-    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+	#include <sys/socket.h> // Socket functions
+	#include <netinet/in.h> // sockaddr_in
+	#include <unistd.h>		// read
+	#include <arpa/inet.h>	// htonl, htons, ntohl, ntohs
+	#include <sys/epoll.h>	// for epoll_create1(), epoll_ctl(), struct epoll_event
+	#include <fcntl.h>		// fctnl()
 }
 
-int	main(void) {
+#define MAX_CLIENT 10
+#define PORT1 8080
+#define PORT2 9090
+#define EPOLL_SIZE 5
+#define EPOLL_TIMEOUT -1
 
-	//socket 8080
-	int	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock ==  -1) {
-		std::cerr << "error creating socket" << std::endl;
-		return 1;
-	}
+#define FT_ERROR(A, B) std::cerr << A << ": " << B << strerror(errno) << std::endl
+#define DEBUG(X) std::cout << X << std::endl
 
-	sockaddr_in	addr;
-	int			addrlen = sizeof(addr);
+typedef struct	s_httpsock
+{
+	sockaddr_in		addr;
+	int				sock;
+}	t_httpsock;
 
-	memset((char *)&addr, 0, addrlen);
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(8080);
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
+typedef struct s_sockpoll
+{
+	struct epoll_event	events[EPOLL_SIZE];
+	int					fd;
+	int					size;
+} t_sockpoll;
 
-	//socket 9595
-	int	other_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (other_sock ==  -1) {
-		std::cerr << "error creating socket" << std::endl;
-		return 1;
-	}
-	
-	sockaddr_in	other_addr;
-	int			other_addrlen = sizeof(other_addr);
+int ft_setsockflags(int __fd, int __flags)
+{
+	if (__flags == -1)
+		__flags = 0;
+	return fcntl(__fd, F_SETFL, __flags);
+}
 
-	memset((char *)&other_addr, 0, other_addrlen);
-	other_addr.sin_family = AF_INET;
-	other_addr.sin_port = htons(9595);
-	other_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	memset(other_addr.sin_zero, '\0', sizeof(other_addr.sin_zero));
+int ft_serversock(int __port, sockaddr_in &__addr, int __max)
+{
+	int		sock;
+	int		enable = 1;
 
-	//setnonblocking(sock);
-	const int enable = 1;
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock == -1)
+		FT_ERROR("socket()", 1);
+	memset(&__addr, 0, sizeof(__addr));
+	__addr.sin_family = AF_INET;
+	__addr.sin_port = htons(__port);
+	__addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) == -1)
-		std::cerr << "error setsockopt" << std::endl;
+		FT_ERROR("setsockopt()", 1);
+	if (bind(sock, (struct sockaddr *)&__addr, sizeof(__addr)) == -1)
+		FT_ERROR("bind()", 1);
+	if (listen(sock, __max) == -1)
+		FT_ERROR("listen()", 1);
+	return (sock);
+}
 
-	if (bind(sock, (struct sockaddr *) &addr, addrlen) == -1) {
-		std::cerr << "error binding socket" << std::endl;
-		return 1;
-	}
-	if (listen(sock, 10) == -1) {
-		std::cerr << "error in listen" << std::endl;
-		return 1;
-	}
+int ft_sockpolladd(int __epfd, int __sofd)
+{
+	epoll_event		ev;
 
-	if (setsockopt(other_sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) == -1)
-		std::cerr << "error setsockopt" << std::endl;
+	ev.events = EPOLLIN;
+	ev.data.fd = __sofd;
+	return (epoll_ctl(__epfd, EPOLL_CTL_ADD, __sofd, &ev));
+}
 
-	if (bind(other_sock, (struct sockaddr *) &other_addr, other_addrlen) == -1) {
-		std::cerr << "error binding socket" << std::endl;
-		return 1;
-	}
-	if (listen(other_sock, 10) == -1) {
-		std::cerr << "error in listen" << std::endl;
-		return 1;
-	}
-	
-	int epoll_fd = epoll_create(5);
-	if (epoll_fd == -1) {
-		std::cerr << "error in epoll_create1()" << std::endl;
-		return 1;
-	}
-	
-	
-	struct epoll_event event;
-	struct epoll_event events[5];
-	int	event_count;
-	
-	event.events = EPOLLIN;
-	event.data.fd = sock;
+void ft_handle(t_sockpoll & server_epoll, int i)
+{
+	/*
+		HTTPRes
+		build the http response
+	*/
+	static char buffer[30000] = {0};
+	const char *hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
 
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock, &event)) {
-		std::cerr << "Error in epoll_ctl()" << std::endl;
-		close(epoll_fd);
-		return 1;
-	}
+	int valread = recv(server_epoll.events[i].data.fd, buffer, 30000, 0);
+	if (valread == -1)
+		DEBUG("client disconnect");
+	DEBUG(buffer);
+	send(server_epoll.events[i].data.fd, hello, strlen(hello), 0);
+	DEBUG("message sent");
+	if (epoll_ctl(server_epoll.fd, EPOLL_CTL_DEL, server_epoll.events[i].data.fd, NULL) == -1)
+		FT_ERROR("epoll_ctl()", 1);
+	close(server_epoll.events[i].data.fd);
+}
 
-	event.events = EPOLLIN;
-	event.data.fd = other_sock;
+int main(void)
+{
+	/*
+		class HTTPSocks
+			.insert (PORT)
+			.erase (PORT)
+			[ ... ]
+		store and manipulate all server listening sockets
+	*/
+	t_httpsock	server_sock1, server_sock2;
+	server_sock1.sock = ft_serversock(PORT1, server_sock1.addr, MAX_CLIENT);
+	server_sock2.sock = ft_serversock(PORT2, server_sock2.addr, MAX_CLIENT);
+	DEBUG("server sockets initialized");
 
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, other_sock, &event)) {
-		std::cerr << "Error in epoll_ctl()" << std::endl;
-		close(epoll_fd);
-		return 1;
-	}
+	/*
+		class HTTPoll
+			.insert (SOCK)
+			.erase (SOCK)
+			.wait ()
+			[ ... ]
+		a wrapper class to epoll
+	*/
+	t_sockpoll	server_epoll;
+	server_epoll.size = EPOLL_SIZE;
+	server_epoll.fd = epoll_create(EPOLL_SIZE);
+	if (server_epoll.fd  == -1)
+		FT_ERROR("epoll_create()", -1);
+	if (ft_sockpolladd(server_epoll.fd, server_sock1.sock) == -1)
+		FT_ERROR("ft_sockpolladd()", -1);
+	if (ft_sockpolladd(server_epoll.fd, server_sock2.sock) == -1)
+		FT_ERROR("ft_sockpolladd()", -1);
+	DEBUG("server ready to listen");
 
-	while (1) {
-		std::cout << "\n+++++++ Waiting for new connection ++++++++\n\n" << std::endl;
-		event_count = epoll_wait(epoll_fd, events, 5, -1);
-		if (event_count == -1)
-			std::cerr << "Error in epoll_wait()" << std::endl;
+	int		ev_count = -1;
+	int		ev_socket = -1;
 
-		std::cout << event_count << " ready events" << std::endl;
+	while (1)
+	{
+		DEBUG("\nlistening ..\n");
+		ev_count = epoll_wait(server_epoll.fd, server_epoll.events,
+			 EPOLL_SIZE, EPOLL_TIMEOUT);
+		if (ev_count == -1)
+			FT_ERROR("epoll_wait()", -1);
 
-		for (int i = 0; i < event_count; i++) {
-			
-			int	new_socket = events[i].data.fd;
-			if (events[i].data.fd == sock || events[i].data.fd == other_sock) {
-				new_socket = accept(new_socket, (struct sockaddr *) &addr, (socklen_t *) &addrlen);
-				if (new_socket == -1) {
-					std::cerr << "error in accept" << std::endl;
-					return 1;
-				}
-				setnonblocking(new_socket);
-				event.events = EPOLLIN | EPOLLET;
-				event.data.fd = new_socket;
-				
-				if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, new_socket, &event)) {
-					std::cerr << "Error in epoll_ctl()" << std::endl;
-					close(epoll_fd);
-					return 1;
-				}
+		DEBUG("[" << ev_count << "] ready events");
+		for (int i = 0; i < ev_count; i++)
+		{
+			ev_socket = server_epoll.events[i].data.fd;
+			if (server_epoll.events[i].data.fd == server_sock1.sock
+				|| server_epoll.events[i].data.fd == server_sock2.sock)
+			{
+				ev_socket = accept(ev_socket, NULL, 0);
+				if (ev_socket == -1)
+					FT_ERROR("accept()", -1);
+				if (ft_setsockflags(ev_socket,
+					fcntl(ev_socket, F_GETFL, 0) | O_NONBLOCK) == -1)
+					FT_ERROR("ft_setsockflags()", -1);
+				if (ft_sockpolladd(server_epoll.fd, ev_socket) == -1)
+					FT_ERROR("ft_sockpolladd()", -1);
+				/*
+					HTTPReq
+					parse the raw text received into a struct/class
+				*/
 			}
-			else {
-
-				char	buffer[30000] = {0};
-				int		valread = recv(events[i].data.fd, buffer, 30000, 0);
-				std::cout << buffer << std::endl;
-				if (valread == -1)
-					std::cerr << "No bytes to read" << std::endl;
-				const char *hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
-				send(events[i].data.fd, hello, strlen(hello), 0);
-				std::cout << "------------------Hello message sent-------------------\n" << std::endl;
-
-				if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL) == -1)
-					std::cerr << "Error on poll_delete()" << std::endl;
-				close(events[i].data.fd);
-			}
+			else
+				ft_handle(server_epoll, i);
 		}
 	}
 	return 0;
