@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
+/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/25 12:54:31 by daalmeid          #+#    #+#             */
-/*   Updated: 2022/10/28 18:23:13 by daalmeid         ###   ########.fr       */
+/*   Updated: 2022/11/04 17:15:32 by marvin           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include <iostream>		// For cout
 #include <cstring>		// memset()
 #include <cerrno>		// errno
+#include "HTTPReq.hpp"
 
 extern "C"
 {
@@ -96,6 +97,8 @@ void ft_handle(t_sockpoll & server_epoll, int i)
 	int valread = recv(server_epoll.events[i].data.fd, buffer, 30000, 0);
 	if (valread == -1)
 		DEBUG("client disconnect");
+	HTTPReq	request(buffer);
+	request.print_map();
 	DEBUG(buffer);
 	send(server_epoll.events[i].data.fd, hello, strlen(hello), 0);
 	DEBUG("message sent");
