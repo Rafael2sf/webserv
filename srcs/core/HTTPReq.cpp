@@ -1,7 +1,34 @@
 #include "HTTPReq.hpp"
+#include "webserv.hpp"
+
 
 namespace ft {
 
+	HTTPReq::HTTPReq(void) {
+
+	}
+
+	HTTPReq::HTTPReq(char* request) {
+		std::string	str(request);
+		size_t		str_start = str.find("\n");
+		
+		method = str.substr(0, str_start++);
+		str = &(request[str_start]);
+		str_start = 0;
+		
+		for (size_t i = 0; str[i] != '\0' ; i++) {
+			if (str[i] == '\n') {
+				std::string	new_header(str.substr(str_start, i - str_start - 1));
+				pair_create_add(new_header);
+				str_start = i + 1;
+				if (str[i + 1] == '\r')
+					break;
+			}
+		}
+		if (str[str_start] == '\r')
+			headers.insert(std::make_pair("body", wp_trimmer(str.substr(str_start + 2))));
+	}
+	
 	HTTPReq::HTTPReq(HTTPReq const& cpy) {
 	(void)cpy;
 	}
@@ -20,7 +47,7 @@ namespace ft {
 			std::cout << "\033[31m" << "header key: " << "\033[0m" << it->first
 					<< "\033[32m" << "; header value: " << "\033[0m" << it->second << ';' << std::endl;
 		}
-
+		DEBUG2("<<END OF HEADERS>>" << std::endl);
 		std::cout << "The method is: " << method << std::endl;
 	}
 

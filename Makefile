@@ -30,6 +30,7 @@ SRCS		=	$(addsuffix .cpp, \
 					HTTPServer \
 					HTTPSocks \
 					HTTPEpoll \
+					HTTPReq \
 					err \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))

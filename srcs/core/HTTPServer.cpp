@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include "webserv.hpp"
 #include "HTTPServer.hpp"
+#include "HTTPReq.hpp"
 
 namespace ft
 {
@@ -67,10 +68,6 @@ namespace ft
 						err(-1, "insert()");
 				}
 				else
-					/*
-						HTTPReq
-						parse the raw text received into a struct/class
-					*/
 					ft_handle(i);
 				//DEBUG2("connection received");
 				// send(fd, 
@@ -92,6 +89,8 @@ namespace ft
 		int valread = recv(epoll.events[i].data.fd, buffer, 30000, 0);
 		if (valread == -1)
 			DEBUG2("client disconnect");
+		HTTPReq	request(buffer);
+		request.print_map();
 		DEBUG2(buffer);
 		send(epoll.events[i].data.fd, hello, strlen(hello), 0);
 		DEBUG2("message sent");
