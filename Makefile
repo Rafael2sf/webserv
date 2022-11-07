@@ -1,75 +1,74 @@
-# **************************************************************************** #
-#                                                                              #
-#                                                         :::      ::::::::    #
-#    Makefile                                           :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2022/04/26 16:48:15 by daalmeid          #+#    #+#              #
-#    Updated: 2022/05/20 11:00:25 by daalmeid         ###   ########.fr        #
-#                                                                              #
-# **************************************************************************** #
+NAME		=	webserv
 
-################## Programs #################
+# apply all rules on the following directories
+VPATH		=	$(addprefix $(_SRC), \
+					core \
+					http \
+					config \
+					error \
+				)
 
-SNAME	= 		server
-CNAME	=		client
+# shell commands
+RM			=	rm -f
+RMDIR		=	$(RM) -r
+MKDIR		=	mkdir
 
-################## COLORS ##################
+# compiler and flags
+CXX			=	c++ -std=c++98
+CXXFLAGS	=	-Wall -Werror -Wextra -O2
+DBGFLAGS	=	-Wall -Werror -Wextra -Wshadow -g -DDEBUG_MODE
 
---GRN	=		\033[32m
---RED	=		\033[31m
---WHT	=		\033[39m
+# dir
+_SRC		=	srcs/
+_OBJ		=	objs/
+_INC		=	includes/
+_BIN		=	bin/
 
-################## TERMINAL ################
+# files
+SRCS		=	$(addsuffix .cpp, \
+					main \
+					HTTPServer \
+					HTTPSocks \
+					HTTPEpoll \
+					err \
+				)
+OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
+INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))
 
-RM		=		rm -f
+# rules
+all: $(NAME)
 
-################## COMPILER ################
+debug: CXXFLAGS = $(DBGFLAGS)
+debug: $(NAME)
 
-CMP		=		c++
-FLAGS	=		-g -Wall -Werror -Wextra -std=c++98
-#INC_FT	=		-I ./headers/headers_ft/ -I ./headers/utils
-#INC_STL =		-I ./headers/header_stl
+info:
+	@printf "\
+	 CXX		=  $(CXX)\n\
+	 CXXFLAGS	=  $(CXXFLAGS)\n\
+	 DBGFLAGS	=  $(DBGFLAGS)\n\
+	 INCS		=$(patsubst -I%, %, $(INCS))\n\
+	 VPATH		=  $(VPATH)\n\
+	 SRCS		=  $(SRCS)\n"
 
-################## FILES ###################
+$(NAME) : $(_BIN)$(NAME)
 
-SRVFLES	=		server.cpp
+$(_BIN)$(NAME): $(_BIN) $(_OBJ) $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(@) $(INCS)
 
-CLTFLES	=		client.cpp
+$(_OBJ)%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $(<) -o $(@) $(INCS)
 
-SRVSRCS	=		$(addprefix srcs/server/, $(SRVFLES))
-
-CLTSRCS	=		$(addprefix srcs/client/, $(CLTFLES))
-
-SRVOBJS	=		$(patsubst srcs/server/%.cpp, srcs/server/%.o, $(SRVSRCS))
-
-CLTOBJS	=		$(patsubst srcs/client/%.cpp, srcs/client/%.o, $(CLTSRCS))
-
-
-################## RULES ###################
-
-all: $(SNAME) $(CNAME)
-
-srcs/server/%.o : srcs/server/%.cpp
-	$(CMP) $(FLAGS) -c $< -o $@
-
-srcs/client/%.o : srcs/client/%.cpp
-	$(CMP) $(FLAGS) -c $< -o $@
-
-$(SNAME): $(SRVOBJS)
-	$(CMP) $(FLAGS) $(SRVOBJS) -o $(SNAME)
-
-$(CNAME): $(CLTOBJS)
-	$(CMP) $(FLAGS) $(CLTOBJS) -o $(CNAME)
-
-################## CLEAN ###################
+%/:
+	$(MKDIR) $(@)
 
 clean:
-	$(RM) $(SRVOBJS)$(CLTOBJS)
+	$(RMDIR) $(_OBJ)
+
 fclean: clean
-	$(RM) $(SNAME) $(CNAME)
+	$(RMDIR) $(_BIN)
 
 re: fclean all
 
-.PHONY: all clean fclean re
+rdebug: fclean debug
+
+.PHONY: all debug info clean fclean re rdebug
