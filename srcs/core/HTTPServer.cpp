@@ -27,7 +27,7 @@ namespace ft
 	int
 	HTTPServer::init( void )
 	{
-		if (!socks.insert(8000))
+		if (!socks.insert(8090))
 			return -1;
 
 		if (!socks.insert(4000))
@@ -50,6 +50,8 @@ namespace ft
 	void
 	HTTPServer::loop( void )
 	{
+		Mediator	med;
+		
 		if (socks.list.empty())
 			exit(err(1, "logic error", "no sockets available"));
 		while (1)
@@ -68,7 +70,7 @@ namespace ft
 						err(-1, "insert()");
 				}
 				else
-					ft_handle(i);
+					ft_handle(i, med);
 				//DEBUG2("connection received");
 				// send(fd, 
 				// 	"HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!",
@@ -78,21 +80,20 @@ namespace ft
 		}
 	}
 
-	void	HTTPServer::ft_handle(int i) {
-		/*
-			HTTPRes
-			build the http response
-		*/
+	void	HTTPServer::ft_handle(int i, Mediator & med) {
+
 		static char buffer[30000] = {0};
-		const char *hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
+		std::string	hello;
 
 		int valread = recv(epoll.events[i].data.fd, buffer, 30000, 0);
 		if (valread == -1)
 			DEBUG2("client disconnect");
 		HTTPReq	request(buffer);
 		request.print_map();
+		hello = med.method_choice(request);
+		//std::cout << hello << std::endl;
 		DEBUG2(buffer);
-		send(epoll.events[i].data.fd, hello, strlen(hello), 0);
+		send(epoll.events[i].data.fd, hello.c_str(), hello.size(), 0);
 		DEBUG2("message sent");
 		if (epoll.erase(i) == -1)
 			err(-1);

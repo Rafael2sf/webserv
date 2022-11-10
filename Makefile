@@ -32,6 +32,7 @@ SRCS		=	$(addsuffix .cpp, \
 					HTTPEpoll \
 					HTTPReq \
 					err \
+					Mediator \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
 INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))
@@ -52,7 +53,7 @@ info:
 	 SRCS		=  $(SRCS)\n"
 
 $(NAME) : $(_BIN)$(NAME)
-
+	
 $(_BIN)$(NAME): $(_BIN) $(_OBJ) $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(@) $(INCS)
 

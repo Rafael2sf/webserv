@@ -3,6 +3,8 @@
 #include <cerrno>
 #include "HTTPSocks.hpp"
 #include "HTTPEpoll.hpp"
+#include "Mediator.hpp"
+
 
 namespace ft
 {
@@ -19,7 +21,14 @@ namespace ft
 		HTTPServer( HTTPServer const& other );
 		HTTPServer & operator=( HTTPServer const& rhs);
 
-		void	ft_handle(int i);
+		/**
+		 * @brief Handles the reception, treatment and response
+		 * to a request.
+		 * @param i File descriptor of the client;
+		 * @param med Object that distributes requests based on
+		 * the method stated.
+		*/
+		void	ft_handle(int i, Mediator & med);
 
 		HTTPSocks	socks;
 		HTTPEpoll	epoll;

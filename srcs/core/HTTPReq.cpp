@@ -12,7 +12,9 @@ namespace ft {
 		std::string	str(request);
 		size_t		str_start = str.find("\n");
 		
-		method = str.substr(0, str_start++);
+		if (str.empty())
+			return ;
+		create_vec_method(str.substr(0, str_start++));
 		str = &(request[str_start]);
 		str_start = 0;
 		
@@ -25,8 +27,9 @@ namespace ft {
 					break;
 			}
 		}
-		if (str[str_start] == '\r')
+		if (str[str_start] == '\r' && str[str_start + 2] != '\0')
 			headers.insert(std::make_pair("body", wp_trimmer(str.substr(str_start + 2))));
+
 	}
 	
 	HTTPReq::HTTPReq(HTTPReq const& cpy) {
@@ -48,7 +51,21 @@ namespace ft {
 					<< "\033[32m" << "; header value: " << "\033[0m" << it->second << ';' << std::endl;
 		}
 		DEBUG2("<<END OF HEADERS>>" << std::endl);
-		std::cout << "The method is: " << method << std::endl;
+		std::cout << "The method is: " << method[0] << ", " << method[1] << ", " << method[2] << std::endl;
+	}
+
+	void	HTTPReq::create_vec_method(std::string const& str) {
+
+		int	length;
+		int	start;
+
+		for (unsigned int i = 0; i < str.size();) {
+			start = str.find_first_not_of(' ', i);
+			i = start;
+			i = str.find_first_of(" \0", start);
+			length = i - start;
+			method.push_back(str.substr(start, length));
+		}
 	}
 
 	void	HTTPReq::pair_create_add(std::string str) {
@@ -64,9 +81,16 @@ namespace ft {
 		if (str.empty())
 			return str;
 		
-		int	start = str.find_first_not_of(" \t\n\r\v\f");
-		int	finish = str.find_last_not_of(" \t\n\r\v\f");
-		
+		size_t	start = str.find_first_not_of(" \t\n\r\v\f");
+		size_t	finish = str.find_last_not_of(" \t\n\r\v\f");
+		if (start == std::string::npos)
+			return ("");
 		return str.substr(start, finish - start + 1);
 	};
+
+
+	std::vector<std::string>	HTTPReq::get_method(void) const {
+		
+		return this->method;
+	}
 }
