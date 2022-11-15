@@ -58,6 +58,10 @@ namespace ft
 		*/
 		void	loop( void );
 
+		void	check_times(void);
+
 		private:
+
+		std::map<int, double>	time_map;
 	};
 }

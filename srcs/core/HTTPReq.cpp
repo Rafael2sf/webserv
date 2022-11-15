@@ -51,7 +51,7 @@ namespace ft {
 					<< "\033[32m" << "; header value: " << "\033[0m" << it->second << ';' << std::endl;
 		}
 		DEBUG2("<<END OF HEADERS>>" << std::endl);
-		std::cout << "The method is: " << method[0] << ", " << method[1] << ", " << method[2] << std::endl;
+		//std::cout << "The method is: " << method[0] << ", " << method[1] << ", " << method[2] << std::endl;
 	}
 
 	void	HTTPReq::create_vec_method(std::string const& str) {

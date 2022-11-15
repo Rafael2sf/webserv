@@ -4,7 +4,9 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <ctime>
 #include "HTTPReq.hpp"
+#include "webserv.hpp"
 
 namespace ft {
 
@@ -13,13 +15,15 @@ namespace ft {
 		public:
 			Mediator(void);
 
-			std::string	method_choice(HTTPReq const& req);
+			void		method_choice(HTTPReq const& req, int client_fd);
+			std::string	get_date(time_t now);
 		private:
 			
-			std::string	get(HTTPReq const& req);
-			std::string	post(HTTPReq const& req);
-			std::string	del(HTTPReq const& req);
+			void	get(HTTPReq const& req, int client_fd);
+			void	post(HTTPReq const& req, int client_fd);
+			void	del(HTTPReq const& req,int client_fd);
 
 			std::string	get_file(HTTPReq const& req, std::string& path);
+			void		content_encoding(std::fstream & ifs, std::string& str, int client_fd);
 	};
 }
