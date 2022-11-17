@@ -31,11 +31,16 @@ namespace ft {
 			void	print_map(void) const;
 
 			std::vector<std::string>	get_method(void) const;
+			std::vector<std::string>	get_method(void) const;
+			std::string					get_head_val(std::string const& key) const;
+			void						add(std::string key, std::string value);
 
-			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 
 		private:
 
+			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
+			std::vector<std::string>			method; //Max size: 8k
+			
 			void	create_vec_method(std::string const& str);
 			
 			/**
@@ -56,6 +61,5 @@ namespace ft {
 			*/
 			std::string	wp_trimmer(std::string const& str);
 			
-			std::vector<std::string>							method; //Max size: 8k
 	};
 }

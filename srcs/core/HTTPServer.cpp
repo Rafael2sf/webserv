@@ -101,8 +101,7 @@ namespace ft
 		//std::cout << hello << std::endl;
 		//DEBUG2(buffer);
 		DEBUG2("message sent");
-		if (request.headers.find("Connection") != request.headers.end()
-				&& request.headers["Connection"] == "close")
+		if (request.get_head_val("Connection") == "close")
 		{
 			DEBUG2(epoll.events[i].data.fd << " was erased!!!!!");
 			if (epoll.erase(epoll.events[i].data.fd) == -1)

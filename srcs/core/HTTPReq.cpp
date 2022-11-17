@@ -93,4 +93,21 @@ namespace ft {
 		
 		return this->method;
 	}
+
+	std::string				HTTPReq::get_head_val(std::string const& key) const {
+		std::map<std::string, std::string>::const_iterator it = headers.find(key);
+
+		if (it != headers.end())
+			return it->second;
+		return "";
+	};
+
+	void					HTTPReq::add(std::string key, std::string value) {
+		if (key.empty()) {
+			DEBUG2("NEED A KEY VALUE, GENIUS!");
+			return ;
+		}
+		headers.insert(std::make_pair(key, value));
+	};
+
 }

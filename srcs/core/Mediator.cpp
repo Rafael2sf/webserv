@@ -30,6 +30,7 @@ namespace ft {
 		std::string	str;
 		std::string	path("/nfs/homes/daalmeid/Desktop/new_webserv");
 		std::vector<std::string> vec = req.get_method();
+		//HTTPReq	response;
 
 		if (vec[1] == "/") {
 			str = "HTTP/1.1 200 OK\r\nServer:Webserv/0.2\r\nDate: " 
@@ -50,8 +51,7 @@ namespace ft {
 		str += "Last-Modified: " + get_date(f_info.st_mtime);
 		//Ends here
 		
-		if (req.headers.find("Connection") != req.headers.end()
-				&& req.headers.find("Connection")->second == "close")
+		if (req.get_head_val("Connection") == "close")
 			str += "Connection: close\r\n";
 		else
 			str += "Connection: keep-alive\r\n";

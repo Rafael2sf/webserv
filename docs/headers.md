@@ -69,8 +69,7 @@
 
 Andre: Accept-Charset, Connection, Cookies(if bonus).
 
-Old subject: Accept-Charsets, Accept-Language, Allow, Authorization, Content-Language, Content-Length,
-Content-Length, Content-Location, Content-Type, Date, Host, Last-Modified, Location, Referer, 
+Old subject: Accept-Charsets, Accept-Language, Allow, Authorization, Content-Language, Content-Length, Content-Location, Content-Type, Date, Host, Last-Modified, Location, Referer, 
 Retry-After, Server, Transfer-Encoding, User-Agent, WWW-Authenticate
 
 Firefox request: Host, User-Agent, Accept, Accept-Language, Accept-Encoding, Connection, Referer(not in site GET), 
