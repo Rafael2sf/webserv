@@ -6,7 +6,7 @@
 /*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/31 14:31:27 by daalmeid          #+#    #+#             */
-/*   Updated: 2022/11/07 14:53:42 by daalmeid         ###   ########.fr       */
+/*   Updated: 2022/11/15 17:20:59 by daalmeid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,11 +49,12 @@ namespace ft {
 		return (epoll_ctl(this->fd, EPOLL_CTL_ADD, sofd, &ev));
 	}
 
-	int	HTTPEpoll::erase(int ev_index) {
+	int	HTTPEpoll::erase(int cli_fd) {
 		if (epoll_ctl(this->fd, EPOLL_CTL_DEL,
-				this->events[ev_index].data.fd, NULL) == -1)
+				cli_fd, NULL) == -1)
 			return -1;
-		close(this->events[ev_index].data.fd);
+		if (close(cli_fd) == -1)
+			DEBUG2("IS ALREADY CLOSED!");
 		return 0;
 	};
 	

@@ -6,11 +6,12 @@
 /*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/31 14:16:23 by daalmeid          #+#    #+#             */
-/*   Updated: 2022/11/07 17:29:58 by daalmeid         ###   ########.fr       */
+/*   Updated: 2022/11/15 13:02:54 by daalmeid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma	once
+
 #include <sys/epoll.h>
 #include <iostream>
 #include <cerrno>
@@ -20,7 +21,7 @@
 
 #define FT_ERROR(A, B) std::cerr << A << ": " << B << strerror(errno) << std::endl
 #define EPOLL_SIZE 5
-#define EPOLL_TIMEOUT -1
+#define EPOLL_TIMEOUT 5000
 
 namespace ft {
 

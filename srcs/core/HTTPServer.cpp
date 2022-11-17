@@ -27,7 +27,7 @@ namespace ft
 	int
 	HTTPServer::init( void )
 	{
-		if (!socks.insert(8000))
+		if (!socks.insert(8090))
 			return -1;
 
 		if (!socks.insert(4000))
@@ -50,12 +50,17 @@ namespace ft
 	void
 	HTTPServer::loop( void )
 	{
+		Mediator	med;
+		
 		if (socks.list.empty())
 			exit(err(1, "logic error", "no sockets available"));
 		while (1)
 		{
+			check_times();
 			int ev_count = epoll.wait();
 			DEBUG2("[" << ev_count << "] ready events");
+			if (ev_count == 0)
+				continue;
 			int ev_socket;
 			for (int i = 0; i < ev_count; i++)
 			{
@@ -66,35 +71,61 @@ namespace ft
 						err(-1, "accept()");
 					if (epoll.insert(ev_socket) == -1)
 						err(-1, "insert()");
+					time_map.insert(std::make_pair(ev_socket, time(NULL)));
 				}
-				else
-					ft_handle(i);
-				//DEBUG2("connection received");
-				// send(fd, 
-				// 	"HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!",
-				// 	74, 0);
-				//close (fd);
+				else {
+					try
+					{
+						time_map.at(ev_socket) = time(NULL);
+						ft_handle(i, med);
+					}
+					catch(const std::exception& e)
+					{
+						DEBUG2(e.what() << ev_socket);
+					}
+				}
 			}
 		}
 	}
 
-	void	HTTPServer::ft_handle(int i) {
-		/*
-			HTTPRes
-			build the http response
-		*/
+	void	HTTPServer::ft_handle(int i, Mediator & med) {
+
 		static char buffer[30000] = {0};
-		const char *hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
 
 		int valread = recv(epoll.events[i].data.fd, buffer, 30000, 0);
 		if (valread == -1)
 			DEBUG2("client disconnect");
 		HTTPReq	request(buffer);
-		request.print_map();
-		DEBUG2(buffer);
-		send(epoll.events[i].data.fd, hello, strlen(hello), 0);
+		//request.print_map();
+		med.method_choice(request, epoll.events[i].data.fd);
+		//std::cout << hello << std::endl;
+		//DEBUG2(buffer);
 		DEBUG2("message sent");
-		if (epoll.erase(i) == -1)
-			err(-1);
+		if (request.get_head_val("Connection") == "close")
+		{
+			DEBUG2(epoll.events[i].data.fd << " was erased!!!!!");
+			if (epoll.erase(epoll.events[i].data.fd) == -1)
+				DEBUG2("ERROR IN ERASE!!!!!!");
+			time_map.erase(epoll.events[i].data.fd);
+		}
+	}
+
+	void	HTTPServer::check_times(void) {
+		
+		double seconds = time(NULL);
+		
+		for (std::map<int, double>::iterator it = time_map.begin();
+			it != time_map.end(); it++)
+		{
+			if (seconds - it->second >= 10) {
+				DEBUG2(it->first << " was erased by timeout!!!!!");	
+				if (epoll.erase(it->first) == -1)
+					DEBUG2("ERROR IN ERASE!!!!!!");
+				time_map.erase(it->first);
+				it = time_map.begin();
+				if (it == time_map.end())
+					break;
+			}
+		}
 	}
 }

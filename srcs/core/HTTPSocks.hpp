@@ -10,7 +10,6 @@ extern "C"
 #include <cstring>
 #include <list>
 #include "webserv.hpp"
-#include "HTTPSocks.hpp"
 
 namespace ft
 {
