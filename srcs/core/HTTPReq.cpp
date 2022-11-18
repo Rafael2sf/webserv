@@ -110,4 +110,23 @@ namespace ft {
 		headers.insert(std::make_pair(key, value));
 	};
 
+	std::string				HTTPReq::response_string(void) {
+		
+		std::string	final_str;
+
+		for (std::vector<std::string>::iterator it = method.begin(); it != method.end(); it++)
+			final_str += *it + ' ';
+		final_str.replace(final_str.size() - 1, 1, "\r\n");
+		
+		for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
+		{
+			if (it->first == "body")
+				final_str += "\r\n" + it->second + "\r\n";
+			else
+				final_str += it->first + ": " + it->second + "\r\n";
+		}
+		final_str += "\r\n";
+		return final_str;
+	};
+
 }

@@ -23,7 +23,7 @@ namespace ft {
 			void	post(HTTPReq const& req, int client_fd);
 			void	del(HTTPReq const& req,int client_fd);
 
-			std::string	get_file(HTTPReq const& req, std::string& path);
-			void		content_encoding(std::fstream & ifs, std::string& str, int client_fd);
+			void	get_file(HTTPReq const& req, HTTPReq& resp, std::string& path);
+			void	content_encoding(std::fstream & ifs, int client_fd, HTTPReq& resp);
 	};
 }

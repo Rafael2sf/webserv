@@ -1,4 +1,4 @@
-#include "Mediator.hpp"
+ #include "Mediator.hpp"
 #include "HTTPServer.hpp"
 #include <sys/stat.h>
 #define	READ_BUF_SIZE 8000
@@ -14,7 +14,7 @@ namespace ft {
 		std::vector<std::string>	method(req.get_method());
 
 		if (method.empty())
-			DEBUG2("Empty request");
+			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 29, 0);
 		else if (method[0] == "GET") 
 			get(req, client_fd);
 		else if (method[0] =="POST")
@@ -22,7 +22,7 @@ namespace ft {
 		else if (method[0] == "DELETE")
 			del(req, client_fd);
 		else
-			DEBUG2("Wrong method");
+			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 29, 0);
 	}
 
 	void	Mediator::get(HTTPReq const& req, int client_fd) {
@@ -30,58 +30,55 @@ namespace ft {
 		std::string	str;
 		std::string	path("/nfs/homes/daalmeid/Desktop/new_webserv");
 		std::vector<std::string> vec = req.get_method();
-		//HTTPReq	response;
+		HTTPReq	response;
 
+		response.add("Server", "Webserv/0.2");
+		response.add("Date", get_date(time(0)));
 		if (vec[1] == "/") {
-			str = "HTTP/1.1 200 OK\r\nServer:Webserv/0.2\r\nDate: " 
-			+ get_date(time(0)) + "Content-Type: text/html\r\n";
+			response.create_vec_method("HTTP/1.1 200 OK");
+			response.add("Content-Type", "text/html");
 			path += "/html/index.html";
 		}
 		else if (vec[1] == "/favicon.ico") {
-			str = "HTTP/1.1 200 OK\r\nServer:Webserv/0.2\r\nDate: "
-			+ get_date(time(0)) + "Content-Type: image/x-icon\r\n";
+			response.create_vec_method("HTTP/1.1 200 OK");
+			response.add("Content-Type", "image/x-icon");
 			path += "/favicon/favicon.ico";	
 		}
 		else
-			str = get_file(req, path);
+			get_file(req, response, path);
 		
 		//Last-Modified header creation
 		struct stat f_info;
 		stat(path.c_str(),&f_info);
-		str += "Last-Modified: " + get_date(f_info.st_mtime);
+		response.add("Last-Modified", get_date(f_info.st_mtime));
 		//Ends here
 		
 		if (req.get_head_val("Connection") == "close")
-			str += "Connection: close\r\n";
+			response.add("Connection", "close");
 		else
-			str += "Connection: keep-alive\r\n";
-			
+			response.add("Connection", "keep-alive");
 		std::fstream	ifs(path.c_str());
-		content_encoding(ifs, str, client_fd);
+		content_encoding(ifs, client_fd, response);
 	}
 
-	std::string	Mediator::get_file(HTTPReq const& req, std::string& path) {
+	void	Mediator::get_file(HTTPReq const& req, HTTPReq& resp, std::string& path) {
 
-		std::string	str("HTTP/1.1");
 		std::string	req_path(req.get_method()[1]);
 
 		std::fstream	ifs((path + req_path).c_str());
 		if (!ifs.is_open()) {
-			str += " 404 Not Found\r\nServer:Webserv/0.2\r\nDate: "
-			+ get_date(time(0)) + "Content-Type: text/html\r\n";
+			resp.create_vec_method("HTTP/1.1 404 Not Found");
+			resp.add("Content-Type", "text/html");
 			path += "/html/404.html";
-			return str;
+			return;
 		}
 		path += req_path;
+		resp.create_vec_method("HTTP/1.1 200 OK");
 		if (req_path.find("/images/") == 0)
-			str += " 200 OK\r\nServer:Webserv/0.2\r\nDate: "
-			+ get_date(time(0)) + "Content-Type: image/jpeg\r\n";
+			resp.add("Content-Type", "image/jpeg");
 		else if (req_path.find("/html/") == 0)
-			str += " 200 OK\r\nServer: Webserv/0.2\r\nDate: "
-			+ get_date(time(0)) + "Content-Type: text/html\r\n";
-		return str;
-		
-
+			resp.add("Content-Type", "text/html");
+		return;
 	};
 
 	std::string	Mediator::get_date(time_t now) {
@@ -92,16 +89,16 @@ namespace ft {
 
 		memset(buffer, 0, DATE_BUF_SIZE);
 		current_time = localtime(&now);
-		strftime(buffer, DATE_BUF_SIZE, "%a, %d %b %Y %X %Z\r\n",current_time);
+		strftime(buffer, DATE_BUF_SIZE, "%a, %d %b %Y %X %Z",current_time);
 		ret = buffer;
 		return ret;
 	};
 
-	void		Mediator::content_encoding(std::fstream & ifs, std::string& str, int client_fd) {
+	void		Mediator::content_encoding(std::fstream & ifs, int client_fd, HTTPReq& resp) {
 		
 		char				buf[READ_BUF_SIZE];
 		std::stringstream	ss;
-		std::string			size;
+		std::string			str;
 		int					read_nbr;
 		std::string			new_buf;
 		
@@ -110,29 +107,31 @@ namespace ft {
 		read_nbr = ifs.gcount();
 		if (read_nbr != READ_BUF_SIZE) {
 			ss << read_nbr;
-			ss >> size; 
-			size = "Content-Length: " + size + "\r\n\r\n";
+			ss >> str;
+			resp.add("Content-Length", str);
 			new_buf.assign(buf, read_nbr);
-			str = str + size + new_buf;
+			resp.add("body", new_buf);
+			str = resp.response_string();
 			send(client_fd, str.c_str(), str.size(), 0);
 			//DEBUG2(str);
 		}
 		else
 		{
-			str += "Transfer-Encoding: chunked\r\n\r\n";
+			resp.add("Transfer-Encoding", "chunked");
+			str = resp.response_string();
 			send(client_fd, str.c_str(), str.size(), 0);
 
 			while (read_nbr != 0) {
 				ss << std::hex << read_nbr;
-				ss >> size;
+				ss >> str;
 				ss.clear();
-				size += "\r\n";
+				str += "\r\n";
 				new_buf.assign(buf, read_nbr);
-				size += new_buf + "\r\n";
-				send(client_fd, size.c_str(), size.size(), 0);
+				str += new_buf + "\r\n";
+				send(client_fd, str.c_str(), str.size(), 0);
 				memset(buf, 0, READ_BUF_SIZE);
 				new_buf.clear();
-				size.clear();
+				str.clear();
 				ifs.read(buf, READ_BUF_SIZE);
 				read_nbr = ifs.gcount();
 			}

@@ -83,6 +83,7 @@ namespace ft
 					{
 						DEBUG2(e.what() << ev_socket);
 					}
+
 				}
 			}
 		}
@@ -99,9 +100,10 @@ namespace ft
 		//request.print_map();
 		med.method_choice(request, epoll.events[i].data.fd);
 		//std::cout << hello << std::endl;
-		//DEBUG2(buffer);
+		DEBUG2(buffer);
 		DEBUG2("message sent");
-		if (request.get_head_val("Connection") == "close")
+		if (request.get_head_val("Connection") == "close"
+				|| valread == 0)
 		{
 			DEBUG2(epoll.events[i].data.fd << " was erased!!!!!");
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
