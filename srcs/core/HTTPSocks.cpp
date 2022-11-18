@@ -23,37 +23,53 @@ namespace ft
 		return *this;
 	}
 
-	t_sock_info *
-	HTTPSocks::insert( uint16_t port )
+	static int insertInitSock( t_sock_info & sock_info )
 	{
-		t_sock_info	tmp;
-		int			addrlen = sizeof(tmp.addr);
+		int			addrlen = sizeof(sock_info.addr);
 		int			enable = 1;
 
+		sock_info.fd = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock_info.fd == -1)
+			return (-1);
+		sock_info.addr.sin_family = AF_INET;
+		sock_info.addr.sin_port = htons(sock_info.port);
+		sock_info.addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		if (setsockopt(sock_info.fd, SOL_SOCKET, SO_REUSEADDR, 
+			&enable, sizeof(int)) == -1)
+		{
+			close(sock_info.fd);
+			return (-1);
+		}
+		if (bind(sock_info.fd, 
+			(struct sockaddr *)&sock_info.addr, addrlen) == -1)
+		{
+			close(sock_info.fd);
+			return (-1);
+		}
+		if (listen(sock_info.fd, S_MAX_CLIENT) == -1)
+		{
+			close(sock_info.fd);
+			return (-1);
+		}
+		return (0);
+	}
+
+	t_sock_info *
+	HTTPSocks::insert( JsonToken * block )
+	{
+		ft::JsonToken * port_token;
+		t_sock_info		tmp;
+
 		memset(&tmp, 0, sizeof(tmp));
-		tmp.fd = socket(AF_INET, SOCK_STREAM, 0);
-		if (tmp.fd == -1)
-			return (NULL);
-		tmp.addr.sin_family = AF_INET;
-		tmp.addr.sin_port = htons(port);
-		tmp.addr.sin_addr.s_addr = htonl(INADDR_ANY);
-		if (setsockopt(tmp.fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) == -1)
-		{
-			close(tmp.fd);
-			return (NULL);
-		}
-		if (bind(tmp.fd, (struct sockaddr *)&tmp.addr, addrlen) == -1)
-		{
-			close(tmp.fd);
-			return (NULL);
-		}
-		if (listen(tmp.fd, S_MAX_CLIENT) == -1)
-		{
-			close(tmp.fd);
-			return (NULL);
-		}
-		tmp.port = port;
-		return &(*list.insert(list.begin(), tmp));
+		port_token = block->find_first("listen");
+		if (!port_token)
+			return NULL;
+		tmp.port = Json::getIntegerOf(port_token);
+		tmp.conf = block;
+		DEBUG2("listening .. " << tmp.port);
+		if (insertInitSock(tmp) != -1)
+			return &(*list.insert(list.begin(), tmp));
+		return NULL;
 	}
 
 	t_sock_info const*

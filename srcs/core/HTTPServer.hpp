@@ -32,6 +32,8 @@ namespace ft
 
 		HTTPSocks	socks;
 		HTTPEpoll	epoll;
+		Json		conf;
+		static int state;
 
 		/**
 		 * @brief Initiates the server with default configurations.

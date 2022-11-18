@@ -5,6 +5,9 @@
 
 namespace ft
 {
+	int HTTPServer::state = 1;
+
+
 	HTTPServer::~HTTPServer( void )
 	{}
 
@@ -27,26 +30,23 @@ namespace ft
 	int
 	HTTPServer::init( void )
 	{
-		if (!socks.insert(8090))
-			return -1;
-
-		if (!socks.insert(4000))
-			return -1;
-
-		for (std::list<ft::t_sock_info>::iterator it = socks.list.begin();
-			it != socks.list.end(); it++)
-		{DEBUG2("listening on port " << it->port);}
-		epoll.init(socks);
+		DEBUG2("server default init");
 		return 0;
 	}
 
 	int
 	HTTPServer::init( char const* filepath )
 	{
-		DEBUG2("called non-implemented function: HTTPServer::init( char* filepath )");
-		(void) filepath;
-		return (-1);
+		if (conf.parse(filepath) < 0)
+				return -1;
+		DEBUG2("creating server sockets");
+		for (ft::Json::iterator it = conf.tokens.begin();
+				it != conf.tokens.end(); it++ )
+		{ socks.insert(*it); }
+		epoll.init(socks);
+		return (0);
 	}
+
 	void
 	HTTPServer::loop( void )
 	{
@@ -56,6 +56,8 @@ namespace ft
 			exit(err(1, "logic error", "no sockets available"));
 		while (1)
 		{
+			if (!state)
+				break ;
 			check_times();
 			int ev_count = epoll.wait();
 			DEBUG2("[" << ev_count << "] ready events");

@@ -11,6 +11,15 @@ namespace ft
 	class Json
 	{
 	public:
+		typedef std::list<JsonToken *>::iterator
+			iterator;
+		typedef std::list<JsonToken *>::const_iterator
+			const_iterator;
+		typedef std::list<JsonToken *>::reverse_iterator
+			reverse_iterator;
+		typedef std::list<JsonToken *>::const_reverse_iterator
+			const_reverse_iterator;
+
 		~Json();
 		Json( void );
 		Json( Json const& other );
@@ -28,6 +37,8 @@ namespace ft
 		 getIntegerOf( JsonToken const* t );
 		static std::vector<JsonToken*> const&
 		 getObjectOf( JsonToken const* t );
+
+		void clear(void);
 
 		std::list<JsonToken *> tokens;
 	};

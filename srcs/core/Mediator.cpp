@@ -28,7 +28,7 @@ namespace ft {
 	void	Mediator::get(HTTPReq const& req, int client_fd) {
 
 		std::string	str;
-		std::string	path("/nfs/homes/daalmeid/Desktop/new_webserv");
+		std::string	path("/nfs/homes/rafernan/Desktop/webserv/www");
 		std::vector<std::string> vec = req.get_method();
 		HTTPReq	response;
 
@@ -46,7 +46,7 @@ namespace ft {
 		}
 		else
 			get_file(req, response, path);
-		
+
 		//Last-Modified header creation
 		struct stat f_info;
 		stat(path.c_str(),&f_info);

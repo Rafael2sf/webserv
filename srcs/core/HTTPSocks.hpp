@@ -10,6 +10,7 @@ extern "C"
 #include <cstring>
 #include <list>
 #include "webserv.hpp"
+#include "Json.hpp"
 
 namespace ft
 {
@@ -22,6 +23,7 @@ namespace ft
 		int			fd;
 		int			port;
 		sockaddr_in	addr;
+		JsonToken	*conf;
 	}				t_sock_info;
 
 	/**
@@ -48,7 +50,7 @@ namespace ft
 		 * set to listen on %port, otherwise, NULL and
 		 * errno is set to indicate the error.
 		*/
-		t_sock_info		*insert( uint16_t port );
+		t_sock_info		*insert( JsonToken * block );
 
 		/**
 		 * @brief Searchs for a t_sock_info in the internal %list,
