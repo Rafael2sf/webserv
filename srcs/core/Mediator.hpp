@@ -5,8 +5,12 @@
 #include <fstream>
 #include <sstream>
 #include <ctime>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdlib.h>
 #include "HTTPReq.hpp"
 #include "webserv.hpp"
+#include "CGI.hpp"
 
 namespace ft {
 
@@ -19,6 +23,7 @@ namespace ft {
 			std::string	get_date(time_t now);
 		private:
 			
+			void	cgi_dealer(HTTPReq const& req, int client_fd);
 			void	get(HTTPReq const& req, int client_fd);
 			void	post(HTTPReq const& req, int client_fd);
 			void	del(HTTPReq const& req,int client_fd);

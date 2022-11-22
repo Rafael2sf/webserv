@@ -6,7 +6,7 @@
 /*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/31 14:31:27 by daalmeid          #+#    #+#             */
-/*   Updated: 2022/11/15 17:20:59 by daalmeid         ###   ########.fr       */
+/*   Updated: 2022/11/22 12:07:55 by daalmeid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,10 @@ namespace ft {
 
 	HTTPEpoll::HTTPEpoll(HTTPEpoll const& cpy) {
 		(void)cpy;
+	};
+
+	HTTPEpoll::~HTTPEpoll(void) {
+		
 	};
 
 	int	HTTPEpoll::init(HTTPSocks const& socks) {
@@ -39,6 +43,7 @@ namespace ft {
 	int	HTTPEpoll::insert(int sofd) {
 		epoll_event		ev;
 
+		memset(&ev, 0, sizeof(epoll_event));
 		ev.events = EPOLLIN;
 		ev.data.fd = sofd;
 		int	flags = fcntl(sofd, F_GETFL, 0);

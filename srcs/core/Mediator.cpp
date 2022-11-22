@@ -15,6 +15,8 @@ namespace ft {
 
 		if (method.empty())
 			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 29, 0);
+		else if (method[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
+			cgi_dealer(req, client_fd);
 		else if (method[0] == "GET") 
 			get(req, client_fd);
 		else if (method[0] =="POST")
@@ -28,7 +30,7 @@ namespace ft {
 	void	Mediator::get(HTTPReq const& req, int client_fd) {
 
 		std::string	str;
-		std::string	path("/nfs/homes/daalmeid/Desktop/new_webserv");
+		std::string	path("/nfs/homes/daalmeid/Desktop/webserv");
 		std::vector<std::string> vec = req.get_method();
 		HTTPReq	response;
 
@@ -139,6 +141,31 @@ namespace ft {
 		}
 	};
 
+	void	Mediator::cgi_dealer(HTTPReq const& req, int client_fd) {
+
+		int	pid, exit_stat;
+		(void)client_fd;
+		std::string	path("/nfs/homes/daalmeid/Desktop/webserv");
+		path += req.get_method()[1];
+		pid = fork();
+		if (pid == -1)
+			DEBUG2("fork failed");
+		if (pid == 0) {
+			
+			CGI	test(req);
+			if (dup2(client_fd, STDOUT_FILENO) == -1)
+			{
+				write(2, "error: fatal\n", 13);
+				exit(EXIT_FAILURE);
+			}
+			execve("/usr/bin/python3", test.getArgs(), test.getEnv());
+			DEBUG2("EXECVE FAILED!!");
+		}
+		else {
+			waitpid(pid, &exit_stat, 0);
+		}
+	};
+	
 	void	Mediator::post(HTTPReq const& req, int client_fd) {
 		(void)req;
 		(void)client_fd;
