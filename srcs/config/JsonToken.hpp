@@ -8,12 +8,11 @@
 #include <vector>
 #include <cstring>
 #include <limits>
-#include "webserv.hpp"
+#include <algorithm>
+#include <iostream>
 
 namespace ft
 {
-	class Json;
-
 	typedef enum e_jtoken_type
 	{
 		json_none_type,
@@ -25,8 +24,6 @@ namespace ft
 		json_array_type,
 	}	t_jtoken_type;
 
-	class JsonArray;
-
 	class JsonToken
 	{
 	public:
@@ -34,6 +31,7 @@ namespace ft
 		JsonToken( void );
 		JsonToken( JsonToken const& other );
 		JsonToken & operator=( JsonToken const& other );
+		JsonToken & operator[](char const* key);
 
 		const char*	getProperty	( void ) const;
 		void		setProperty	( char * property );
@@ -42,7 +40,11 @@ namespace ft
 		int			getType		( void ) const;
 
 		void print( void ) const;
-		JsonToken * find_first( char const* s );
+		JsonToken * find_first( std::string const& key, size_t max_depth = 1);
+		template <class T> T as( void ) const
+		{
+			throw std::invalid_argument("as(): call");
+		}
 
 	protected:
 		char *			_property;
@@ -157,4 +159,5 @@ namespace ft
 	/* utils */
 	int jsonErr( t_jparser_info const& info, char const* err );
 	char * jsonReadFile( char const* filepath );
+
 }

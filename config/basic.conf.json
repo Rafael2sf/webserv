@@ -1,5 +1,12 @@
 {
 	"server" : {
-		"listen" : 8000
+		"listen" : 8000,
+		"location" : {
+			"/www/" : {
+				"index": "index.html",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"autoindex" : true
+			}
+		}
 	}
 }

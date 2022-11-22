@@ -1,16 +1,19 @@
- #include "Mediator.hpp"
-#include "HTTPServer.hpp"
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include "Mediator.hpp"
+#include "HTTPServer.hpp"
+
 #define	READ_BUF_SIZE 8000
 #define	DATE_BUF_SIZE 40
 
 namespace ft {
 
 	Mediator::Mediator(void) {
-
 	}
 
-	void	Mediator::method_choice(HTTPReq const& req, int client_fd) {
+	void	Mediator::method_choice(HTTPReq const& req, int client_fd)
+	{
 		std::vector<std::string>	method(req.get_method());
 
 		if (method.empty())
@@ -25,60 +28,147 @@ namespace ft {
 			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 29, 0);
 	}
 
-	void	Mediator::get(HTTPReq const& req, int client_fd) {
-
-		std::string	str;
-		std::string	path("/nfs/homes/rafernan/Desktop/webserv/www");
-		std::vector<std::string> vec = req.get_method();
-		HTTPReq	response;
-
-		response.add("Server", "Webserv/0.2");
-		response.add("Date", get_date(time(0)));
-		if (vec[1] == "/") {
-			response.create_vec_method("HTTP/1.1 200 OK");
-			response.add("Content-Type", "text/html");
-			path += "/html/index.html";
-		}
-		else if (vec[1] == "/favicon.ico") {
-			response.create_vec_method("HTTP/1.1 200 OK");
-			response.add("Content-Type", "image/x-icon");
-			path += "/favicon/favicon.ico";	
-		}
-		else
-			get_file(req, response, path);
-
-		//Last-Modified header creation
-		struct stat f_info;
-		stat(path.c_str(),&f_info);
-		response.add("Last-Modified", get_date(f_info.st_mtime));
-		//Ends here
-		
-		if (req.get_head_val("Connection") == "close")
-			response.add("Connection", "close");
-		else
-			response.add("Connection", "keep-alive");
-		std::fstream	ifs(path.c_str());
-		content_encoding(ifs, client_fd, response);
+	static bool replace(std::string& str, const std::string& from, const std::string& to) {
+		size_t start_pos = str.find(from);
+		if(start_pos == std::string::npos)
+			return false;
+		str.replace(start_pos, from.length(), to);
+		return true;
 	}
 
-	void	Mediator::get_file(HTTPReq const& req, HTTPReq& resp, std::string& path) {
+	static void errorPage(HTTPReq const& req, HTTPReq & res,
+		int fd, std::string const& code, std::string const& path)
+	{
+		std::string	str;
 
-		std::string	req_path(req.get_method()[1]);
-
-		std::fstream	ifs((path + req_path).c_str());
-		if (!ifs.is_open()) {
-			resp.create_vec_method("HTTP/1.1 404 Not Found");
-			resp.add("Content-Type", "text/html");
-			path += "/html/404.html";
-			return;
+		res.create_vec_method("HTTP/1.1 " + code + " Not Found");
+		res.add("Content-Type", "text/html");
+		try
+		{
+			if (!req.conf)
+				throw std::logic_error("request doesn't mach any configuration");
+			if ((*req.conf)["autoindex"].as<bool>())
+			{
+				str = "<html><head>file explorer</head><body><hr><pre>";
+				DIR * dirp = opendir(path.c_str());
+				if (!dirp)
+					throw std::invalid_argument("no such directory");
+				dirent * dp;
+				while ((dp = readdir(dirp)) != NULL)
+				{
+					struct stat stat;
+					if (dp->d_name[0] != '.')
+					{
+						if (lstat(std::string(path.c_str() + std::string(dp->d_name)).c_str(), &stat) != -1
+							&& S_ISDIR(stat.st_mode))
+						{
+							DEBUG2("here");
+							str += "<a href=\"" + std::string(dp->d_name) \
+							+ "/\"/>" + std::string(dp->d_name) + "/</a>\n";
+						}
+						else
+						{
+							str += "<a href=\"" + std::string(dp->d_name) \
+							+ "\"/>" + std::string(dp->d_name) + "</a>\n";
+						}
+					}
+				}
+				closedir(dirp);
+				str += "</hr></pre></body></html>";
+				std::ostringstream ss;
+				ss << str.length();
+				res.add("Content-length", ss.str());
+				res.add("body", str);
+			}
+			else
+				throw std::invalid_argument("autoindex: false");
 		}
-		path += req_path;
+		catch(const std::exception& e)
+		{
+			DEBUG2(e.what());
+			// TODO: error_page
+			res.add("Content-length", "16");
+			res.add("body", "<h1>" + code + "</h1>");
+		}
+		str = res.response_string();
+		send(fd, str.c_str(), str.size(), 0);
+		return ;
+	}
+
+	void	Mediator::get(HTTPReq const& req, int client_fd)
+	{
+		std::string	path;
+		HTTPReq		res;
+
+		// set all standart headers
+		res.add("Server", "Webserv/0.2");
+		res.add("Date", get_date(time(0)));
+		if (req.get_head_val("Connection") == "close")
+			res.add("Connection", "close");
+		else
+			res.add("Connection", "keep-alive");
+
+		if (req.conf)
+		{
+			// find full path
+			try {
+				path = req.get_method()[1];
+				replace(path,
+					req.conf->getProperty(),
+					(*req.conf)["root"].as<char const*>());
+				DEBUG2("path = " << path);
+			}
+			catch (std::exception const&) {path.clear();}
+
+			if (path.empty() || !get_file(req, res, path))
+				return errorPage(req, res, client_fd, "404", path);
+			//Last-Modified header creation
+			struct stat f_info;
+			stat(path.c_str(), &f_info);
+			res.add("Last-Modified", get_date(f_info.st_mtime));
+		}
+		else
+			return errorPage(req, res, client_fd, "404", path);
+
+		std::fstream	ifs(path.c_str());
+		content_encoding(ifs, client_fd, res);
+	}
+
+	bool	Mediator::get_file(HTTPReq const& req,
+		HTTPReq& resp, std::string& path)
+	{
+		std::ifstream	ifs(path.c_str());
+		struct stat		stat;
+		std::string		path_index;
+
+		if (!ifs.is_open())
+			return false;
+		if (lstat(path.c_str(), &stat) == -1)
+			return false;
+		if (S_ISDIR(stat.st_mode))
+		{
+			try
+			{
+				// TODO : check if file is dir before attempting index
+				path_index = path + (*req.conf)["index"].as<const char*>();
+				DEBUG2("path = " << path);
+				ifs.close();
+				ifs.open(path_index.c_str());
+				if (!ifs.is_open())
+					return false;
+				path = path_index;
+			}
+			catch (std::exception const&) {return false;}
+		}
+
+		// temporary mimes
 		resp.create_vec_method("HTTP/1.1 200 OK");
-		if (req_path.find("/images/") == 0)
+		if (path.find(".jpeg") != std::string::npos 
+			|| path.find(".jpg") != std::string::npos)
 			resp.add("Content-Type", "image/jpeg");
-		else if (req_path.find("/html/") == 0)
+		else if (path.find(".html") != std::string::npos)
 			resp.add("Content-Type", "text/html");
-		return;
+		return true;
 	};
 
 	std::string	Mediator::get_date(time_t now) {

@@ -1,4 +1,5 @@
 #include "HTTPSocks.hpp"
+#include "HTTPServer.hpp"
 
 namespace ft
 {
@@ -54,31 +55,57 @@ namespace ft
 		return (0);
 	}
 
-	t_sock_info *
+	t_sock_info const*
 	HTTPSocks::insert( JsonToken * block )
 	{
 		ft::JsonToken * port_token;
 		t_sock_info		tmp;
+		t_sock_info const*	match;
 
 		memset(&tmp, 0, sizeof(tmp));
 		port_token = block->find_first("listen");
 		if (!port_token)
-			return NULL;
+			return 0;
 		tmp.port = Json::getIntegerOf(port_token);
 		tmp.conf = block;
-		DEBUG2("listening .. " << tmp.port);
+		match = this->findByPort(tmp.port);
+		if (match)
+		{
+			if (match->conf == block)
+			{
+				ft::err(1, "duplicate port in same block");
+				return 0;
+			}
+			return match;
+		}
 		if (insertInitSock(tmp) != -1)
+		{
+			DEBUG2("listening .. " << tmp.port);
 			return &(*list.insert(list.begin(), tmp));
+		}
+		ft::err(1);
+		return 0;
+	}
+
+	t_sock_info *
+	HTTPSocks::findByFd( int sock_fd )
+	{
+		for (std::list<t_sock_info>::iterator it = list.begin();
+			it != list.end(); it++)
+		{
+			if (it->fd == sock_fd || it->clients.count(sock_fd))
+				return &(*it);
+		}
 		return NULL;
 	}
 
 	t_sock_info const*
-	HTTPSocks::find( int sock_fd ) const
+	HTTPSocks::findByPort( int port ) const
 	{
 		for (std::list<t_sock_info>::const_iterator it = list.begin();
 			it != list.end(); it++)
 		{
-			if (it->fd == sock_fd)
+			if (it->port == port)
 				return &(*it);
 		}
 		return NULL;

@@ -1,10 +1,13 @@
 #pragma once
 
 #include <cerrno>
+#include <cstdlib>
 #include "HTTPSocks.hpp"
 #include "HTTPEpoll.hpp"
+#include "HTTPReq.hpp"
 #include "Mediator.hpp"
-
+#include "webserv.hpp"
+#include "Json.hpp"
 
 namespace ft
 {
@@ -28,7 +31,7 @@ namespace ft
 		 * @param med Object that distributes requests based on
 		 * the method stated.
 		*/
-		void	ft_handle(int i, Mediator & med);
+		void ft_handle(t_sock_info * csock, int i, Mediator & med);
 
 		HTTPSocks	socks;
 		HTTPEpoll	epoll;
@@ -59,11 +62,6 @@ namespace ft
 		 * @ Server must be initialized before looping
 		*/
 		void	loop( void );
-
 		void	check_times(void);
-
-		private:
-
-		std::map<int, double>	time_map;
 	};
 }

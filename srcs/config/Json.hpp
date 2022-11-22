@@ -3,6 +3,7 @@
 #include <cstring>
 #include <list>
 #include <vector>
+#include <stdexcept>
 #include "webserv.hpp"
 #include "JsonToken.hpp"
 

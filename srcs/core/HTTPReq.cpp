@@ -1,6 +1,4 @@
 #include "HTTPReq.hpp"
-#include "webserv.hpp"
-
 
 namespace ft {
 
@@ -128,5 +126,4 @@ namespace ft {
 		final_str += "\r\n";
 		return final_str;
 	};
-
 }

@@ -6,7 +6,7 @@
 #include <string>
 #include <cstring>
 #include <utility>
-
+#include "webserv.hpp"
 
 namespace ft {
 
@@ -35,11 +35,11 @@ namespace ft {
 			void						add(std::string key, std::string value);
 			void						create_vec_method(std::string const& str);
 			std::string					response_string(void);
-			
 
+			JsonToken * conf;
+			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 		private:
 
-			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 			std::vector<std::string>			method; //Max size: 8k
 			
 			/**

@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "HTTPEpoll.hpp"
+#include "HTTPSocks.hpp"
 
 namespace ft {
 
@@ -39,6 +40,7 @@ namespace ft {
 	int	HTTPEpoll::insert(int sofd) {
 		epoll_event		ev;
 
+		memset(&ev, 0, sizeof(ev));
 		ev.events = EPOLLIN;
 		ev.data.fd = sofd;
 		int	flags = fcntl(sofd, F_GETFL, 0);

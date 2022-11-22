@@ -3,8 +3,28 @@
 
 namespace ft
 {
+	template <>
+	int JsonToken::as<int>( void ) const
+	{
+		return dynamic_cast<JsonInteger const&>(*this).getValue();
+	}
+
+	template <>
+	char const* JsonToken::as<char const*>( void ) const
+	{
+		return dynamic_cast<JsonString const&>(*this).getValue();
+	}
+
+	template <>
+	bool JsonToken::as<bool>( void ) const
+	{
+		return dynamic_cast<JsonBoolean const&>(*this).getValue();
+	}
+
 	static void rprint(JsonToken const* p, size_t depth)
 	{
+		(void) p;
+		(void) depth;
 		size_t i = 0;
 
 		while (i++ != depth)
@@ -73,21 +93,35 @@ namespace ft
 		rprint(this, 0);
 	}
 
-	JsonToken * JsonToken::find_first( char const* s )
+	JsonToken & JsonToken::operator[](char const* key)
+	{
+		JsonToken * res = find_first(key);
+		if (!res)
+			throw std::invalid_argument("no such element");
+		return *res;
+	}
+
+	JsonToken * JsonToken::find_first( std::string const& key, size_t max_depth)
 	{
 		std::vector<JsonToken*> tokens;
+		JsonToken * x = 0;
+
+		if (max_depth == __SIZE_MAX__)
+			return 0;
+		if (!strcmp(_property, key.c_str()))
+			return (this);
 		if (_type == json_object_type)
 		{
-			tokens = Json::getObjectOf(this);
+			tokens = dynamic_cast<JsonObject const*>(this)->data;
 			for (std::vector<JsonToken*>::iterator it = tokens.begin();
 				it != tokens.end(); it++)
 			{
-				return (*it)->find_first(s);
+				x = (*it)->find_first(key, max_depth - 1);
+				if (x)
+					break ;
 			}
 		}
-		else if (!strcmp(_property, s))
-			return (this);
-		return 0;
+		return x;
 	}
 
 	JsonToken::~JsonToken()
