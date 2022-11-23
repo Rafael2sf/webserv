@@ -157,7 +157,7 @@ namespace ft
 		if (valread == -1)
 			DEBUG2("client disconnect");
 
-		HTTPReq	request(buffer);
+		HTTPReq	request(buffer, valread);
 		if (!request.headers.empty())
 			request.conf = findConfigOf(conf, *csock, request.get_method()[1]);
 		if (request.conf)

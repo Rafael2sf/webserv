@@ -6,7 +6,7 @@
 /*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/31 14:31:27 by daalmeid          #+#    #+#             */
-/*   Updated: 2022/11/15 17:20:59 by daalmeid         ###   ########.fr       */
+/*   Updated: 2022/11/23 18:33:50 by daalmeid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,10 @@ namespace ft {
 
 	HTTPEpoll::HTTPEpoll(HTTPEpoll const& cpy) {
 		(void)cpy;
+	};
+
+	HTTPEpoll::~HTTPEpoll(void) {
+		
 	};
 
 	int	HTTPEpoll::init(HTTPSocks const& socks) {

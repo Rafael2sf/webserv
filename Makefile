@@ -33,6 +33,7 @@ SRCS		=	$(addsuffix .cpp, \
 					HTTPReq \
 					err \
 					Mediator \
+					CGI \
 					Json \
 					JsonToken \
 					json_parser \
