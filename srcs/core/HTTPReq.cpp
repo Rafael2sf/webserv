@@ -8,16 +8,18 @@ namespace ft {
 
 	}
 
-	HTTPReq::HTTPReq(char* request) {
-		std::string	str(request);
+	HTTPReq::HTTPReq(char* request, int valread) {
+		std::string	str;
+		str.assign(request, valread);
+		
 		size_t		str_start = str.find("\n");
 		
 		if (str.empty())
 			return ;
 		create_vec_method(str.substr(0, str_start++));
-		str = &(request[str_start]);
+		str.erase(0, str_start);
+		//str = &(request[str_start]);
 		str_start = 0;
-		
 		for (size_t i = 0; str[i] != '\0' ; i++) {
 			if (str[i] == '\n') {
 				std::string	new_header(str.substr(str_start, i - str_start - 1));
@@ -29,7 +31,7 @@ namespace ft {
 		}
 		if (str[str_start] == '\r' && str[str_start + 2] != '\0')
 			headers.insert(std::make_pair("body", wp_trimmer(str.substr(str_start + 2))));
-
+		std::cout << "size " << headers["body"].size() << std::endl;
 	}
 	
 	HTTPReq::HTTPReq(HTTPReq const& cpy) {
@@ -109,6 +111,15 @@ namespace ft {
 		}
 		headers.insert(std::make_pair(key, value));
 	};
+
+	void					HTTPReq::addToVal(std::string key, std::string value_to_add) {
+		if (key.empty()) {
+			DEBUG2("NEED A KEY VALUE, GENIUS!");
+			return ;
+		}
+		headers[key] += value_to_add;
+	};
+
 
 	std::string				HTTPReq::response_string(void) {
 		

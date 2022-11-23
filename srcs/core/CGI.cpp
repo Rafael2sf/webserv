@@ -40,7 +40,11 @@ namespace ft
 		vec.push_back("REQUEST_METHOD=" + req.get_method()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.2");
 		
-		std::string substr = req.get_method()[1].substr(req.get_method()[1].find('?') + 1);
+		std::string substr;
+		if (req.get_method()[1].find('?') != std::string::npos)
+			substr = req.get_method()[1].substr(req.get_method()[1].find('?') + 1);
+		else
+			substr = "";
 		vec.push_back("QUERY_STRING=" + substr);
 		for (int i = 0; i < 8; i++) {
 			env[i] = new char[vec[i].size() + 1];

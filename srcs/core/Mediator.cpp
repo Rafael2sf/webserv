@@ -10,17 +10,17 @@ namespace ft {
 
 	}
 
-	void	Mediator::method_choice(HTTPReq const& req, int client_fd) {
+	void	Mediator::method_choice(HTTPReq & req, int client_fd) {
 		std::vector<std::string>	method(req.get_method());
 
 		if (method.empty())
 			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 29, 0);
+		else if (method[0] =="POST")
+			post(req, client_fd);
 		else if (method[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
 			cgi_dealer(req, client_fd);
 		else if (method[0] == "GET") 
 			get(req, client_fd);
-		else if (method[0] =="POST")
-			post(req, client_fd);
 		else if (method[0] == "DELETE")
 			del(req, client_fd);
 		else
@@ -115,14 +115,12 @@ namespace ft {
 			resp.add("body", new_buf);
 			str = resp.response_string();
 			send(client_fd, str.c_str(), str.size(), 0);
-			//DEBUG2(str);
 		}
 		else
 		{
 			resp.add("Transfer-Encoding", "chunked");
 			str = resp.response_string();
 			send(client_fd, str.c_str(), str.size(), 0);
-
 			while (read_nbr != 0) {
 				ss << std::hex << read_nbr;
 				ss >> str;
@@ -144,7 +142,6 @@ namespace ft {
 	void	Mediator::cgi_dealer(HTTPReq const& req, int client_fd) {
 
 		int	pid, exit_stat;
-		(void)client_fd;
 		std::string	path("/nfs/homes/daalmeid/Desktop/webserv");
 		path += req.get_method()[1];
 		pid = fork();
@@ -166,10 +163,51 @@ namespace ft {
 		}
 	};
 	
-	void	Mediator::post(HTTPReq const& req, int client_fd) {
-		(void)req;
-		(void)client_fd;
+	void	Mediator::post(HTTPReq & req, int client_fd) {
 		DEBUG2("This is a POST request");
+		int	read_nbr = 1;
+		char buf[30000];
+		std::string	new_buf;
+		
+		read_nbr = recv(client_fd, buf, 30000, 0);
+		while (read_nbr > 0) {
+			new_buf.assign(buf, read_nbr);
+			req.addToVal("body", new_buf);
+			memset(buf, 0, 30000);
+			new_buf.clear();
+			read_nbr = recv(client_fd, buf, 30000, 0);
+			//DEBUG2(read_nbr);
+		}
+		
+		std::string playing = req.get_head_val("body");
+
+		int	exit_stat;
+		int	pid = fork();
+		if (pid == -1)
+			DEBUG2("fork failed");
+		if (pid == 0) {
+			
+			int p[2];
+			pipe(p);
+			CGI	test(req);
+			playing += "\r\n";
+			write(p[1], playing.c_str(), playing.size());
+			if (dup2(p[0], STDIN_FILENO) == -1)
+			{
+				write(2, "error: fatal\n", 13);
+				exit(EXIT_FAILURE);
+			}
+			if (dup2(client_fd, STDOUT_FILENO) == -1)
+			{
+				write(2, "error: fatal\n", 13);
+				exit(EXIT_FAILURE);
+			}
+			execve("/usr/bin/python3", test.getArgs(), test.getEnv());
+			DEBUG2("EXECVE FAILED!!");
+		}
+		else {
+			waitpid(pid, &exit_stat, 0);
+		}
 	}
 
 	void	Mediator::del(HTTPReq const& req, int client_fd) {

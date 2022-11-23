@@ -20,7 +20,7 @@ namespace ft {
 			 * in a map of the headers and a string with the request.
 			 * @param request request received by the server.
 			*/
-			HTTPReq(char* request);
+			HTTPReq(char* request, int valread);
 			HTTPReq(HTTPReq const& cpy);
 			~HTTPReq(void);
 			HTTPReq&	operator=(HTTPReq const& rhs);
@@ -33,6 +33,7 @@ namespace ft {
 			std::vector<std::string>	get_method(void) const;
 			std::string					get_head_val(std::string const& key) const;
 			void						add(std::string key, std::string value);
+			void						addToVal(std::string key, std::string value_to_add);
 			void						create_vec_method(std::string const& str);
 			std::string					response_string(void);
 			

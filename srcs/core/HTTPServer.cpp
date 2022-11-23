@@ -96,11 +96,11 @@ namespace ft
 		int valread = recv(epoll.events[i].data.fd, buffer, 30000, 0);
 		if (valread == -1)
 			DEBUG2("client disconnect");
-		HTTPReq	request(buffer);
+		HTTPReq	request(buffer, valread);
 		//request.print_map();
 		med.method_choice(request, epoll.events[i].data.fd);
 		//std::cout << hello << std::endl;
-		DEBUG2(buffer);
+		//DEBUG2(buffer);
 		DEBUG2("message sent");
 		if (request.get_head_val("Connection") == "close"
 				|| valread == 0)

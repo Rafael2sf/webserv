@@ -15,7 +15,15 @@
 		<label for="lname">Last name:</label><br>
 		<input type="text" id="lname" name="lname" value="Doe"><br><br>
 		<input type="submit" value="Submit">
-	  </form> 
+	  </form>
+	<br>
+	<form enctype="multipart/form-data" action="/scripts/save_file.py" method="POST">
+		<label for="fileTest">Upload file:</label><br>
+		<input type="file"
+				id="fileTest"
+				name="fileTest"><br>
+		<input type="submit" value="Submit">
+	</form>
 
 </body>
 </html>
