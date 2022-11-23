@@ -6,11 +6,12 @@
 /*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/31 14:31:27 by daalmeid          #+#    #+#             */
-/*   Updated: 2022/11/22 12:07:55 by daalmeid         ###   ########.fr       */
+/*   Updated: 2022/11/23 18:33:50 by daalmeid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPEpoll.hpp"
+#include "HTTPSocks.hpp"
 
 namespace ft {
 
@@ -43,7 +44,7 @@ namespace ft {
 	int	HTTPEpoll::insert(int sofd) {
 		epoll_event		ev;
 
-		memset(&ev, 0, sizeof(epoll_event));
+		memset(&ev, 0, sizeof(ev));
 		ev.events = EPOLLIN;
 		ev.data.fd = sofd;
 		int	flags = fcntl(sofd, F_GETFL, 0);

@@ -1,0 +1,16 @@
+{
+	"server" : {
+		"listen" : 8000,
+		"location" : {
+			"/" : {
+				"index": "index.html",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
+				"autoindex" : false
+			},
+			"/images/" : {
+				"index": "grass.jpeg",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/images/"
+			}
+		}
+	}
+}

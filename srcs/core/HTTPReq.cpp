@@ -1,6 +1,4 @@
 #include "HTTPReq.hpp"
-#include "webserv.hpp"
-
 
 namespace ft {
 
@@ -58,15 +56,19 @@ namespace ft {
 
 	void	HTTPReq::create_vec_method(std::string const& str) {
 
-		int	length;
-		int	start;
+		size_t	i = 0, start, end;
 
-		for (unsigned int i = 0; i < str.size();) {
-			start = str.find_first_not_of(' ', i);
-			i = start;
-			i = str.find_first_of(" \0", start);
-			length = i - start;
-			method.push_back(str.substr(start, length));
+		method.resize(4);
+		for (end = 0; end < str.size();) {
+			start = str.find_first_not_of(' ', end);
+			end = str.find_first_of(" \0", start);
+			method[i++] = str.substr(start, end - start);
+		}
+		start = method[1].find_first_of('?');
+		if (start != std::string::npos)
+		{
+			method[3] = method[1].substr(start);
+			method[1].erase(method[1].begin() + start, method[1].end());
 		}
 	}
 
@@ -89,7 +91,6 @@ namespace ft {
 			return ("");
 		return str.substr(start, finish - start + 1);
 	};
-
 
 	std::vector<std::string>	HTTPReq::get_method(void) const {
 		
@@ -139,5 +140,4 @@ namespace ft {
 		final_str += "\r\n";
 		return final_str;
 	};
-
 }

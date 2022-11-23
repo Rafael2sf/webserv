@@ -17,13 +17,14 @@
 #include <cerrno>
 #include <cstring>
 #include <unistd.h>
-#include "HTTPSocks.hpp"
+
 
 #define FT_ERROR(A, B) std::cerr << A << ": " << B << strerror(errno) << std::endl
 #define EPOLL_SIZE 5
 #define EPOLL_TIMEOUT 5000
 
 namespace ft {
+	class HTTPSocks;
 
 	class HTTPEpoll {
 

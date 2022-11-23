@@ -7,6 +7,7 @@ extern "C"
 	#include <unistd.h>
 }
 //#include <algorithm>
+#include <map>
 #include <cstring>
 #include <list>
 #include "webserv.hpp"
@@ -22,6 +23,8 @@ namespace ft
 		int			fd;
 		int			port;
 		sockaddr_in	addr;
+		JsonToken *	conf;
+		std::map<int, double> clients;
 	}				t_sock_info;
 
 	/**
@@ -48,7 +51,7 @@ namespace ft
 		 * set to listen on %port, otherwise, NULL and
 		 * errno is set to indicate the error.
 		*/
-		t_sock_info		*insert( uint16_t port );
+		t_sock_info const*	insert( JsonToken * block );
 
 		/**
 		 * @brief Searchs for a t_sock_info in the internal %list,
@@ -58,7 +61,17 @@ namespace ft
 		 * On sucess, returns a pointer to the correspondent 
 		 * t_sock_info, otherwise, returns NULL
 		*/
-		t_sock_info	const*	find( int sock_fd ) const;
+		t_sock_info	*	findByFd( int sock_fd );
+
+		/**
+		 * @brief Searchs for a t_sock_info in the internal %list,
+		 *  by comparing the file descriptor.
+		 * @param port port to find
+		 * @return
+		 * On sucess, returns a pointer to the correspondent 
+		 * t_sock_info, otherwise, returns NULL
+		*/
+		t_sock_info	const*	findByPort( int port ) const;
 
 		/**
 		 * @brief Closes all sockets and erases all elements.

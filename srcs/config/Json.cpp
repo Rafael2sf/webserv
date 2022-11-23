@@ -1,16 +1,10 @@
 #include "Json.hpp"
-#include "JsonToken.hpp"
-#include <stdexcept>
 
 namespace ft
 {
 	Json::~Json()
 	{
-		for (std::list<JsonToken *>::const_iterator it = tokens.begin();
-			it != tokens.end(); it++)
-		{
-			delete *it;
-		}
+		this->clear();
 	}
 
 	Json::Json( void )
@@ -56,5 +50,18 @@ namespace ft
 		for (std::list<JsonToken *>::const_iterator it = tokens.begin();
 			it != tokens.end(); it++)
 			(*it)->print();
+	}
+
+	void Json::clear(void)
+	{
+		if (!tokens.empty())
+		{
+			for (std::list<JsonToken *>::const_iterator it = tokens.begin();
+				it != tokens.end(); it++)
+			{
+				delete *it;
+			}
+			tokens.clear();
+		}
 	}
 }

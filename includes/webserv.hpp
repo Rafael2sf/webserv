@@ -35,4 +35,8 @@ namespace ft
 	int	err( int ret );
 	int	err( int ret, char const*str );
 	int	err( int ret, char const*err, char const*str );
+
+	/* config/json */
+	class Json;
+	class JsonToken;
 }
