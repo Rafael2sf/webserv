@@ -106,21 +106,10 @@ namespace ft
 	static JsonToken * findConfigOf(Json const& jc,
 		t_sock_info const& csock, std::string const& path)
 	{
-		
-		for (Json::const_iterator it = jc.tokens.begin();
-			it != jc.tokens.end(); it++)
-		{
-			try {
-				if (csock.port == ((*(*it))["listen"]).as<int>())
-					return &((*(*it))["location"][path.c_str()]);
-			}
-			catch (std::exception const&) {}
-		}
-
 		JsonObject * tmp;
 		size_t		last_len = 0;
-		size_t		i = 0;
 		JsonToken * last_match = 0;
+		size_t		i = 0;
 
 		for (Json::const_iterator it = jc.tokens.begin();
 			it != jc.tokens.end(); it++)
@@ -129,27 +118,27 @@ namespace ft
 			{
 				if (csock.port == ((*(*it))["listen"]).as<int>())
 				{
-					tmp = static_cast<JsonObject *>(&(*(*it))["location"]);
+					tmp = dynamic_cast<JsonObject *>(&(*(*it))["location"]);
+					if (!tmp)
+						continue ;
 					// loop trought all locations
 					for (std::vector<JsonToken*>::iterator loc = tmp->data.begin();
 						loc != tmp->data.end(); loc++)
 					{
-						// if url matches a block
-						while (i < strlen((*loc)->getProperty())
-							&& (*loc)->getProperty()[i] == path[i])
-							i++;
-						// find dir
-						while (i != __SIZE_MAX__ && (*loc)->getProperty()[i] != '/')
-							i--;
-						/*
-							if the whole location is contained in url and its bigger then
-							previous match, update
-						*/
-						if (i == strlen((*loc)->getProperty()) - 1
-							&& i > last_len)
+						if (path.size() == 1)
+							i = path.find_first_of(*path.c_str());
+						else
+							i = path.find((*loc)->getProperty());
+						if (i != std::string::npos && i == 0)
 						{
-							last_len = i;
-							last_match = *loc;
+							i = strlen((*loc)->getProperty());
+							if (path.size() == i)
+								return (*loc);
+							if (i > last_len)
+							{
+								last_len = i;
+								last_match = *loc;
+							}
 						}
 					}
 				}
@@ -157,11 +146,6 @@ namespace ft
 			catch (std::exception const&) {}
 			i = 0;
 		}
-		/* TODO
-			if no match:
-				search (pre wildcard) *.
-				search (post wildcard) .*
-		*/
 		return last_match;
 	}
 
@@ -183,12 +167,9 @@ namespace ft
 			DEBUG2("location = " << request.conf->getProperty());
 		}
 		med.method_choice(request, epoll.events[i].data.fd);
-
-		//DEBUG2("message sent");
 		if (request.get_head_val("Connection") == "close"
 				|| valread == 0)
 		{
-			//DEBUG2(epoll.events[i].data.fd << "erased");
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
 				DEBUG2("epoll.erase() failed");
 			csock->clients.erase(epoll.events[i].data.fd);
@@ -206,7 +187,6 @@ namespace ft
 				it != (*sit).clients.end(); it++)
 			{
 				if (seconds - it->second >= 10) {
-					//DEBUG2(it->first << " erased by timeout");	
 					if (epoll.erase(it->first) == -1)
 						DEBUG2("epoll.erase() failed");
 					(*sit).clients.erase(it->first);

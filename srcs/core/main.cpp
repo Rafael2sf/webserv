@@ -16,7 +16,8 @@ int		main( int argc, char **argv )
 {
 	ft::HTTPServer	server;
 
-    signal(SIGINT, handle_ctrl_c);
+	signal(SIGINT, handle_ctrl_c);
+	signal(SIGPIPE, SIG_IGN);
 	if (argc != 2)
 		return ft::err(EXIT_FAILURE, "Usage: ./webserv 'config_file'");
 	DEBUG2("starting ...");

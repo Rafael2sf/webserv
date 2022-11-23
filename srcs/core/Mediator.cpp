@@ -15,22 +15,19 @@ namespace ft {
 	void	Mediator::method_choice(HTTPReq const& req, int client_fd)
 	{
 		std::vector<std::string>	method(req.get_method());
-
-		if (method.empty())
-			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 29, 0);
-		else if (method[0] == "GET") 
+		if (method[0] == "GET") 
 			get(req, client_fd);
 		else if (method[0] =="POST")
 			post(req, client_fd);
 		else if (method[0] == "DELETE")
 			del(req, client_fd);
 		else
-			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 29, 0);
+			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 28, 0);
 	}
 
 	static bool replace(std::string& str, const std::string& from, const std::string& to) {
 		size_t start_pos = str.find(from);
-		if(start_pos == std::string::npos)
+		if (start_pos == std::string::npos)
 			return false;
 		str.replace(start_pos, from.length(), to);
 		return true;
@@ -62,7 +59,6 @@ namespace ft {
 						if (lstat(std::string(path.c_str() + std::string(dp->d_name)).c_str(), &stat) != -1
 							&& S_ISDIR(stat.st_mode))
 						{
-							DEBUG2("here");
 							str += "<a href=\"" + std::string(dp->d_name) \
 							+ "/\"/>" + std::string(dp->d_name) + "/</a>\n";
 						}
@@ -149,9 +145,8 @@ namespace ft {
 		{
 			try
 			{
-				// TODO : check if file is dir before attempting index
 				path_index = path + (*req.conf)["index"].as<const char*>();
-				DEBUG2("path = " << path);
+				DEBUG2("path = " << path_index);
 				ifs.close();
 				ifs.open(path_index.c_str());
 				if (!ifs.is_open())
@@ -168,6 +163,8 @@ namespace ft {
 			resp.add("Content-Type", "image/jpeg");
 		else if (path.find(".html") != std::string::npos)
 			resp.add("Content-Type", "text/html");
+		else if (path.find(".ico") != std::string::npos)
+			resp.add("Content-Type", "image/x-icon");
 		return true;
 	};
 
@@ -203,14 +200,12 @@ namespace ft {
 			resp.add("body", new_buf);
 			str = resp.response_string();
 			send(client_fd, str.c_str(), str.size(), 0);
-			//DEBUG2(str);
 		}
 		else
 		{
 			resp.add("Transfer-Encoding", "chunked");
 			str = resp.response_string();
 			send(client_fd, str.c_str(), str.size(), 0);
-
 			while (read_nbr != 0) {
 				ss << std::hex << read_nbr;
 				ss >> str;

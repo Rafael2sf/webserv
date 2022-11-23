@@ -2,10 +2,14 @@
 	"server" : {
 		"listen" : 8000,
 		"location" : {
-			"/www/" : {
+			"/" : {
 				"index": "index.html",
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
-				"autoindex" : true
+				"autoindex" : false
+			},
+			"/images/" : {
+				"index": "grass.jpeg",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/images/"
 			}
 		}
 	}
