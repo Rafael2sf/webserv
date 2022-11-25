@@ -45,6 +45,7 @@ namespace ft
 		{
 			throw std::invalid_argument("as(): call");
 		}
+		JsonToken * search(int depth, ...);
 
 	protected:
 		char *			_property;

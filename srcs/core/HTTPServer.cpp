@@ -65,7 +65,6 @@ namespace ft
 				break ;
 			check_times();
 			int ev_count = epoll.wait();
-			//DEBUG2("[" << ev_count << "] ready events");
 			if (ev_count <= 0)
 				continue;
 			int ev_socket;
@@ -116,7 +115,7 @@ namespace ft
 		{
 			try
 			{
-				if (csock.port == ((*(*it))["listen"]).as<int>())
+				if (csock.port == 8000)
 				{
 					tmp = dynamic_cast<JsonObject *>(&(*(*it))["location"]);
 					if (!tmp)

@@ -4,6 +4,7 @@
 #include <list>
 #include <vector>
 #include <stdexcept>
+#include <cstdarg>
 #include "webserv.hpp"
 #include "JsonToken.hpp"
 
@@ -40,7 +41,6 @@ namespace ft
 		 getObjectOf( JsonToken const* t );
 
 		void clear(void);
-
 		std::list<JsonToken *> tokens;
 	};
 }

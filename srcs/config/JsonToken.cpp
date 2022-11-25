@@ -101,27 +101,70 @@ namespace ft
 		return *res;
 	}
 
-	JsonToken * JsonToken::find_first( std::string const& key, size_t max_depth)
+	JsonToken * JsonToken::search(int depth, ...)
 	{
-		std::vector<JsonToken*> tokens;
-		JsonToken * x = 0;
+		va_list	va;
+		JsonToken * tmp;
+
+		va_start(va, depth);
+		tmp = this;
+		while (depth--)
+		{
+			tmp = tmp->find_first(va_arg(va, char const*) , 1);
+			if (!tmp)
+				return NULL;
+		}
+		va_end(va);
+		return tmp;
+	}
+
+
+	static JsonToken * find_recursive(JsonToken * root, std::string const& key, size_t max_depth)
+	{
+		JsonObject const*	obj;
+		JsonToken * 		x = 0;
 
 		if (max_depth == __SIZE_MAX__)
 			return 0;
-		if (!strcmp(_property, key.c_str()))
-			return (this);
-		if (_type == json_object_type)
+		if (!strcmp(root->getProperty(), key.c_str()))
+			return (root);
+		if (root->getType() == json_object_type)
 		{
-			tokens = dynamic_cast<JsonObject const*>(this)->data;
-			for (std::vector<JsonToken*>::iterator it = tokens.begin();
-				it != tokens.end(); it++)
+			obj = dynamic_cast<JsonObject const*>(root);
+			if (!obj)
+				return 0;
+			for (std::vector<JsonToken*>::const_iterator it = obj->data.begin();
+				it != obj->data.end(); it++)
 			{
-				x = (*it)->find_first(key, max_depth - 1);
+				x = find_recursive(*it, key, max_depth - 1);
 				if (x)
-					break ;
+					return x ;
 			}
 		}
 		return x;
+	}
+
+	JsonToken * JsonToken::find_first( std::string const& key, size_t max_depth)
+	{
+		JsonObject const*	obj;
+		JsonToken * 		x = 0;
+
+		if (max_depth == __SIZE_MAX__ || this->_type != json_object_type)
+			return 0;
+		if (_type == json_object_type)
+		{
+			obj = dynamic_cast<JsonObject const*>(this);
+			if (!obj)
+				return 0;
+			for (std::vector<JsonToken*>::const_iterator it = obj->data.begin();
+				it != obj->data.end(); it++)
+			{
+				x = find_recursive(*it, key, max_depth - 1);
+				if (x)
+					return x ;
+			}
+		}
+		return 0;
 	}
 
 	JsonToken::~JsonToken()

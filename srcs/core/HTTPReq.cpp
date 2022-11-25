@@ -29,9 +29,8 @@ namespace ft {
 		}
 		if (str[str_start] == '\r' && str[str_start + 2] != '\0')
 			headers.insert(std::make_pair("body", wp_trimmer(str.substr(str_start + 2))));
-		std::cout << "size " << headers["body"].size() << std::endl;
 	}
-	
+
 	HTTPReq::HTTPReq(HTTPReq const& cpy) {
 	(void)cpy;
 	}
