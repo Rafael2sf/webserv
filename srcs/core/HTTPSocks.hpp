@@ -21,6 +21,7 @@ namespace ft
 	typedef struct s_sock_info
 	{
 		int			fd;
+		int			host;
 		int			port;
 		sockaddr_in	addr;
 		JsonToken *	conf;

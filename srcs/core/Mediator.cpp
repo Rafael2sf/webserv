@@ -15,9 +15,8 @@ namespace ft {
 	void	Mediator::method_choice(HTTPReq& req, int client_fd)
 	{
 		std::vector<std::string>	method(req.get_method());
-		if (method[0] == "GET") 
-			get(req, client_fd);
-		else if (method[0] =="POST")
+
+		if (method[0] =="POST")
 			post(req, client_fd);
 		else if (method[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
 			cgi_dealer(req, client_fd);
@@ -271,30 +270,42 @@ namespace ft {
 		std::string playing = req.get_head_val("body");
 
 		int	exit_stat;
+		int p[2];
+		pipe(p);
+		playing += "\r\n";
 		int	pid = fork();
 		if (pid == -1)
 			DEBUG2("fork failed");
 		if (pid == 0) {
 			
-			int p[2];
-			pipe(p);
+			close(p[1]);
 			CGI	test(req);
-			playing += "\r\n";
-			write(p[1], playing.c_str(), playing.size());
+			//write(p[1], playing.c_str(), playing.size());
 			if (dup2(p[0], STDIN_FILENO) == -1)
 			{
 				write(2, "error: fatal\n", 13);
 				exit(EXIT_FAILURE);
 			}
+			close (p[0]);
 			if (dup2(client_fd, STDOUT_FILENO) == -1)
 			{
 				write(2, "error: fatal\n", 13);
 				exit(EXIT_FAILURE);
 			}
 			execve("/usr/bin/python3", test.getArgs(), test.getEnv());
-			DEBUG2("EXECVE FAILED!!");
+			exit (1);
 		}
 		else {
+			close(p[0]);
+			size_t wsize = 0;
+			for (size_t b = 0; b < playing.size(); b += 65536)
+			{
+				wsize = 65536;
+				if (b > playing.size())
+					wsize = b - playing.size();
+				write(p[1], playing.c_str() + b, wsize);
+			}
+			close(p[1]);
 			waitpid(pid, &exit_stat, 0);
 		}
 	}
@@ -304,5 +315,4 @@ namespace ft {
 		(void)client_fd;
 		DEBUG2("This is a DELETE request");
 	}
-
 }

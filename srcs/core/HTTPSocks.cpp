@@ -24,6 +24,63 @@ namespace ft
 		return *this;
 	}
 
+	static int stoh(char const* str, int * host)
+	{
+		int			byte = 0;
+		char * 		ptr = (char *)str;
+
+		*host = 0;
+		for (int i = 0; i < 4; i++)
+		{
+			if (sscanf(ptr, "%d", &byte) <= 0)
+				return -1;
+			if (byte < 0 || byte > 255)
+				return -1;
+			*host += byte;
+			if (i != 3)
+				*host <<= 8;
+			if (i != 3 && !(ptr = (char *)strchr(ptr, '.')))
+				return -1;
+			ptr += 1;
+		}
+		return 0;
+	}
+
+	static int stohp(char const* str, int * host, int * port)
+	{
+		char 		* p = (char *)strchr(str, ':');
+
+		if (!p)
+		{
+			p =  (char *)strchr(str, '.');
+			if (!p)
+			{
+				p = (char *)str;
+				while (*p)
+				{
+					if (!isdigit(*p++))
+						return -1;
+				}
+				if (sscanf(str, "%d", port) <= 0)
+					return -1;
+				*host = 0;
+				return 0;
+			}
+			*port = 80;
+			return stoh(str, host);
+		}
+		*port = 0;
+		if (sscanf(p + 1, "%d", port) <= 0)
+			return -1;
+		p = (char *)strchr(str, 'l');
+		if (p && !strncmp(p, "localhost", 9))
+		{
+			*host = 0x7f000001;
+			return 0;
+		}
+		return stoh(str, host);
+	}
+
 	static int insertInitSock( t_sock_info & sock_info )
 	{
 		int			addrlen = sizeof(sock_info.addr);
@@ -34,7 +91,7 @@ namespace ft
 			return (-1);
 		sock_info.addr.sin_family = AF_INET;
 		sock_info.addr.sin_port = htons(sock_info.port);
-		sock_info.addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		sock_info.addr.sin_addr.s_addr = htonl(sock_info.host);
 		if (setsockopt(sock_info.fd, SOL_SOCKET, SO_REUSEADDR, 
 			&enable, sizeof(int)) == -1)
 		{
@@ -66,7 +123,8 @@ namespace ft
 		port_token = block->find_first("listen");
 		if (!port_token)
 			return 0;
-		tmp.port = Json::getIntegerOf(port_token);
+		if (stohp(port_token->as<char const*>(), &tmp.host, &tmp.port) == -1)
+			return 0;
 		tmp.conf = block;
 		match = this->findByPort(tmp.port);
 		if (match)
@@ -83,7 +141,6 @@ namespace ft
 			DEBUG2("listening .. " << tmp.port);
 			return &(*list.insert(list.begin(), tmp));
 		}
-		ft::err(1);
 		return 0;
 	}
 
