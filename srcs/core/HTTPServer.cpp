@@ -150,15 +150,34 @@ namespace ft
 
 	void	HTTPServer::ft_handle(t_sock_info * csock, int i, Mediator & med) {
 
-		static char buffer[30000] = {0};
-
-		int valread = recv(epoll.events[i].data.fd, buffer, 30000, 0);
+		static char buffer[RECEIVE_BUF_SIZE] = {0};
+		std::string	str;
+		std::string	final_str;
+		HTTPReq		request;
+		
+		int	valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
 		if (valread == -1)
 			DEBUG2("client disconnect");
+		while (valread > 0) {
+			str.assign(buffer, valread);
+			final_str += str;
+			usleep(500);
+			valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
+			if (valread == -1)
+				perror("recv error: ");
+		}
 
-		HTTPReq	request(buffer, valread);
+		request.init(final_str);
 		if (!request.headers.empty())
 			request.conf = findConfigOf(conf, *csock, request.get_method()[1]);
+		else
+		{
+			if (epoll.erase(epoll.events[i].data.fd) == -1)
+				DEBUG2("epoll.erase() failed");
+			csock->clients.erase(epoll.events[i].data.fd);
+			return ;
+		}
+
 		if (request.conf)
 		{
 			std::cerr << std::endl;
@@ -166,8 +185,7 @@ namespace ft
 			DEBUG2("location = " << request.conf->getProperty());
 		}
 		med.method_choice(request, epoll.events[i].data.fd);
-		if (request.get_head_val("Connection") == "close"
-				|| valread == 0)
+		if (request.get_head_val("connection") == "close")
 		{
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
 				DEBUG2("epoll.erase() failed");
@@ -186,6 +204,7 @@ namespace ft
 				it != (*sit).clients.end(); it++)
 			{
 				if (seconds - it->second >= 10) {
+					DEBUG2(it->first << " was erased by timeout!!!!!");
 					if (epoll.erase(it->first) == -1)
 						DEBUG2("epoll.erase() failed");
 					(*sit).clients.erase(it->first);

@@ -9,6 +9,8 @@
 #include "webserv.hpp"
 #include "Json.hpp"
 
+#define	RECEIVE_BUF_SIZE 30000
+
 namespace ft
 {
 	/*

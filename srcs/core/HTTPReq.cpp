@@ -6,29 +6,29 @@ namespace ft {
 
 	}
 
-	HTTPReq::HTTPReq(char* request, int valread) {
-		std::string	str;
-		str.assign(request, valread);
+	int	HTTPReq::init(std::string & req) {
 		
-		size_t		str_start = str.find("\n");
+		size_t		start = req.find("\n");
 		
-		if (str.empty())
-			return ;
-		create_vec_method(str.substr(0, str_start++));
-		str.erase(0, str_start);
-		//str = &(request[str_start]);
-		str_start = 0;
-		for (size_t i = 0; str[i] != '\0' ; i++) {
-			if (str[i] == '\n') {
-				std::string	new_header(str.substr(str_start, i - str_start - 1));
+		if (req.empty())
+			return -1;
+		create_vec_method(req.substr(0, start++));
+		req.erase(0, start);
+		start = 0;
+		for (size_t i = 0; req[i] != *(req.end()) ; i++) {
+			if (req[i] == '\n') {
+				std::string	new_header(req.substr(start, i - start - 1));
 				pair_create_add(new_header);
-				str_start = i + 1;
-				if (str[i + 1] == '\r')
+				start = i + 1;
+				if (req[i + 1] == '\r')
 					break;
 			}
 		}
-		if (str[str_start] == '\r' && str[str_start + 2] != '\0')
-			headers.insert(std::make_pair("body", wp_trimmer(str.substr(str_start + 2))));
+		if (req[start] == '\r' && req[start + 2] != *(req.end()))
+			_body = req.assign(&req[start + 2], ftStoi(get_head_val("content-length")));
+		else
+			_body = "";
+		return 0;
 	}
 
 	HTTPReq::HTTPReq(HTTPReq const& cpy) {
@@ -60,7 +60,7 @@ namespace ft {
 		method.resize(4);
 		for (end = 0; end < str.size();) {
 			start = str.find_first_not_of(' ', end);
-			end = str.find_first_of(" \0", start);
+			end = str.find_first_of(" \0", start); // Possible problem with '\0'????
 			method[i++] = str.substr(start, end - start);
 		}
 		start = method[1].find_first_of('?');
@@ -76,6 +76,7 @@ namespace ft {
 		std::string		key(wp_trimmer(str.substr(0, str.find(":"))));
 		std::string 	value(wp_trimmer(str.substr(str.find(":") + 1)));
 		
+		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		headers.insert(std::make_pair(key, value));
 	};
 
@@ -131,12 +132,26 @@ namespace ft {
 		
 		for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
 		{
-			if (it->first == "body")
-				final_str += "\r\n" + it->second + "\r\n";
-			else
-				final_str += it->first + ": " + it->second + "\r\n";
+			final_str += it->first + ": " + it->second + "\r\n";
 		}
-		final_str += "\r\n";
+		final_str += "\r\n" + _body;
 		return final_str;
 	};
+
+	std::string 				HTTPReq::getBody(void) const {
+		return this->_body;
+	};
+
+	void						HTTPReq::setBody(std::string bod) {
+		_body = bod;
+	};
+
+	int					ftStoi(std::string str) {
+		std::stringstream	ss;
+		int					ret;
+		
+		ss << str;
+		ss >> ret;
+		return ret;
+	}
 }

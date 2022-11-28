@@ -4,9 +4,6 @@ import cgi, os
 import cgitb; cgitb.enable()
 import sys
 
-#env = int(os.getenv('CONTENT_LENGTH'))
-#input = sys.stdin.read(730)
-#print (input)
 form = cgi.FieldStorage()
 
 fileitem = form['fileTest']
@@ -22,13 +19,7 @@ if fileitem.filename:
    
 else:
    message = 'No file was uploaded'
-   
-print ("""\
-HTTP/1.1 200 OK
-Content-Type: text/html
-Content-Length: 105\n
-<html>
-   <body>
-      <p>%s</p>
-   </body>
-</html>\r\n\r""" % (message,))
+
+s = "HTTP/1.1 200 OK\r\n" + "Content-Length: " + str(78 + len(fn)) + "\r\n" + "Content-type:text/html\r\n\r\n"
+s += "<html>\n<body>\n<p>" + message + "</p>\n</body>\n</html>\r\n\r"
+print (s)

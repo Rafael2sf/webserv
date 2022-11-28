@@ -33,9 +33,9 @@ namespace ft
 		env = new char*[9];
 		std::vector<std::string>	vec;
 		vec.push_back("PATH_INFO=/usr/bin/python3");
-		vec.push_back("CONTENT_TYPE=" + req.get_head_val("Content-Type"));
-		vec.push_back("CONTENT_LENGTH=" + req.get_head_val("Content-Length"));
-		vec.push_back("HTTP_USER_AGENT=" + req.get_head_val("User-Agent"));
+		vec.push_back("CONTENT_TYPE=" + req.get_head_val("content-type"));
+		vec.push_back("CONTENT_LENGTH=" + req.get_head_val("content-length"));
+		vec.push_back("HTTP_USER_AGENT=" + req.get_head_val("user-agent"));
 		vec.push_back("SCRIPT_FILENAME=/nfs/homes/daalmeid/Desktop/webserv" + req.get_method()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.get_method()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.2");

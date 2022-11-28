@@ -77,7 +77,7 @@ namespace ft {
 				std::ostringstream ss;
 				ss << str.length();
 				res.add("Content-length", ss.str());
-				res.add("body", str);
+				res.setBody(str);
 			}
 			else
 				throw std::invalid_argument("autoindex: false");
@@ -87,7 +87,7 @@ namespace ft {
 			DEBUG2(e.what());
 			// TODO: error_page
 			res.add("Content-length", "16");
-			res.add("body", "<h1>" + code + "</h1>");
+			res.setBody("<h1>" + code + "</h1>");
 		}
 		str = res.response_string();
 		send(fd, str.c_str(), str.size(), 0);
@@ -102,7 +102,7 @@ namespace ft {
 		// set all standart headers
 		res.add("Server", "Webserv/0.2");
 		res.add("Date", get_date(time(0)));
-		if (req.get_head_val("Connection") == "close")
+		if (req.get_head_val("connection") == "close")
 			res.add("Connection", "close");
 		else
 			res.add("Connection", "keep-alive");
@@ -130,6 +130,8 @@ namespace ft {
 			return errorPage(req, res, client_fd, "404", path);
 
 		std::fstream	ifs(path.c_str());
+		if (!ifs.is_open())
+			DEBUG2("I AM CLOSED!!!!");
 		content_encoding(ifs, client_fd, res);
 	}
 
@@ -200,7 +202,7 @@ namespace ft {
 			ss >> str;
 			resp.add("Content-Length", str);
 			new_buf.assign(buf, read_nbr);
-			resp.add("body", new_buf);
+			resp.setBody(new_buf);
 			str = resp.response_string();
 			send(client_fd, str.c_str(), str.size(), 0);
 		}
@@ -208,7 +210,9 @@ namespace ft {
 		{
 			resp.add("Transfer-Encoding", "chunked");
 			str = resp.response_string();
+			str += "\r\n";
 			send(client_fd, str.c_str(), str.size(), 0);
+			str.clear();
 			while (read_nbr != 0) {
 				ss << std::hex << read_nbr;
 				ss >> str;
@@ -253,26 +257,25 @@ namespace ft {
 	
 	void	Mediator::post(HTTPReq & req, int client_fd) {
 		DEBUG2("This is a POST request");
-		int	read_nbr = 1;
-		char buf[30000];
-		std::string	new_buf;
+		// int	read_nbr = 1;
+		// char buf[RECEIVE_BUF_SIZE];
+		// std::string	new_buf;
 		
-		read_nbr = recv(client_fd, buf, 30000, 0);
-		while (read_nbr > 0) {
-			new_buf.assign(buf, read_nbr);
-			req.addToVal("body", new_buf);
-			memset(buf, 0, 30000);
-			new_buf.clear();
-			read_nbr = recv(client_fd, buf, 30000, 0);
-			//DEBUG2(read_nbr);
-		}
+		// read_nbr = recv(client_fd, buf, 30000, 0);
+		// while (read_nbr > 0) {
+		// 	new_buf.assign(buf, read_nbr);
+		// 	req.addToVal("body", new_buf);
+		// 	memset(buf, 0, 30000);
+		// 	new_buf.clear();
+		// 	read_nbr = recv(client_fd, buf, 30000, 0);
+		// 	//DEBUG2(read_nbr);
+		// }
 		
-		std::string playing = req.get_head_val("body");
+		std::string playing = req.getBody();
 
 		int	exit_stat;
 		int p[2];
 		pipe(p);
-		playing += "\r\n";
 		int	pid = fork();
 		if (pid == -1)
 			DEBUG2("fork failed");
@@ -298,9 +301,9 @@ namespace ft {
 		else {
 			close(p[0]);
 			size_t wsize = 0;
-			for (size_t b = 0; b < playing.size(); b += 65536)
+			for (size_t b = 0; b < playing.size(); b += 65000)
 			{
-				wsize = 65536;
+				wsize = 65000;
 				if (b > playing.size())
 					wsize = b - playing.size();
 				write(p[1], playing.c_str() + b, wsize);
