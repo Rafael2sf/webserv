@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   HTTPEpoll.cpp                                      :+:      :+:    :+:   */
+/*   Epoll.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -10,24 +10,24 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HTTPEpoll.hpp"
-#include "HTTPSocks.hpp"
+#include "Epoll.hpp"
+#include "Sockets.hpp"
 
-namespace ft {
+namespace HTTP {
 
-	HTTPEpoll::HTTPEpoll(void) {
+	Epoll::Epoll(void) {
 		
 	};
 
-	HTTPEpoll::HTTPEpoll(HTTPEpoll const& cpy) {
+	Epoll::Epoll(Epoll const& cpy) {
 		(void)cpy;
 	};
 
-	HTTPEpoll::~HTTPEpoll(void) {
+	Epoll::~Epoll(void) {
 		
 	};
 
-	int	HTTPEpoll::init(HTTPSocks const& socks) {
+	int	Epoll::init(Sockets const& socks) {
 		this->size = EPOLL_SIZE;
 		this->fd = epoll_create(EPOLL_SIZE);
 		if (this->fd  == -1)
@@ -41,7 +41,7 @@ namespace ft {
 		return 0;
 	};
 
-	int	HTTPEpoll::insert(int sofd) {
+	int	Epoll::insert(int sofd) {
 		epoll_event		ev;
 
 		memset(&ev, 0, sizeof(ev));
@@ -55,7 +55,7 @@ namespace ft {
 		return (epoll_ctl(this->fd, EPOLL_CTL_ADD, sofd, &ev));
 	}
 
-	int	HTTPEpoll::erase(int cli_fd) {
+	int	Epoll::erase(int cli_fd) {
 		if (epoll_ctl(this->fd, EPOLL_CTL_DEL,
 				cli_fd, NULL) == -1)
 			return -1;
@@ -64,7 +64,7 @@ namespace ft {
 		return 0;
 	};
 	
-	int	HTTPEpoll::wait(void) {
+	int	Epoll::wait(void) {
 
 		int		ev_count = epoll_wait(this->fd, this->events,
 			EPOLL_SIZE, EPOLL_TIMEOUT);

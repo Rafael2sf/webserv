@@ -2,29 +2,29 @@
 
 #include <cerrno>
 #include <cstdlib>
-#include "HTTPSocks.hpp"
-#include "HTTPEpoll.hpp"
-#include "HTTPReq.hpp"
+#include "Sockets.hpp"
+#include "Epoll.hpp"
+#include "Message.hpp"
 #include "Mediator.hpp"
 #include "webserv.hpp"
 #include "Json.hpp"
 
 #define	RECEIVE_BUF_SIZE 30000
 
-namespace ft
+namespace HTTP
 {
 	/*
 		A wrapper class to all the functionality of the weberver,
 		meant to be used by the final user.
 	*/
-	class HTTPServer
+	class Server
 	{
 		public:
 
-		~HTTPServer();
-		HTTPServer( void );
-		HTTPServer( HTTPServer const& other );
-		HTTPServer & operator=( HTTPServer const& rhs);
+		~Server();
+		Server( void );
+		Server( Server const& other );
+		Server & operator=( Server const& rhs);
 
 		/**
 		 * @brief Handles the reception, treatment and response
@@ -35,10 +35,10 @@ namespace ft
 		*/
 		void ft_handle(t_sock_info * csock, int i, Mediator & med);
 
-		HTTPSocks	socks;
-		HTTPEpoll	epoll;
-		Json		conf;
-		static int state;
+		Sockets		socks;
+		Epoll	epoll;
+		JSON::Json	conf;
+		static int	state;
 
 		/**
 		 * @brief Initiates the server with default configurations.

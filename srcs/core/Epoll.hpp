@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   HTTPEpoll.hpp                                      :+:      :+:    :+:   */
+/*   Epoll.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: daalmeid <daalmeid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -18,21 +18,20 @@
 #include <cstring>
 #include <unistd.h>
 
-
 #define FT_ERROR(A, B) std::cerr << A << ": " << B << strerror(errno) << std::endl
 #define EPOLL_SIZE 5
 #define EPOLL_TIMEOUT 5000
 
-namespace ft {
-	class HTTPSocks;
+namespace HTTP {
+	class Sockets;
 
-	class HTTPEpoll {
+	class Epoll {
 
 		public:
 
-			HTTPEpoll(void);
-			~HTTPEpoll(void);
-			HTTPEpoll(HTTPEpoll const& cpy);
+			Epoll(void);
+			~Epoll(void);
+			Epoll(Epoll const& cpy);
 
 			/*Methods*/
 
@@ -46,7 +45,7 @@ namespace ft {
 			 * struct "events" present in this object, otherwise, -1 and
 			 * errno is set to indicate the error.
 			*/
-			int	init(HTTPSocks const& socks);
+			int	init(Sockets const& socks);
 			
 			/**
 			 * @brief Inserts an incoming event fd in the "events" struct, allowing

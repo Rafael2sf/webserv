@@ -1,12 +1,12 @@
-#include "HTTPReq.hpp"
+#include "Message.hpp"
 
-namespace ft {
+namespace HTTP {
 
-	HTTPReq::HTTPReq(void) {
+	Message::Message(void) {
 
 	}
 
-	int	HTTPReq::init(std::string & req) {
+	int	Message::init(std::string & req) {
 		
 		size_t		start = req.find("\n");
 		
@@ -31,20 +31,20 @@ namespace ft {
 		return 0;
 	}
 
-	HTTPReq::HTTPReq(HTTPReq const& cpy) {
+	Message::Message(Message const& cpy) {
 	(void)cpy;
 	}
 
-	HTTPReq::~HTTPReq(void) {
+	Message::~Message(void) {
 
 	}
 
-	HTTPReq& HTTPReq::operator=(HTTPReq const& rhs) {
+	Message& Message::operator=(Message const& rhs) {
 		(void)rhs;
 		return *this;
 	}
 
-	void	HTTPReq::print_map(void) const {
+	void	Message::print_map(void) const {
 		for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); it++) {
 			std::cout << "\033[31m" << "header key: " << "\033[0m" << it->first
 					<< "\033[32m" << "; header value: " << "\033[0m" << it->second << ';' << std::endl;
@@ -53,7 +53,7 @@ namespace ft {
 		//std::cout << "The method is: " << method[0] << ", " << method[1] << ", " << method[2] << std::endl;
 	}
 
-	void	HTTPReq::create_vec_method(std::string const& str) {
+	void	Message::create_vec_method(std::string const& str) {
 
 		size_t	i = 0, start, end;
 
@@ -66,12 +66,12 @@ namespace ft {
 		start = method[1].find_first_of('?');
 		if (start != std::string::npos)
 		{
-			method[3] = method[1].substr(start);
+			method[3] = method[1].substr(start + 1);
 			method[1].erase(method[1].begin() + start, method[1].end());
 		}
 	}
 
-	void	HTTPReq::pair_create_add(std::string str) {
+	void	Message::pair_create_add(std::string str) {
 		
 		std::string		key(wp_trimmer(str.substr(0, str.find(":"))));
 		std::string 	value(wp_trimmer(str.substr(str.find(":") + 1)));
@@ -80,7 +80,7 @@ namespace ft {
 		headers.insert(std::make_pair(key, value));
 	};
 
-	std::string	HTTPReq::wp_trimmer(std::string const& str) {
+	std::string	Message::wp_trimmer(std::string const& str) {
 
 		if (str.empty())
 			return str;
@@ -92,12 +92,12 @@ namespace ft {
 		return str.substr(start, finish - start + 1);
 	};
 
-	std::vector<std::string>	HTTPReq::get_method(void) const {
+	std::vector<std::string>	Message::get_method(void) const {
 		
 		return this->method;
 	}
 
-	std::string				HTTPReq::get_head_val(std::string const& key) const {
+	std::string				Message::get_head_val(std::string const& key) const {
 		std::map<std::string, std::string>::const_iterator it = headers.find(key);
 
 		if (it != headers.end())
@@ -105,7 +105,7 @@ namespace ft {
 		return "";
 	};
 
-	void					HTTPReq::add(std::string key, std::string value) {
+	void					Message::add(std::string key, std::string value) {
 		if (key.empty()) {
 			DEBUG2("NEED A KEY VALUE, GENIUS!");
 			return ;
@@ -113,7 +113,7 @@ namespace ft {
 		headers.insert(std::make_pair(key, value));
 	};
 
-	void					HTTPReq::addToVal(std::string key, std::string value_to_add) {
+	void					Message::addToVal(std::string key, std::string value_to_add) {
 		if (key.empty()) {
 			DEBUG2("NEED A KEY VALUE, GENIUS!");
 			return ;
@@ -122,7 +122,7 @@ namespace ft {
 	};
 
 
-	std::string				HTTPReq::response_string(void) {
+	std::string				Message::response_string(void) {
 		
 		std::string	final_str;
 
@@ -138,11 +138,11 @@ namespace ft {
 		return final_str;
 	};
 
-	std::string 				HTTPReq::getBody(void) const {
+	std::string 				Message::getBody(void) const {
 		return this->_body;
 	};
 
-	void						HTTPReq::setBody(std::string bod) {
+	void						Message::setBody(std::string bod) {
 		_body = bod;
 	};
 

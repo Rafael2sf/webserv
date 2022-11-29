@@ -1,6 +1,6 @@
 #include "JsonToken.hpp"
 
-namespace ft
+namespace JSON
 {
 	static bool
 	jsonValidValue( t_jparser_info const& info )

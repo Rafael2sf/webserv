@@ -2,17 +2,131 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include "Mediator.hpp"
-#include "HTTPServer.hpp"
+#include "Server.hpp"
 
 #define	READ_BUF_SIZE 8000
 #define	DATE_BUF_SIZE 40
 
-namespace ft {
+namespace HTTP {
 
-	Mediator::Mediator(void) {
+	Mediator::Mediator(void)
+	{
+		mime["html"]	=	"text/html";
+		mime["htm"]		=	"text/html";
+		mime["shtml"]	=	"text/html";
+		mime["css"]		=	"text/css";
+		mime["xml"]		=	"text/xml";
+		mime["gif"]		=	"image/gif";
+		mime["jpeg"]	=	"image/jpeg";
+		mime["jpg"]		=	"image/jpeg";
+		mime["js"]		=	"application/javascript";
+		mime["atom"]	=	"application/atom+xml";
+		mime["rss"]		=	"application/rss+xml";
+
+		mime["mml"]		=	"text/mathml";
+		mime["txt"]		=	"text/plain";
+		mime["jad"]		=	"text/vnd.sun.j2me.app-descriptor";
+		mime["wml"]		=	"text/vnd.wap.wml";
+		mime["htc"]		=	"text/x-component";
+
+		mime["png"]		=	"image/png";
+		mime["tif"]		=	"image/tiff";
+		mime["tiff"]	=	"image/tiff";
+		mime["wbmp"]	=	"image/vnd.wap.wbmp";
+		mime["ico"]		=	"image/x-icon";
+		mime["jng"]		=	"image/x-jng";
+		mime["bmp"]		=	"image/x-ms-bmp";
+		mime["svg"]		=	"image/svg+xml";
+		mime["svgz"]	=	"image/svg+xml";
+		mime["webp"]	=	"image/webp";
+
+		mime["woff"]	=	"application/font-woff";
+		mime["jar"]		=	"application/java-archive";
+		mime["war"]		=	"application/java-archive";
+		mime["ear"]		=	"application/java-archive";
+		mime["json"]	=	"application/json";
+		mime["hqx"]		=	"application/mac-binhex40";
+		mime["doc"]		=	"application/msword";
+		mime["pdf"]		=	"application/pdf";
+		mime["ps"]		=	"application/postscript";
+		mime["eps"]		=	"application/postscript";
+		mime["ai"]		=	"application/postscript";
+		mime["rtf"]		=	"application/rtf";
+		mime["m3u8"]	=	"application/vnd.apple.mpegurl";
+		mime["xls"]		=	"application/vnd.ms-excel";
+		mime["eot"]		=	"application/vnd.ms-fontobject";
+		mime["ppt"]		=	"application/vnd.ms-powerpoint";
+		mime["wmlc"]	=	"application/vnd.wap.wmlc";
+		mime["kml"]		=	"application/vnd.google-earth.kml+xml";
+		mime["kmz"]		=	"application/vnd.google-earth.kmz";
+		mime["7z"]		=	"application/x-7z-compressed";
+		mime["cco"]		=	"application/x-cocoa";
+		mime["jardiff"]	=	"application/x-java-archive-diff";
+		mime["jnlp"]	=	"application/x-java-jnlp-file";
+		mime["run"]		=	"application/x-makeself";
+		mime["pl"]		=	"application/x-perl";
+		mime["pm"]		=	"application/x-perl";
+		mime["prc"]		=	"application/x-pilot";
+		mime["pdb"]		=	"application/x-pilot";
+		mime["rar"]		=	"application/x-rar-compressed";
+		mime["rpm"]		=	"application/x-redhat-package-manager";
+		mime["sea"]		=	"application/x-sea";
+		mime["swf"]		=	"application/x-shockwave-flash";
+		mime["sit"]		=	"application/x-stuffit";
+		mime["tcl"]		=	"application/x-tcl";
+		mime["tk"]		=	"application/x-tcl";
+		mime["der"]		=	"application/x-x509-ca-cert";
+		mime["pem"]		=	"application/x-x509-ca-cert";
+		mime["crt"]		=	"application/x-x509-ca-cert";
+		mime["xpi"]		=	"application/x-xpinstall";
+		mime["xhtml"]	=	"application/xhtml+xml";
+		mime["xspf"]	=	"application/xspf+xml";
+		mime["zip"]		=	"application/zip";
+
+		mime["bin"]		=	"application/octet-stream";
+		mime["exe"]		=	"application/octet-stream";
+		mime["dll"]		=	"application/octet-stream";
+		mime["deb"]		=	"application/octet-stream";
+		mime["dmg"]		=	"application/octet-stream";
+		mime["iso"]		=	"application/octet-stream";
+		mime["img"]		=	"application/octet-stream";
+		mime["msi"]		=	"application/octet-stream";
+		mime["msp"]		=	"application/octet-stream";
+		mime["msm"]		=	"application/octet-stream";
+
+		mime["docx"]	=	\
+		 "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+		mime["xlsx"]	=	\
+		 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+		mime["pptx"]	=	\
+		 "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+		mime["mid"]		=	"audio/midi";
+		mime["midi"]	=	"audio/midi";
+		mime["kar"]		=	"audio/midi";
+		mime["mp3"]		=	"audio/mpeg";
+		mime["ogg"]		=	"audio/ogg";
+		mime["m4a"]		=	"audio/x-m4a";
+		mime["ra"]		=	"audio/x-realaudio";
+
+		mime["3gpp"]	=	"video/3gpp";
+		mime["3gp"]		=	"video/3gpp";
+		mime["ts"]		=	"video/mp2t";
+		mime["mp4"]		=	"video/mp4";
+		mime["mpeg"]	=	"video/mpeg";
+		mime["mpg"]		=	"video/mpeg";
+		mime["mov"]		=	"video/quicktime";
+		mime["webm"]	=	"video/webm";
+		mime["flv"]		=	"video/x-flv";
+		mime["m4v"]		=	"video/x-m4v";
+		mime["mng"]		=	"video/x-mng";
+		mime["asx"]		=	"video/x-ms-asf";
+		mime["asf"]		=	"video/x-ms-asf";
+		mime["wmv"]		=	"video/x-ms-wmv";
+		mime["avi"]		=	"video/x-msvideo";
 	}
 
-	void	Mediator::method_choice(HTTPReq& req, int client_fd)
+	void	Mediator::method_choice(Message& req, int client_fd)
 	{
 		std::vector<std::string>	method(req.get_method());
 
@@ -36,7 +150,7 @@ namespace ft {
 		return true;
 	}
 
-	static void errorPage(HTTPReq const& req, HTTPReq & res,
+	static void errorPage(Message const& req, Message & res,
 		int fd, std::string const& code, std::string const& path)
 	{
 		std::string	str;
@@ -86,7 +200,7 @@ namespace ft {
 		{
 			DEBUG2(e.what());
 			// TODO: error_page
-			res.add("Content-length", "16");
+			res.add("Content-length", "12");
 			res.setBody("<h1>" + code + "</h1>");
 		}
 		str = res.response_string();
@@ -94,13 +208,13 @@ namespace ft {
 		return ;
 	}
 
-	void	Mediator::get(HTTPReq const& req, int client_fd)
+	void	Mediator::get(Message const& req, int client_fd)
 	{
 		std::string	path;
-		HTTPReq		res;
+		Message		res;
 
 		// set all standart headers
-		res.add("Server", "Webserv/0.2");
+		res.add("Server", "Webserv/0.3");
 		res.add("Date", get_date(time(0)));
 		if (req.get_head_val("connection") == "close")
 			res.add("Connection", "close");
@@ -135,8 +249,8 @@ namespace ft {
 		content_encoding(ifs, client_fd, res);
 	}
 
-	bool	Mediator::get_file(HTTPReq const& req,
-		HTTPReq& resp, std::string& path)
+	bool	Mediator::get_file(Message const& req,
+		Message& resp, std::string& path)
 	{
 		std::ifstream	ifs(path.c_str());
 		struct stat		stat;
@@ -161,15 +275,23 @@ namespace ft {
 			catch (std::exception const&) {return false;}
 		}
 
-		// temporary mimes
 		resp.create_vec_method("HTTP/1.1 200 OK");
-		if (path.find(".jpeg") != std::string::npos 
-			|| path.find(".jpg") != std::string::npos)
-			resp.add("Content-Type", "image/jpeg");
-		else if (path.find(".html") != std::string::npos)
-			resp.add("Content-Type", "text/html");
-		else if (path.find(".ico") != std::string::npos)
-			resp.add("Content-Type", "image/x-icon");
+		size_t index = path.find(".");
+		//temporary mimes
+		//DEBUG2("str = " << str);
+		// char const* dot = strrchr(str , '.');
+		if (index == std::string::npos)
+			resp.add("Content-type", "text/html"); // default
+		else
+		{
+			//DEBUG2("type = " << *dot);
+			std::map<std::string, std::string>::const_iterator
+					mime_val =	mime.find(path.c_str() + index + 1);
+			if (mime_val != mime.end())
+				resp.add("Content-type", mime_val->second);
+			else
+				resp.add("Content-type", "text/html"); // default
+		}
 		return true;
 	};
 
@@ -186,7 +308,7 @@ namespace ft {
 		return ret;
 	};
 
-	void		Mediator::content_encoding(std::fstream & ifs, int client_fd, HTTPReq& resp) {
+	void		Mediator::content_encoding(std::fstream & ifs, int client_fd, Message& resp) {
 		
 		char				buf[READ_BUF_SIZE];
 		std::stringstream	ss;
@@ -231,7 +353,7 @@ namespace ft {
 		}
 	};
 
-	void	Mediator::cgi_dealer(HTTPReq const& req, int client_fd) {
+	void	Mediator::cgi_dealer(Message const& req, int client_fd) {
 
 		int	pid, exit_stat;
 		std::string	path("/nfs/homes/daalmeid/Desktop/webserv");
@@ -255,7 +377,7 @@ namespace ft {
 		}
 	};
 	
-	void	Mediator::post(HTTPReq & req, int client_fd) {
+	void	Mediator::post(Message & req, int client_fd) {
 		DEBUG2("This is a POST request");
 		// int	read_nbr = 1;
 		// char buf[RECEIVE_BUF_SIZE];
@@ -313,7 +435,7 @@ namespace ft {
 		}
 	}
 
-	void	Mediator::del(HTTPReq const& req, int client_fd) {
+	void	Mediator::del(Message const& req, int client_fd) {
 		(void)req;
 		(void)client_fd;
 		DEBUG2("This is a DELETE request");

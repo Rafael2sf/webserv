@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <iostream>
 
-namespace ft
+namespace JSON
 {
 	typedef enum e_jtoken_type
 	{

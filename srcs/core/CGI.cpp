@@ -1,7 +1,6 @@
 #include "CGI.hpp"
 
-
-namespace ft
+namespace HTTP
 {	
 	CGI::~CGI( void )
 	{
@@ -28,7 +27,7 @@ namespace ft
 		*this = other;
 	}
 	
-	CGI::CGI(HTTPReq const& req)
+	CGI::CGI(Message const& req)
 	{
 		env = new char*[9];
 		std::vector<std::string>	vec;
@@ -38,8 +37,8 @@ namespace ft
 		vec.push_back("HTTP_USER_AGENT=" + req.get_head_val("user-agent"));
 		vec.push_back("SCRIPT_FILENAME=/nfs/homes/daalmeid/Desktop/webserv" + req.get_method()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.get_method()[0]);
-		vec.push_back("SERVER_SOFTWARE=Webserv/0.2");
-		
+		vec.push_back("SERVER_SOFTWARE=Webserv/0.3");
+
 		std::string substr;
 		if (req.get_method()[1].find('?') != std::string::npos)
 			substr = req.get_method()[1].substr(req.get_method()[1].find('?') + 1);

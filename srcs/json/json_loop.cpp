@@ -1,6 +1,6 @@
 #include "Json.hpp"
 
-namespace ft
+namespace JSON
 {
 
 	static int jsonParseLoop( t_jparser_info & info );
@@ -17,7 +17,7 @@ namespace ft
 		info.col = 1;
 		info.path = const_cast<char *>(filepath);
 		if (!(info.bytes = jsonReadFile(filepath)))
-			return ft::err(-1);
+			return HTTP::err(-1);
 		info.cursor = info.bytes;
 		while (*(info.cursor))
 		{

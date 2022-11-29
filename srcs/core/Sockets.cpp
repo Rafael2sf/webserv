@@ -1,23 +1,23 @@
-#include "HTTPSocks.hpp"
-#include "HTTPServer.hpp"
+#include "Sockets.hpp"
+#include "Server.hpp"
 
-namespace ft
+namespace HTTP
 {
-	HTTPSocks::~HTTPSocks( void )
+	Sockets::~Sockets( void )
 	{
 		this->clear();
 	}
 
-	HTTPSocks::HTTPSocks( void )
+	Sockets::Sockets( void )
 	{}
 
-	HTTPSocks::HTTPSocks( HTTPSocks const& other )
+	Sockets::Sockets( Sockets const& other )
 	{
 		*this = other;
 	}
 
-	HTTPSocks &
-	HTTPSocks::operator=( HTTPSocks const& rhs )
+	Sockets &
+	Sockets::operator=( Sockets const& rhs )
 	{
 		this->clear();
 		this->list = rhs.list;
@@ -113,9 +113,9 @@ namespace ft
 	}
 
 	t_sock_info const*
-	HTTPSocks::insert( JsonToken * block )
+	Sockets::insert( JSON::JsonToken * block )
 	{
-		ft::JsonToken * port_token;
+		JSON::JsonToken * port_token;
 		t_sock_info		tmp;
 		t_sock_info const*	match;
 
@@ -131,7 +131,7 @@ namespace ft
 		{
 			if (match->conf == block)
 			{
-				ft::err(1, "duplicate port in same block");
+				HTTP::err(1, "duplicate port in same block");
 				return 0;
 			}
 			return match;
@@ -145,7 +145,7 @@ namespace ft
 	}
 
 	t_sock_info *
-	HTTPSocks::findByFd( int sock_fd )
+	Sockets::findByFd( int sock_fd )
 	{
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
@@ -157,7 +157,7 @@ namespace ft
 	}
 
 	t_sock_info const*
-	HTTPSocks::findByPort( int port ) const
+	Sockets::findByPort( int port ) const
 	{
 		for (std::list<t_sock_info>::const_iterator it = list.begin();
 			it != list.end(); it++)
@@ -169,7 +169,7 @@ namespace ft
 	}
 
 	void
-	HTTPSocks::clear( void )
+	Sockets::clear( void )
 	{
 		if (list.size() > 0)
 		{

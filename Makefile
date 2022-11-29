@@ -3,8 +3,7 @@ NAME		=	webserv
 # apply all rules on the following directories
 VPATH		=	$(addprefix $(_SRC), \
 					core \
-					http \
-					config \
+					json \
 					error \
 				)
 
@@ -27,13 +26,13 @@ _BIN		=	bin/
 # files
 SRCS		=	$(addsuffix .cpp, \
 					main \
-					HTTPServer \
-					HTTPSocks \
-					HTTPEpoll \
-					HTTPReq \
-					err \
-					Mediator \
 					CGI \
+					Server \
+					Sockets \
+					Epoll \
+					Message \
+					Mediator \
+					err \
 					Json \
 					JsonToken \
 					json_parser \

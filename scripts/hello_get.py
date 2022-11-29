@@ -11,12 +11,12 @@ first_name = form.getvalue('fname')
 last_name  = form.getvalue('lname')
 
 length = 114
-if first_name != None or last_name != None:
+if first_name != None and last_name != None:
 	length += len(first_name) + len(last_name)
 
 str = "HTTP/1.1 200 OK\r\n" + "Content-Length: " + str(length) + "\r\n" + "Content-type:text/html\r\n\r\n"
 str += "<html>\r\n<head>\r\n<title>Hello - Second CGI Program</title>\r\n</head>\r\n<body>\r\n"
-if first_name != None or last_name != None:
+if first_name != None and last_name != None:
 	str += "<h2>Hello " + first_name + " " + last_name + "</h2>\r\n"
 else:
 	str += "<h2>Hello  </h2>\r\n"

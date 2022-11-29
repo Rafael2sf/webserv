@@ -1,9 +1,9 @@
 #pragma once
 #include "webserv.hpp"
-#include "HTTPReq.hpp"
+#include "Message.hpp"
 #include <vector>
 
-namespace ft
+namespace HTTP
 {
 	class CGI
 	{
@@ -11,7 +11,7 @@ namespace ft
 
 			~CGI();
 			CGI( void );
-			CGI(HTTPReq const& req);
+			CGI(Message const& req);
 			CGI( CGI const& other );
 			CGI & operator=( CGI const& rhs);
 

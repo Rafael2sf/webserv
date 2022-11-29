@@ -8,7 +8,7 @@
 #include "webserv.hpp"
 #include "JsonToken.hpp"
 
-namespace ft
+namespace JSON
 {
 	class Json
 	{

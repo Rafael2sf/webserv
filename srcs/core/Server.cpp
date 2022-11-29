@@ -1,48 +1,48 @@
-#include "HTTPServer.hpp"
+#include "Server.hpp"
 
-namespace ft
+namespace HTTP
 {
-	int HTTPServer::state = 1;
+	int Server::state = 1;
 
 
-	HTTPServer::~HTTPServer( void )
+	Server::~Server( void )
 	{}
 
-	HTTPServer::HTTPServer( void )
+	Server::Server( void )
 	{}
 
-	HTTPServer::HTTPServer( HTTPServer const& other )
+	Server::Server( Server const& other )
 	{
 		*this = other;
 	}
 
-	HTTPServer &
-	HTTPServer::operator=( HTTPServer const& rhs )
+	Server &
+	Server::operator=( Server const& rhs )
 	{
-		DEBUG2("called non-implemented function: HTTPServer::operator=( HTTPServer const& rhs )");
+		DEBUG2("called non-implemented function: Server::operator=( Server const& rhs )");
 		(void) rhs;
 		return *this;
 	}
 
 	int
-	HTTPServer::init( void )
+	Server::init( void )
 	{
 		DEBUG2("server default init");
 		return 0;
 	}
 
 	int
-	HTTPServer::init( char const* filepath )
+	Server::init( char const* filepath )
 	{
 		if (conf.parse(filepath) < 0)
 				return -1;
 		DEBUG2("creating server sockets");
-		for (ft::Json::iterator it = conf.tokens.begin();
+		for (JSON::Json::iterator it = conf.tokens.begin();
 				it != conf.tokens.end(); it++ )
 		{
 			if (!socks.insert(*it))
 			{
-				ft::err(1);
+				HTTP::err(1);
 				socks.clear();
 				return -1;
 			}
@@ -52,7 +52,7 @@ namespace ft
 	}
 
 	void
-	HTTPServer::loop( void )
+	Server::loop( void )
 	{
 		Mediator	med;
 		t_sock_info *csock;
@@ -102,26 +102,26 @@ namespace ft
 			non dir location is matching /
 			matchin wtihout / : ex /www matches /www/
 	*/
-	static JsonToken * findConfigOf(Json const& jc,
+	static JSON::JsonToken * findConfigOf(JSON::Json const& jc,
 		t_sock_info const& csock, std::string const& path)
 	{
-		JsonObject * tmp;
+		JSON::JsonObject * tmp;
 		size_t		last_len = 0;
-		JsonToken * last_match = 0;
+		JSON::JsonToken * last_match = 0;
 		size_t		i = 0;
 
-		for (Json::const_iterator it = jc.tokens.begin();
+		for (JSON::Json::const_iterator it = jc.tokens.begin();
 			it != jc.tokens.end(); it++)
 		{
 			try
 			{
 				if (csock.port == 8000)
 				{
-					tmp = dynamic_cast<JsonObject *>(&(*(*it))["location"]);
+					tmp = dynamic_cast<JSON::JsonObject *>(&(*(*it))["location"]);
 					if (!tmp)
 						continue ;
 					// loop trought all locations
-					for (std::vector<JsonToken*>::iterator loc = tmp->data.begin();
+					for (std::vector<JSON::JsonToken*>::iterator loc = tmp->data.begin();
 						loc != tmp->data.end(); loc++)
 					{
 						if (path.size() == 1)
@@ -148,12 +148,12 @@ namespace ft
 		return last_match;
 	}
 
-	void	HTTPServer::ft_handle(t_sock_info * csock, int i, Mediator & med) {
+	void	Server::ft_handle(t_sock_info * csock, int i, Mediator & med) {
 
 		static char buffer[RECEIVE_BUF_SIZE] = {0};
 		std::string	str;
 		std::string	final_str;
-		HTTPReq		request;
+		Message		request;
 		
 		int	valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
 		if (valread == -1)
@@ -193,7 +193,7 @@ namespace ft
 		}
 	}
 
-	void	HTTPServer::check_times(void) {
+	void	Server::check_times(void) {
 		
 		double seconds = time(NULL);
 

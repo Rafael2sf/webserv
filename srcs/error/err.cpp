@@ -2,7 +2,7 @@
 #include <cerrno>
 #include "webserv.hpp"
 
-namespace ft
+namespace HTTP
 {
 	/**
 	 * @brief Writes an error to the stderr and returns.

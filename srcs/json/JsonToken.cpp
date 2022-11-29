@@ -1,7 +1,7 @@
 #include "JsonToken.hpp"
 #include "Json.hpp"
 
-namespace ft
+namespace JSON
 {
 	template <>
 	int JsonToken::as<int>( void ) const

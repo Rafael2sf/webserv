@@ -10,21 +10,21 @@
 #include <algorithm>
 #include "webserv.hpp"
 
-namespace ft {
+namespace HTTP {
 
-	class HTTPReq {
+	class Message {
 
 		public:
-			HTTPReq(void);
+			Message(void);
 			
 			/**
 			 * @brief Builds an object based on the incoming request, dividing it
 			 * in a map of the headers and a string with the request.
 			 * @param request request received by the server.
 			*/
-			HTTPReq(HTTPReq const& cpy);
-			~HTTPReq(void);
-			HTTPReq&	operator=(HTTPReq const& rhs);
+			Message(Message const& cpy);
+			~Message(void);
+			Message&	operator=(Message const& rhs);
 			
 			/**
 			 * @brief Prints the content of the header map (debug use).
@@ -43,7 +43,7 @@ namespace ft {
 			std::string 				getBody(void) const;
 			void						setBody(std::string bod);
 
-			JsonToken * conf;
+			JSON::JsonToken * conf;
 			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 		private:
 
