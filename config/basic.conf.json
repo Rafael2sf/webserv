@@ -4,12 +4,12 @@
 		"location" : {
 			"/" : {
 				"index": "index.html",
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
 				"autoindex" : false
 			},
 			"/images/" : {
 				"index": "grass.jpeg",
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/images/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/images/",
 				"autoindex" : false
 			}
 		}

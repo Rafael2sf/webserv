@@ -214,7 +214,7 @@ namespace HTTP {
 		Message		res;
 
 		// set all standart headers
-		res.add("Server", "Webserv/0.2");
+		res.add("Server", "Webserv/0.3");
 		res.add("Date", get_date(time(0)));
 		if (req.get_head_val("connection") == "close")
 			res.add("Connection", "close");
@@ -356,7 +356,7 @@ namespace HTTP {
 	void	Mediator::cgi_dealer(Message const& req, int client_fd) {
 
 		int	pid, exit_stat;
-		std::string	path("/nfs/homes/rafernan/Desktop/webserv");
+		std::string	path("/nfs/homes/daalmeid/Desktop/webserv");
 		path += req.get_method()[1];
 		pid = fork();
 		if (pid == -1)
