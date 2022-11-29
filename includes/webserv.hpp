@@ -14,7 +14,7 @@
 # define DEBUG2(X)
 #endif
 
-namespace ft
+namespace HTTP
 {
 	/*
 		variables and defaults
@@ -26,7 +26,7 @@ namespace ft
 		S_MAX_CLIENT = 32,
 	};
 
-	/* core/HTTPSocks */
+	/* core/Sockets */
 
 	typedef struct s_sock_info	t_sock_info;
 
@@ -36,6 +36,10 @@ namespace ft
 	int	err( int ret, char const*str );
 	int	err( int ret, char const*err, char const*str );
 
+}
+
+namespace JSON
+{
 	/* config/json */
 	class Json;
 	class JsonToken;

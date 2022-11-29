@@ -1,6 +1,6 @@
 #include "Json.hpp"
 
-namespace ft
+namespace JSON
 {
 	Json::~Json()
 	{

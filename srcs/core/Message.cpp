@@ -1,49 +1,50 @@
-#include "HTTPReq.hpp"
+#include "Message.hpp"
 
-namespace ft {
+namespace HTTP {
 
-	HTTPReq::HTTPReq(void) {
+	Message::Message(void) {
 
 	}
 
-	HTTPReq::HTTPReq(char* request) {
-		std::string	str(request);
-		size_t		str_start = str.find("\n");
+	int	Message::init(std::string & req) {
 		
-		if (str.empty())
-			return ;
-		create_vec_method(str.substr(0, str_start++));
-		str = &(request[str_start]);
-		str_start = 0;
+		size_t		start = req.find("\n");
 		
-		for (size_t i = 0; str[i] != '\0' ; i++) {
-			if (str[i] == '\n') {
-				std::string	new_header(str.substr(str_start, i - str_start - 1));
+		if (req.empty())
+			return -1;
+		create_vec_method(req.substr(0, start++));
+		req.erase(0, start);
+		start = 0;
+		for (size_t i = 0; req[i] != *(req.end()) ; i++) {
+			if (req[i] == '\n') {
+				std::string	new_header(req.substr(start, i - start - 1));
 				pair_create_add(new_header);
-				str_start = i + 1;
-				if (str[i + 1] == '\r')
+				start = i + 1;
+				if (req[i + 1] == '\r')
 					break;
 			}
 		}
-		if (str[str_start] == '\r' && str[str_start + 2] != '\0')
-			headers.insert(std::make_pair("body", wp_trimmer(str.substr(str_start + 2))));
-
+		if (req[start] == '\r' && req[start + 2] != *(req.end()))
+			_body = req.assign(&req[start + 2], ftStoi(get_head_val("content-length")));
+		else
+			_body = "";
+		return 0;
 	}
-	
-	HTTPReq::HTTPReq(HTTPReq const& cpy) {
+
+	Message::Message(Message const& cpy) {
 	(void)cpy;
 	}
 
-	HTTPReq::~HTTPReq(void) {
+	Message::~Message(void) {
 
 	}
 
-	HTTPReq& HTTPReq::operator=(HTTPReq const& rhs) {
+	Message& Message::operator=(Message const& rhs) {
 		(void)rhs;
 		return *this;
 	}
 
-	void	HTTPReq::print_map(void) const {
+	void	Message::print_map(void) const {
 		for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); it++) {
 			std::cout << "\033[31m" << "header key: " << "\033[0m" << it->first
 					<< "\033[32m" << "; header value: " << "\033[0m" << it->second << ';' << std::endl;
@@ -52,33 +53,34 @@ namespace ft {
 		//std::cout << "The method is: " << method[0] << ", " << method[1] << ", " << method[2] << std::endl;
 	}
 
-	void	HTTPReq::create_vec_method(std::string const& str) {
+	void	Message::create_vec_method(std::string const& str) {
 
 		size_t	i = 0, start, end;
 
 		method.resize(4);
 		for (end = 0; end < str.size();) {
 			start = str.find_first_not_of(' ', end);
-			end = str.find_first_of(" \0", start);
+			end = str.find_first_of(" \0", start); // Possible problem with '\0'????
 			method[i++] = str.substr(start, end - start);
 		}
 		start = method[1].find_first_of('?');
 		if (start != std::string::npos)
 		{
-			method[3] = method[1].substr(start);
+			method[3] = method[1].substr(start + 1);
 			method[1].erase(method[1].begin() + start, method[1].end());
 		}
 	}
 
-	void	HTTPReq::pair_create_add(std::string str) {
+	void	Message::pair_create_add(std::string str) {
 		
 		std::string		key(wp_trimmer(str.substr(0, str.find(":"))));
 		std::string 	value(wp_trimmer(str.substr(str.find(":") + 1)));
 		
+		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		headers.insert(std::make_pair(key, value));
 	};
 
-	std::string	HTTPReq::wp_trimmer(std::string const& str) {
+	std::string	Message::wp_trimmer(std::string const& str) {
 
 		if (str.empty())
 			return str;
@@ -90,12 +92,12 @@ namespace ft {
 		return str.substr(start, finish - start + 1);
 	};
 
-	std::vector<std::string>	HTTPReq::get_method(void) const {
+	std::vector<std::string>	Message::get_method(void) const {
 		
 		return this->method;
 	}
 
-	std::string				HTTPReq::get_head_val(std::string const& key) const {
+	std::string				Message::get_head_val(std::string const& key) const {
 		std::map<std::string, std::string>::const_iterator it = headers.find(key);
 
 		if (it != headers.end())
@@ -103,7 +105,7 @@ namespace ft {
 		return "";
 	};
 
-	void					HTTPReq::add(std::string key, std::string value) {
+	void					Message::add(std::string key, std::string value) {
 		if (key.empty()) {
 			DEBUG2("NEED A KEY VALUE, GENIUS!");
 			return ;
@@ -111,7 +113,16 @@ namespace ft {
 		headers.insert(std::make_pair(key, value));
 	};
 
-	std::string				HTTPReq::response_string(void) {
+	void					Message::addToVal(std::string key, std::string value_to_add) {
+		if (key.empty()) {
+			DEBUG2("NEED A KEY VALUE, GENIUS!");
+			return ;
+		}
+		headers[key] += value_to_add;
+	};
+
+
+	std::string				Message::response_string(void) {
 		
 		std::string	final_str;
 
@@ -121,12 +132,26 @@ namespace ft {
 		
 		for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
 		{
-			if (it->first == "body")
-				final_str += "\r\n" + it->second + "\r\n";
-			else
-				final_str += it->first + ": " + it->second + "\r\n";
+			final_str += it->first + ": " + it->second + "\r\n";
 		}
-		final_str += "\r\n";
+		final_str += "\r\n" + _body;
 		return final_str;
 	};
+
+	std::string 				Message::getBody(void) const {
+		return this->_body;
+	};
+
+	void						Message::setBody(std::string bod) {
+		_body = bod;
+	};
+
+	int					ftStoi(std::string str) {
+		std::stringstream	ss;
+		int					ret;
+		
+		ss << str;
+		ss >> ret;
+		return ret;
+	}
 }

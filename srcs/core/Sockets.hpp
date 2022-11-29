@@ -12,7 +12,7 @@ extern "C"
 #include <list>
 #include "webserv.hpp"
 
-namespace ft
+namespace HTTP
 {
 	/**
 	 * @brief Holds all the information related to a
@@ -20,24 +20,25 @@ namespace ft
 	*/
 	typedef struct s_sock_info
 	{
-		int			fd;
-		int			port;
-		sockaddr_in	addr;
-		JsonToken *	conf;
-		std::map<int, double> clients;
-	}				t_sock_info;
+		int						fd;
+		int						host;
+		int						port;
+		sockaddr_in				addr;
+		JSON::JsonToken * 		conf;
+		std::map<int, double>	clients;
+	}							t_sock_info;
 
 	/**
 	 * @brief Store and manipulate all listening sockets,
 	 *  using a linked list of t_sock_info structures.
 	*/
-	class HTTPSocks
+	class Sockets
 	{
 		public:
-		~HTTPSocks();
-		HTTPSocks( void );
-		HTTPSocks( HTTPSocks const& other );
-		HTTPSocks & operator=( HTTPSocks const& rhs );
+		~Sockets();
+		Sockets( void );
+		Sockets( Sockets const& other );
+		Sockets & operator=( Sockets const& rhs );
 
 		std::list<t_sock_info> list;
 
@@ -51,7 +52,7 @@ namespace ft
 		 * set to listen on %port, otherwise, NULL and
 		 * errno is set to indicate the error.
 		*/
-		t_sock_info const*	insert( JsonToken * block );
+		t_sock_info const*	insert( JSON::JsonToken * block );
 
 		/**
 		 * @brief Searchs for a t_sock_info in the internal %list,

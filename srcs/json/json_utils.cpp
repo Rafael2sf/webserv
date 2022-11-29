@@ -1,6 +1,6 @@
 #include "JsonToken.hpp"
 
-namespace ft
+namespace JSON
 {
 	int jsonErr( t_jparser_info const& info, char const* err )
 	{

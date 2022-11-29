@@ -1,6 +1,6 @@
 {
 	"server" : {
-		"listen" : 8000,
+		"listen" : "8000",
 		"location" : {
 			"/" : {
 				"index": "index.html",
@@ -9,7 +9,8 @@
 			},
 			"/images/" : {
 				"index": "grass.jpeg",
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/images/"
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/images/",
+				"autoindex" : false
 			}
 		}
 	}
