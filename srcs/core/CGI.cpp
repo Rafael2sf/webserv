@@ -51,7 +51,6 @@ namespace HTTP
 			env[i][vec[i].size()] = '\0';
 		}
 		env[8] = NULL;
-
 		
 		std::string temp = vec[4].substr(vec[4].find_first_of('/'));
 		temp.erase(temp.find(".py") + 3);
