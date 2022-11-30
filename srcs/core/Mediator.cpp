@@ -128,7 +128,7 @@ namespace HTTP {
 
 	void	Mediator::method_choice(Message& req, int client_fd)
 	{
-		std::vector<std::string>	method(req.get_method());
+		std::vector<std::string>	method(req.getMethod());
 
 		if (method[0] =="POST")
 			post(req, client_fd);
@@ -155,7 +155,7 @@ namespace HTTP {
 	{
 		std::string	str;
 
-		res.create_vec_method("HTTP/1.1 " + code + " Not Found");
+		res.createMethodVec("HTTP/1.1 " + code + " Not Found");
 		res.add("Content-Type", "text/html");
 		try
 		{
@@ -203,7 +203,7 @@ namespace HTTP {
 			res.add("Content-length", "12");
 			res.setBody("<h1>" + code + "</h1>");
 		}
-		str = res.response_string();
+		str = res.responseString();
 		send(fd, str.c_str(), str.size(), 0);
 		return ;
 	}
@@ -216,7 +216,7 @@ namespace HTTP {
 		// set all standart headers
 		res.add("Server", "Webserv/0.3");
 		res.add("Date", get_date(time(0)));
-		if (req.get_head_val("connection") == "close")
+		if (req.getHeaderVal("connection") == "close")
 			res.add("Connection", "close");
 		else
 			res.add("Connection", "keep-alive");
@@ -225,7 +225,7 @@ namespace HTTP {
 		{
 			// find full path
 			try {
-				path = req.get_method()[1];
+				path = req.getMethod()[1];
 				replace(path,
 					req.conf->getProperty(),
 					(*req.conf)["root"].as<char const*>());
@@ -275,7 +275,7 @@ namespace HTTP {
 			catch (std::exception const&) {return false;}
 		}
 
-		resp.create_vec_method("HTTP/1.1 200 OK");
+		resp.createMethodVec("HTTP/1.1 200 OK");
 		size_t index = path.find(".");
 		//temporary mimes
 		//DEBUG2("str = " << str);
@@ -325,13 +325,13 @@ namespace HTTP {
 			resp.add("Content-Length", str);
 			new_buf.assign(buf, read_nbr);
 			resp.setBody(new_buf);
-			str = resp.response_string();
+			str = resp.responseString();
 			send(client_fd, str.c_str(), str.size(), 0);
 		}
 		else
 		{
 			resp.add("Transfer-Encoding", "chunked");
-			str = resp.response_string();
+			str = resp.responseString();
 			str += "\r\n";
 			send(client_fd, str.c_str(), str.size(), 0);
 			str.clear();
@@ -356,8 +356,7 @@ namespace HTTP {
 	void	Mediator::cgi_dealer(Message const& req, int client_fd) {
 
 		int	pid, exit_stat;
-		std::string	path("/nfs/homes/daalmeid/Desktop/webserv");
-		path += req.get_method()[1];
+
 		pid = fork();
 		if (pid == -1)
 			DEBUG2("fork failed");
@@ -379,22 +378,7 @@ namespace HTTP {
 	
 	void	Mediator::post(Message & req, int client_fd) {
 		DEBUG2("This is a POST request");
-		// int	read_nbr = 1;
-		// char buf[RECEIVE_BUF_SIZE];
-		// std::string	new_buf;
 		
-		// read_nbr = recv(client_fd, buf, 30000, 0);
-		// while (read_nbr > 0) {
-		// 	new_buf.assign(buf, read_nbr);
-		// 	req.addToVal("body", new_buf);
-		// 	memset(buf, 0, 30000);
-		// 	new_buf.clear();
-		// 	read_nbr = recv(client_fd, buf, 30000, 0);
-		// 	//DEBUG2(read_nbr);
-		// }
-		
-		std::string playing = req.getBody();
-
 		int	exit_stat;
 		int p[2];
 		pipe(p);
@@ -405,7 +389,6 @@ namespace HTTP {
 			
 			close(p[1]);
 			CGI	test(req);
-			//write(p[1], playing.c_str(), playing.size());
 			if (dup2(p[0], STDIN_FILENO) == -1)
 			{
 				write(2, "error: fatal\n", 13);
@@ -422,14 +405,16 @@ namespace HTTP {
 		}
 		else {
 			close(p[0]);
+			std::string playing = req.getBody();
 			size_t wsize = 0;
-			for (size_t b = 0; b < playing.size(); b += 65000)
+			size_t b;
+			for (b = 0; b + 65000 < playing.size(); b += 65000)
 			{
-				wsize = 65000;
-				if (b > playing.size())
-					wsize = b - playing.size();
-				write(p[1], playing.c_str() + b, wsize);
+				write(p[1], playing.c_str() + b, 65000);
 			}
+			wsize = playing.size() - b;
+			if (wsize > 0)
+				write(p[1], playing.c_str() + b, wsize);
 			close(p[1]);
 			waitpid(pid, &exit_stat, 0);
 		}

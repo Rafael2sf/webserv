@@ -169,7 +169,7 @@ namespace HTTP
 
 		request.init(final_str);
 		if (!request.headers.empty())
-			request.conf = findConfigOf(conf, *csock, request.get_method()[1]);
+			request.conf = findConfigOf(conf, *csock, request.getMethod()[1]);
 		else
 		{
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
@@ -181,11 +181,11 @@ namespace HTTP
 		if (request.conf)
 		{
 			std::cerr << std::endl;
-			DEBUG2(request.get_method()[0] << " " << request.get_method()[1]);
+			DEBUG2(request.getMethod()[0] << " " << request.getMethod()[1]);
 			DEBUG2("location = " << request.conf->getProperty());
 		}
 		med.method_choice(request, epoll.events[i].data.fd);
-		if (request.get_head_val("connection") == "close")
+		if (request.getHeaderVal("connection") == "close")
 		{
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
 				DEBUG2("epoll.erase() failed");

@@ -36,7 +36,7 @@ namespace HTTP
 		void ft_handle(t_sock_info * csock, int i, Mediator & med);
 
 		Sockets		socks;
-		Epoll	epoll;
+		Epoll		epoll;
 		JSON::Json	conf;
 		static int	state;
 
