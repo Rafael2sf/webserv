@@ -12,6 +12,9 @@
 
 namespace HTTP {
 
+	/**
+	 * @brief Holds all the information provided by an HTTP request/response.
+	*/	
 	class Message {
 
 		public:

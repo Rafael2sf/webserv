@@ -126,14 +126,12 @@ namespace HTTP {
 		mime["avi"]		=	"video/x-msvideo";
 	}
 
-	void	Mediator::method_choice(Message& req, int client_fd)
+	void	Mediator::methodChoice(Message& req, int client_fd)
 	{
 		std::vector<std::string>	method(req.getMethod());
 
 		if (method[0] =="POST")
 			post(req, client_fd);
-		else if (method[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
-			cgi_dealer(req, client_fd);
 		else if (method[0] == "GET") 
 			get(req, client_fd);
 		else if (method[0] == "DELETE")
@@ -156,7 +154,7 @@ namespace HTTP {
 		std::string	str;
 
 		res.createMethodVec("HTTP/1.1 " + code + " Not Found");
-		res.add("Content-Type", "text/html");
+		res.add("content-type", "text/html");
 		try
 		{
 			if (!req.conf)
@@ -190,7 +188,7 @@ namespace HTTP {
 				str += "</hr></pre></body></html>";
 				std::ostringstream ss;
 				ss << str.length();
-				res.add("Content-length", ss.str());
+				res.add("content-length", ss.str());
 				res.setBody(str);
 			}
 			else
@@ -200,7 +198,7 @@ namespace HTTP {
 		{
 			DEBUG2(e.what());
 			// TODO: error_page
-			res.add("Content-length", "12");
+			res.add("content-length", "12");
 			res.setBody("<h1>" + code + "</h1>");
 		}
 		str = res.responseString();
@@ -210,16 +208,23 @@ namespace HTTP {
 
 	void	Mediator::get(Message const& req, int client_fd)
 	{
+		
+		if (req.getMethod()[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
+		{
+			cgiDealer(req, client_fd);
+			return;
+		}
+
 		std::string	path;
 		Message		res;
 
 		// set all standart headers
-		res.add("Server", "Webserv/0.3");
-		res.add("Date", get_date(time(0)));
+		res.add("server", "Webserv/0.3");
+		res.add("date", getDate(time(0)));
 		if (req.getHeaderVal("connection") == "close")
-			res.add("Connection", "close");
+			res.add("connection", "close");
 		else
-			res.add("Connection", "keep-alive");
+			res.add("connection", "keep-alive");
 
 		if (req.conf)
 		{
@@ -233,12 +238,12 @@ namespace HTTP {
 			}
 			catch (std::exception const&) {path.clear();}
 
-			if (path.empty() || !get_file(req, res, path))
+			if (path.empty() || !getFile(req, res, path))
 				return errorPage(req, res, client_fd, "404", path);
 			//Last-Modified header creation
 			struct stat f_info;
 			stat(path.c_str(), &f_info);
-			res.add("Last-Modified", get_date(f_info.st_mtime));
+			res.add("last-modified", getDate(f_info.st_mtime));
 		}
 		else
 			return errorPage(req, res, client_fd, "404", path);
@@ -246,10 +251,10 @@ namespace HTTP {
 		std::fstream	ifs(path.c_str());
 		if (!ifs.is_open())
 			DEBUG2("I AM CLOSED!!!!");
-		content_encoding(ifs, client_fd, res);
+		contentEncoding(ifs, client_fd, res);
 	}
 
-	bool	Mediator::get_file(Message const& req,
+	bool	Mediator::getFile(Message const& req,
 		Message& resp, std::string& path)
 	{
 		std::ifstream	ifs(path.c_str());
@@ -281,34 +286,34 @@ namespace HTTP {
 		//DEBUG2("str = " << str);
 		// char const* dot = strrchr(str , '.');
 		if (index == std::string::npos)
-			resp.add("Content-type", "text/html"); // default
+			resp.add("content-type", "text/html"); // default
 		else
 		{
 			//DEBUG2("type = " << *dot);
 			std::map<std::string, std::string>::const_iterator
 					mime_val =	mime.find(path.c_str() + index + 1);
 			if (mime_val != mime.end())
-				resp.add("Content-type", mime_val->second);
+				resp.add("content-type", mime_val->second);
 			else
-				resp.add("Content-type", "text/html"); // default
+				resp.add("content-type", "text/html"); // default
 		}
 		return true;
 	};
 
-	std::string	Mediator::get_date(time_t now) {
+	std::string	Mediator::getDate(time_t const& tm_info) {
 		
 		tm*		current_time;
 		char	buffer[DATE_BUF_SIZE];
 		std::string	ret;
 
 		memset(buffer, 0, DATE_BUF_SIZE);
-		current_time = localtime(&now);
+		current_time = localtime(&tm_info);
 		strftime(buffer, DATE_BUF_SIZE, "%a, %d %b %Y %X %Z",current_time);
 		ret = buffer;
 		return ret;
 	};
 
-	void		Mediator::content_encoding(std::fstream & ifs, int client_fd, Message& resp) {
+	void		Mediator::contentEncoding(std::fstream & ifs, int client_fd, Message& resp) {
 		
 		char				buf[READ_BUF_SIZE];
 		std::stringstream	ss;
@@ -322,7 +327,7 @@ namespace HTTP {
 		if (read_nbr != READ_BUF_SIZE) {
 			ss << read_nbr;
 			ss >> str;
-			resp.add("Content-Length", str);
+			resp.add("content-length", str);
 			new_buf.assign(buf, read_nbr);
 			resp.setBody(new_buf);
 			str = resp.responseString();
@@ -330,7 +335,7 @@ namespace HTTP {
 		}
 		else
 		{
-			resp.add("Transfer-Encoding", "chunked");
+			resp.add("transfer-encoding", "chunked");
 			str = resp.responseString();
 			str += "\r\n";
 			send(client_fd, str.c_str(), str.size(), 0);
@@ -353,7 +358,7 @@ namespace HTTP {
 		}
 	};
 
-	void	Mediator::cgi_dealer(Message const& req, int client_fd) {
+	void	Mediator::cgiDealer(Message const& req, int client_fd) {
 
 		int	pid, exit_stat;
 
