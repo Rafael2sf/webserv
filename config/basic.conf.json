@@ -1,15 +1,15 @@
 {
 	"server" : {
-		"listen" : "8000",
+		"listen" : "127.0.0.1:8000",
 		"location" : {
 			"/" : {
 				"index": "index.html",
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
 				"autoindex" : false
 			},
 			"/images/" : {
 				"index": "grass.jpeg",
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/images/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/images/",
 				"autoindex" : false
 			}
 		}

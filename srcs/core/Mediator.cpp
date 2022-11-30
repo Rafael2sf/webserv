@@ -241,7 +241,10 @@ namespace HTTP {
 			res.add("Last-Modified", get_date(f_info.st_mtime));
 		}
 		else
+		{
+			DEBUG2("no config");
 			return errorPage(req, res, client_fd, "404", path);
+		}
 
 		std::fstream	ifs(path.c_str());
 		if (!ifs.is_open())
@@ -356,7 +359,7 @@ namespace HTTP {
 	void	Mediator::cgi_dealer(Message const& req, int client_fd) {
 
 		int	pid, exit_stat;
-		std::string	path("/nfs/homes/daalmeid/Desktop/webserv");
+		std::string	path("/nfs/homes/rafernan/Desktop/webserv");
 		path += req.get_method()[1];
 		pid = fork();
 		if (pid == -1)
@@ -422,13 +425,29 @@ namespace HTTP {
 		}
 		else {
 			close(p[0]);
-			size_t wsize = 0;
-			for (size_t b = 0; b < playing.size(); b += 65000)
+			// size_t wsize = 0;
+			// for (size_t b = 0; b < playing.size(); b += 65000)
+			// {
+			// 	wsize = 65000;
+			// 	if (b > playing.size())
+			// 		wsize = b - playing.size();
+			// 	write(p[1], playing.c_str() + b, wsize);
+			// }
+			// close(p[1]);
+			// waitpid(pid, &exit_stat, 0);
+			int	bytes = 0;
+			while (1)
 			{
-				wsize = 65000;
-				if (b > playing.size())
-					wsize = b - playing.size();
-				write(p[1], playing.c_str() + b, wsize);
+				if (playing.size() - bytes > 65000)
+				{
+					write(p[1], playing.c_str() + bytes, 65000);
+					bytes += 65000;
+				}
+				else
+				{
+					write(p[1], playing.c_str() + bytes, playing.size() - bytes);
+					break ;
+				}
 			}
 			close(p[1]);
 			waitpid(pid, &exit_stat, 0);

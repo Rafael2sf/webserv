@@ -21,11 +21,11 @@ namespace HTTP
 	typedef struct s_sock_info
 	{
 		int						fd;
-		int						host;
-		int						port;
+		// u_int32_t				host;
+		// u_int16_t				port;
 		sockaddr_in				addr;
-		JSON::JsonToken * 		conf;
-		std::map<int, double>	clients;
+		JSON::JsonToken * 		config;
+		//std::map<int, double>	clients;
 	}							t_sock_info;
 
 	/**
@@ -45,38 +45,50 @@ namespace HTTP
 		/**
 		 * @brief Creates a t_socket_info structure in a ready to,
 		 * accept mode, and inserts it into the internal %list.
-		 * @param port the number of the port to listen in
+		 * @param host the adress to listen
+		 * @param port the port to listen
 		 * @return
-		 * On sucess, returns 0 returns a pointer to
-		 * the correspondent t_sock_info, wich is
-		 * set to listen on %port, otherwise, NULL and
+		 * On sucess, returns a pointer to
+		 * the correspondent t_sock_info, wich will be set
+		 * set to listen on %host:%port, otherwise, NULL and
 		 * errno is set to indicate the error.
 		*/
-		t_sock_info const*	insert( JSON::JsonToken * block );
+		t_sock_info * insert( u_int32_t host, u_int16_t port );
+
+
+		/**
+		 * @brief Initiates all sockets previously added to the internal list
+		 * @return
+		 * On sucess, returns 0, otherwise removes all sockets, returns -1 and errno is
+		 * set to indicate the error.
+		*/
+		int listen( void );
 
 		/**
 		 * @brief Searchs for a t_sock_info in the internal %list,
-		 *  by comparing the file descriptor.
+		 *  by comparing the file descriptor, which can be either a
+		 * server sock or a client sock.
 		 * @param sock_fd file descriptor to find
 		 * @return
 		 * On sucess, returns a pointer to the correspondent 
 		 * t_sock_info, otherwise, returns NULL
 		*/
-		t_sock_info	*	findByFd( int sock_fd );
+		t_sock_info	*	find( int sock_fd );
 
 		/**
+		 * @brief Closes all sockets and erases all elements.
+		*/
+		void	clear( void );
+
+	private:
+		/**
 		 * @brief Searchs for a t_sock_info in the internal %list,
-		 *  by comparing the file descriptor.
+		 *  by comparing the port.
 		 * @param port port to find
 		 * @return
 		 * On sucess, returns a pointer to the correspondent 
 		 * t_sock_info, otherwise, returns NULL
 		*/
 		t_sock_info	const*	findByPort( int port ) const;
-
-		/**
-		 * @brief Closes all sockets and erases all elements.
-		*/
-		void	clear( void );
 	};
 }

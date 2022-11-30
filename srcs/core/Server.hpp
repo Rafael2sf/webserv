@@ -7,6 +7,7 @@
 #include "Message.hpp"
 #include "Mediator.hpp"
 #include "webserv.hpp"
+#include "Client.hpp"
 #include "Json.hpp"
 
 #define	RECEIVE_BUF_SIZE 30000
@@ -33,12 +34,13 @@ namespace HTTP
 		 * @param med Object that distributes requests based on
 		 * the method stated.
 		*/
-		void ft_handle(t_sock_info * csock, int i, Mediator & med);
+		void ft_handle(Client & cli, int i, Mediator & med);
 
 		Sockets		socks;
 		Epoll	epoll;
 		JSON::Json	conf;
 		static int	state;
+		std::map<int, Client> clients;
 
 		/**
 		 * @brief Initiates the server with default configurations.

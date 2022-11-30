@@ -24,64 +24,7 @@ namespace HTTP
 		return *this;
 	}
 
-	static int stoh(char const* str, int * host)
-	{
-		int			byte = 0;
-		char * 		ptr = (char *)str;
-
-		*host = 0;
-		for (int i = 0; i < 4; i++)
-		{
-			if (sscanf(ptr, "%d", &byte) <= 0)
-				return -1;
-			if (byte < 0 || byte > 255)
-				return -1;
-			*host += byte;
-			if (i != 3)
-				*host <<= 8;
-			if (i != 3 && !(ptr = (char *)strchr(ptr, '.')))
-				return -1;
-			ptr += 1;
-		}
-		return 0;
-	}
-
-	static int stohp(char const* str, int * host, int * port)
-	{
-		char 		* p = (char *)strchr(str, ':');
-
-		if (!p)
-		{
-			p =  (char *)strchr(str, '.');
-			if (!p)
-			{
-				p = (char *)str;
-				while (*p)
-				{
-					if (!isdigit(*p++))
-						return -1;
-				}
-				if (sscanf(str, "%d", port) <= 0)
-					return -1;
-				*host = 0;
-				return 0;
-			}
-			*port = 80;
-			return stoh(str, host);
-		}
-		*port = 0;
-		if (sscanf(p + 1, "%d", port) <= 0)
-			return -1;
-		p = (char *)strchr(str, 'l');
-		if (p && !strncmp(p, "localhost", 9))
-		{
-			*host = 0x7f000001;
-			return 0;
-		}
-		return stoh(str, host);
-	}
-
-	static int insertInitSock( t_sock_info & sock_info )
+	static int isock( t_sock_info & sock_info )
 	{
 		int			addrlen = sizeof(sock_info.addr);
 		int			enable = 1;
@@ -89,9 +32,9 @@ namespace HTTP
 		sock_info.fd = socket(AF_INET, SOCK_STREAM, 0);
 		if (sock_info.fd == -1)
 			return (-1);
-		sock_info.addr.sin_family = AF_INET;
-		sock_info.addr.sin_port = htons(sock_info.port);
-		sock_info.addr.sin_addr.s_addr = htonl(sock_info.host);
+		// sock_info.addr.sin_family = AF_INET;
+		// sock_info.addr.sin_port = htons(sock_info.port);
+		// sock_info.addr.sin_addr.s_addr = htonl(sock_info.host);
 		if (setsockopt(sock_info.fd, SOL_SOCKET, SO_REUSEADDR, 
 			&enable, sizeof(int)) == -1)
 		{
@@ -112,45 +55,64 @@ namespace HTTP
 		return (0);
 	}
 
-	t_sock_info const*
-	Sockets::insert( JSON::JsonToken * block )
+	t_sock_info *
+	Sockets::insert( u_int32_t host, u_int16_t port )
 	{
-		JSON::JsonToken * port_token;
-		t_sock_info		tmp;
-		t_sock_info const*	match;
+		t_sock_info si;
 
-		memset(&tmp, 0, sizeof(tmp));
-		port_token = block->find_first("listen");
-		if (!port_token)
-			return 0;
-		if (stohp(port_token->as<char const*>(), &tmp.host, &tmp.port) == -1)
-			return 0;
-		tmp.conf = block;
-		match = this->findByPort(tmp.port);
-		if (match)
+		memset(&si, 0, sizeof(si));
+		si.fd = -1;
+		si.addr.sin_family = AF_INET;
+		si.addr.sin_port = htons(port);
+		si.addr.sin_addr.s_addr = htonl(host);
+		return &(*list.insert(list.end(), si));
+	}
+
+	int Sockets::listen( void )
+	{
+		std::vector<int> ports_used;
+
+		for (std::list<t_sock_info>::iterator it = list.begin();
+			it != list.end(); it++)
 		{
-			if (match->conf == block)
+			if (std::find(ports_used.begin(), ports_used.end(), (*it).addr.sin_port) != ports_used.end())
+				continue ;
+			if (isock(*it) == -1)
 			{
-				HTTP::err(1, "duplicate port in same block");
-				return 0;
+				std::cerr << "webserv: " \
+					<< (((*it).addr.sin_addr.s_addr & 0xff000000) >> 24) << '.' \
+					<< (((*it).addr.sin_addr.s_addr & 0x00ff0000) >> 16) << '.' \
+					<< (((*it).addr.sin_addr.s_addr & 0x0000ff00) >> 8) << '.' \
+					<< ((*it).addr.sin_addr.s_addr & 0x000000ff) << ':' << \
+				(*it).addr.sin_port << ": ";
+				std::perror(0);
+				while (it != list.begin())
+				{
+					close((*it).fd);
+					it--;
+				}
+				if ((*it).fd != -1)
+					close((*it).fd);
+				return -1;
 			}
-			return match;
-		}
-		if (insertInitSock(tmp) != -1)
-		{
-			DEBUG2("listening .. " << tmp.port);
-			return &(*list.insert(list.begin(), tmp));
+			ports_used.push_back((*it).addr.sin_port);
+			unsigned int port = ntohl((*it).addr.sin_addr.s_addr);
+			DEBUG2("listening " \
+				<< ((port & 0xff000000) >> 24) << '.' \
+				<< ((port & 0x00ff0000) >> 16) << '.' \
+				<< ((port & 0x0000ff00) >> 8) << '.' \
+				<< (port & 0x000000ff) << ':' << htons((*it).addr.sin_port));
 		}
 		return 0;
 	}
 
 	t_sock_info *
-	Sockets::findByFd( int sock_fd )
+	Sockets::find( int sock_fd )
 	{
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
 		{
-			if (it->fd == sock_fd || it->clients.count(sock_fd))
+			if (it->fd == sock_fd && it->fd != -1)// || it->clients.count(sock_fd))
 				return &(*it);
 		}
 		return NULL;
@@ -162,7 +124,7 @@ namespace HTTP
 		for (std::list<t_sock_info>::const_iterator it = list.begin();
 			it != list.end(); it++)
 		{
-			if (it->port == port)
+			if (it->addr.sin_port == port)
 				return &(*it);
 		}
 		return NULL;
