@@ -39,6 +39,7 @@ namespace HTTP {
 			 * @return The constructed string.
 			*/
 			std::string	getDate(time_t const& tm_info);
+			
 			std::map<std::string, std::string> mime;
 		
 		private:

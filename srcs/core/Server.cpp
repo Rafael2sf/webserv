@@ -63,7 +63,7 @@ namespace HTTP
 		{
 			if (!state)
 				break ;
-			check_times();
+			connectionTimer();
 			int ev_count = epoll.wait();
 			if (ev_count <= 0)
 				continue;
@@ -84,7 +84,7 @@ namespace HTTP
 					try
 					{
 						csock->clients.at(ev_socket) = time(NULL);
-						ft_handle(csock, i, med);
+						clientHandler(csock, i, med);
 					}
 					catch(const std::exception& e)
 					{
@@ -148,7 +148,7 @@ namespace HTTP
 		return last_match;
 	}
 
-	void	Server::ft_handle(t_sock_info * csock, int i, Mediator & med) {
+	void	Server::clientHandler(t_sock_info * csock, int i, Mediator & med) {
 
 		static char buffer[RECEIVE_BUF_SIZE] = {0};
 		std::string	str;
@@ -193,7 +193,7 @@ namespace HTTP
 		}
 	}
 
-	void	Server::check_times(void) {
+	void	Server::connectionTimer(void) {
 		
 		double seconds = time(NULL);
 

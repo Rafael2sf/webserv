@@ -33,7 +33,7 @@ namespace HTTP
 		 * @param med Object that distributes requests based on
 		 * the method stated.
 		*/
-		void ft_handle(t_sock_info * csock, int i, Mediator & med);
+		void clientHandler(t_sock_info * csock, int i, Mediator & med);
 
 		Sockets		socks;
 		Epoll		epoll;
@@ -64,6 +64,6 @@ namespace HTTP
 		 * @ Server must be initialized before looping
 		*/
 		void	loop( void );
-		void	check_times(void);
+		void	connectionTimer(void);
 	};
 }
