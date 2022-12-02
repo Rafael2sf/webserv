@@ -28,7 +28,6 @@ namespace HTTP {
 			_body = req.assign(&req[start + 2], ftStoi(getHeaderVal("content-length")));
 		else
 			_body = "";
-
 		return 0;
 	}
 
@@ -64,6 +63,7 @@ namespace HTTP {
 			end = str.find_first_of(" \0", start); // Possible problem with '\0'????
 			method[i++] = str.substr(start, end - start);
 		}
+		owsTrimmer(method[2]);						// chars like \n \r could end up staying in the string of the last element
 		start = method[1].find_first_of('?');
 		if (start != std::string::npos)
 		{
@@ -133,8 +133,9 @@ namespace HTTP {
 		
 		std::string	final_str;
 
-		for (std::vector<std::string>::iterator it = method.begin(); it != method.end(); it++)
+		for (std::vector<std::string>::iterator it = method.begin(); it != method.end(); it++) {
 			final_str += *it + ' ';
+		}
 		final_str.replace(final_str.size() - 1, 1, "\r\n");
 		
 		for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
@@ -144,7 +145,7 @@ namespace HTTP {
 		final_str += "\r\n" + _body;
 		return final_str;
 	};
-
+	
 	std::string const&			Message::getBody(void) const {
 		return this->_body;
 	};

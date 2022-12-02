@@ -426,8 +426,46 @@ namespace HTTP {
 	}
 
 	void	Mediator::del(Message const& req, int client_fd) {
-		(void)req;
-		(void)client_fd;
 		DEBUG2("This is a DELETE request");
+
+		int	exit_stat;
+		int p[2];
+		pipe(p);
+		int	pid = fork();
+		if (pid == -1)
+			DEBUG2("fork failed");
+		if (pid == 0) {
+			
+			close(p[1]);
+			CGI	test(req);
+			if (dup2(p[0], STDIN_FILENO) == -1)
+			{
+				write(2, "error: fatal\n", 13);
+				exit(EXIT_FAILURE);
+			}
+			close (p[0]);
+			if (dup2(client_fd, STDOUT_FILENO) == -1)
+			{
+				write(2, "error: fatal\n", 13);
+				exit(EXIT_FAILURE);
+			}
+			execve("/usr/bin/python3", test.getArgs(), test.getEnv());
+			exit (1);
+		}
+		else {
+			close(p[0]);
+			std::string playing = req.getBody();
+			size_t wsize = 0;
+			size_t b;
+			for (b = 0; b + 65000 < playing.size(); b += 65000)
+			{
+				write(p[1], playing.c_str() + b, 65000);
+			}
+			wsize = playing.size() - b;
+			if (wsize > 0)
+				write(p[1], playing.c_str() + b, wsize);
+			close(p[1]);
+			waitpid(pid, &exit_stat, 0);
+		}
 	}
 }
