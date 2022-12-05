@@ -130,6 +130,7 @@ namespace HTTP {
 	{
 		std::vector<std::string>	method(req.get_method());
 
+		DEBUG2("Handling client");
 		if (method[0] =="POST")
 			post(req, client_fd);
 		else if (method[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
@@ -142,13 +143,13 @@ namespace HTTP {
 			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 28, 0);
 	}
 
-	static bool replace(std::string& str, const std::string& from, const std::string& to) {
-		size_t start_pos = str.find(from);
-		if (start_pos == std::string::npos)
-			return false;
-		str.replace(start_pos, from.length(), to);
-		return true;
-	}
+	// static bool replace(std::string& str, const std::string& from, const std::string& to) {
+	// 	size_t start_pos = str.find(from);
+	// 	if (start_pos == std::string::npos)
+	// 		return false;
+	// 	str.replace(start_pos, from.length(), to);
+	// 	return true;
+	// }
 
 	static void errorPage(Message const& req, Message & res,
 		int fd, std::string const& code, std::string const& path)
@@ -168,6 +169,7 @@ namespace HTTP {
 				if (!dirp)
 					throw std::invalid_argument("no such directory");
 				dirent * dp;
+				str += "<a href=\"../\"/>../</a>\n";
 				while ((dp = readdir(dirp)) != NULL)
 				{
 					struct stat stat;
@@ -225,10 +227,10 @@ namespace HTTP {
 		{
 			// find full path
 			try {
-				path = req.get_method()[1];
-				replace(path,
-					req.conf->getProperty(),
-					(*req.conf)["root"].as<char const*>());
+				path = (*req.conf)["root"].as<std::string const&>();
+				if (*--path.end() == '/')
+					path.erase(--path.end());
+				path += req.get_method()[1];
 				DEBUG2("path = " << path);
 			}
 			catch (std::exception const&) {path.clear();}
@@ -267,8 +269,7 @@ namespace HTTP {
 		{
 			try
 			{
-				path_index = path + (*req.conf)["index"].as<const char*>();
-				DEBUG2("path = " << path_index);
+				path_index = path + (*req.conf)["index"].as<std::string const&>();
 				ifs.close();
 				ifs.open(path_index.c_str());
 				if (!ifs.is_open())

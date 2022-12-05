@@ -42,5 +42,5 @@ namespace JSON
 {
 	/* config/json */
 	class Json;
-	class JsonToken;
+	class Node;
 }

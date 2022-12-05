@@ -43,7 +43,7 @@ namespace HTTP {
 			std::string 				getBody(void) const;
 			void						setBody(std::string bod);
 
-			JSON::JsonToken * conf;
+			JSON::Node * conf;
 			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 		private:
 

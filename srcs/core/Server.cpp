@@ -4,34 +4,35 @@ namespace HTTP
 {
 	int Server::state = 1;
 
+	Server::~Server(void)
+	{
+	}
 
-	Server::~Server( void )
-	{}
+	Server::Server(void)
+	{
+	}
 
-	Server::Server( void )
-	{}
-
-	Server::Server( Server const& other )
+	Server::Server(Server const &other)
 	{
 		*this = other;
 	}
 
 	Server &
-	Server::operator=( Server const& rhs )
+	Server::operator=(Server const &rhs)
 	{
 		DEBUG2("called non-implemented function: Server::operator=( Server const& rhs )");
-		(void) rhs;
+		(void)rhs;
 		return *this;
 	}
 
 	int
-	Server::init( void )
+	Server::init(void)
 	{
 		DEBUG2("server default init");
 		return 0;
 	}
 
-	static int stohp_validate( char const* s )
+	static int stohp_validate(char const *s)
 	{
 		int i = 0;
 
@@ -54,6 +55,18 @@ namespace HTTP
 			if (s[i] == ':')
 				i++;
 		}
+		else if (!strncmp(s, "localhost", 9))
+		{
+			i += 9;
+			if (s[i] == ':')
+			{
+				if (!isdigit(s[i + 1]))
+					return -1;
+				i++;
+			}
+			else if (s[i])
+				return -1;
+		}
 		while (isdigit(s[i]))
 			i++;
 		if (s[i])
@@ -61,12 +74,13 @@ namespace HTTP
 		return 0;
 	}
 
-	static int stohp( char const* s, unsigned int * host, unsigned int * port )
+	int stohp(char const *s, unsigned int *host, unsigned int *port)
 	{
 		int tmp[4];
 
 		*host = 0;
 		*port = 0;
+		memset(tmp, 0, sizeof(int) * 4);
 		if (stohp_validate(s) == -1)
 			return -1;
 		if (strchr(s, '.'))
@@ -74,24 +88,30 @@ namespace HTTP
 			if (strchr(s, ':'))
 			{
 				if (sscanf(s, "%d.%d.%d.%d:%d",
-					&tmp[0], &tmp[1], &tmp[2], &tmp[3], port) != 5)
+						   &tmp[0], &tmp[1], &tmp[2], &tmp[3], port) != 5)
 					return -1;
 			}
 			else
 			{
 				*port = 8000;
 				if (sscanf(s, "%d.%d.%d.%d",
-					&tmp[0], &tmp[1], &tmp[2], &tmp[3]) != 4)
+						   &tmp[0], &tmp[1], &tmp[2], &tmp[3]) != 4)
 					return -1;
 			}
 		}
 		else
 		{
-			memset(tmp, 0, sizeof(int) * 4);
-			if (sscanf(s, "%d", port) != 1)
+			if (!strncmp(s, "localhost", 9))
+			{
+				tmp[0] = 127;
+				tmp[3] = 1;
+				if (s[9] == ':' && sscanf(s + 10, "%d", port) != 1)
+					return -1;
+			}
+			else if (sscanf(s, "%d", port) != 1)
 				return -1;
 		}
-		if (*port < 0 || *port > 65535)
+		if (*port > 65535)
 			return -1;
 		for (int i = 0; i < 4; i++)
 		{
@@ -104,64 +124,53 @@ namespace HTTP
 		return 0;
 	}
 
-	int listenMap(JSON::Json const& json, Sockets & so)
+	int listenMap(JSON::Json const &json, Sockets &so)
 	{
 		unsigned int host, port;
-		JSON::JsonToken * t;
-		std::vector<int> ports;
+		JSON::Node *t;
+		std::vector<std::pair<unsigned int, unsigned int> > used;
 
-		for (JSON::Json::const_iterator it = json.tokens.begin();
-				it != json.tokens.end(); it++ )
+		for (JSON::Node::iterator it = json.tokens->begin();
+			 it != json.tokens->end(); it.skip())
 		{
-			t = (*it)->search(1, "listen");
+			t = it->search(1, "listen");
 			if (!t)
 			{
 				host = 0;
 				port = 8000;
-			}
-			else if (t->getType() == JSON::json_array_type)
-			{
-				for (std::vector<JSON::JsonToken *>::const_iterator arr \
-					 = dynamic_cast<JSON::JsonArray*>(t)->data.begin();
-					arr != dynamic_cast<JSON::JsonArray*>(t)->data.end(); arr++ )
-				{
-					if (stohp((*arr)->as<char const*>(), &host, &port) == -1)
-						return err(-1, "invalid listen field");
-					if (std::find(ports.begin(), ports.end(), port) != ports.end())
-						return err(-1, "duplicate listen field");
-					so.insert(host, port)->config = *it;
-					ports.push_back(port);
-				}
-				ports.clear();
-				continue ;
+				so.insert(host, port)->config = &*it;
 			}
 			else
 			{
-				if (stohp(t->as<char const*>(), &host, &port) == -1)
-					return err(-1, "invalid listen field");
+				for (JSON::Node::iterator i = t->begin();
+					 i != t->end(); i++)
+				{
+					if (stohp(i->as<std::string const &>().c_str(), &host, &port) == -1)
+						return err(-1, "invalid listen field");
+					if (std::find(used.begin(), used.end(), std::make_pair(host, port)) != used.end())
+						return err(-1, "duplicate listen field");
+					so.insert(host, port)->config = &*it;
+					used.push_back(std::make_pair(host, port));
+				}
 			}
-			so.insert(host, port)->config = *it;
 		}
 		return 0;
 	}
 
 	int
-	Server::init( char const* filepath )
+	Server::init(char const *filepath)
 	{
-		if (conf.parse(filepath) < 0)
+		DEBUG2("reading configuration file");
+		if (config.from(filepath) < 0)
 			return -1;
-		DEBUG2("creating server sockets");
-		if (listenMap(conf, socks) == -1)
+		DEBUG2("mapping server sockets");
+		if (listenMap(config, socks) == -1)
 			return -1;
+		DEBUG2("initiating server sockets");
 		if (socks.listen() == -1)
 			return -1;
-		// for ( std::list<t_sock_info>::iterator it = socks.list.begin();
-		// 		it != socks.list.end(); it++ )
-		// {
-		// 	DEBUG2("^^ " << (*it).port);
-		// 	DEBUG2("test: " << (*it).config->search(1, "test")->as<char const*>());
-		// }
 		epoll.init(socks);
+		DEBUG2("ready");
 		return (0);
 	}
 
@@ -184,18 +193,18 @@ namespace HTTP
 	// }
 
 	void
-	Server::loop( void )
+	Server::loop(void)
 	{
-		Client * ci;
-		Mediator	med;
+		Client *ci;
+		Mediator med;
 		t_sock_info *csock;
-		
+
 		if (socks.list.empty())
 			exit(err(1, "logic error", "no sockets available"));
 		while (1)
 		{
 			if (!state)
-				break ;
+				break;
 			check_times();
 			int ev_count = epoll.wait();
 			if (ev_count <= 0)
@@ -212,8 +221,8 @@ namespace HTTP
 					if (epoll.insert(ev_socket) == -1)
 						err(-1, "insert()");
 
-					ci = &clients.insert(
-						clients.end(), std::make_pair(ev_socket, Client()))->second;
+					ci = &clients.insert(clients.end(), 
+						std::make_pair(ev_socket, Client()))->second;
 					ci->fd = ev_socket;
 					ci->ai.sin_addr.s_addr = csock->addr.sin_addr.s_addr;
 					ci->ai.sin_port = csock->addr.sin_port;
@@ -227,7 +236,7 @@ namespace HTTP
 						ci->timestamp = time(NULL);
 						ft_handle(*ci, i, med);
 					}
-					catch(const std::exception& e)
+					catch (const std::exception &e)
 					{
 						DEBUG2(e.what() << ev_socket);
 					}
@@ -236,17 +245,17 @@ namespace HTTP
 		}
 	}
 
-	static JSON::JsonToken * matchCon(Sockets & so, Client const& cli)
+	static JSON::Node *matchCon(Sockets &so, Client const &cli)
 	{
 		std::list<t_sock_info *> interest;
 		bool perfect_match = 0;
 
 		for (std::list<t_sock_info>::iterator it = so.list.begin();
-			it != so.list.end(); it++)
+			 it != so.list.end(); it++)
 		{
 			if ((*it).addr.sin_port == cli.ai.sin_port
 				&& (((*it).addr.sin_addr.s_addr == cli.ai.sin_addr.s_addr)
-				|| cli.ai.sin_addr.s_addr == 0))
+					|| cli.ai.sin_addr.s_addr == 0))
 			{
 				if (((*it).addr.sin_addr.s_addr) != 0)
 					perfect_match = true;
@@ -257,69 +266,82 @@ namespace HTTP
 		if (perfect_match && cli.ai.sin_addr.s_addr != 0)
 		{
 			for (std::list<t_sock_info *>::iterator it = interest.begin();
-				it != interest.end(); it++)
+				 it != interest.end(); it++)
 			{
 				if (((*it)->addr.sin_addr.s_addr) == 0)
 				{
 					it++;
 					interest.erase(it);
 				}
-
 			}
 		}
 		if (interest.size() == 0)
-		{
-			DEBUG2("RIP");
 			return 0;
-		}
 		else if (interest.size() == 1)
 			return (*interest.begin())->config;
 		// TODO -- look at server_name
 		return (*interest.begin())->config;
 	}
 
-	static JSON::JsonToken * matchLocation(JSON::JsonToken * serv, std::string const& path)
+	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
 	{
-		JSON::JsonObject *	tmp;
-		size_t				last_len = 0;
-		JSON::JsonToken * 	last_match = 0;
-		size_t				i = 0;
+		JSON::Object *tmp;
+		size_t last_len = 0;
+		JSON::Node *last_match = 0;
+		size_t i = 0;
 
-		tmp = dynamic_cast<JSON::JsonObject *>(&((*serv)["location"]));
+		size_t x = 0;
+		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
 		if (!tmp)
-			return 0;
-		for (std::vector<JSON::JsonToken*>::iterator loc = tmp->data.begin();
-			loc != tmp->data.end(); loc++)
 		{
+			//DEBUG2(serv->getProperty());
+			return 0;
+		}
+		for (JSON::Node::iterator loc = tmp->begin();
+			 loc != tmp->end(); loc++)
+		{
+			DEBUG2(loc->getProperty());
 			if (path.size() == 1)
 				i = path.find_first_of(*path.c_str());
 			else
-				i = path.find((*loc)->getProperty());
+				i = path.find(loc->getProperty());
 			if (i != std::string::npos && i == 0)
 			{
-				i = strlen((*loc)->getProperty());
+				i = loc->getProperty().size();
 				if (path.size() == i)
-					return (*loc);
+					return &*loc;
 				if (i > last_len)
 				{
 					last_len = i;
-					last_match = *loc;
+					last_match = &*loc;
 				}
 			}
+			x++;
+			if (x == 10)
+				exit(3);
 		}
 		return last_match;
 	}
 
-	void	Server::ft_handle(Client & cli, int i, Mediator & med) {
+	void Server::ft_handle(Client &cli, int i, Mediator &med)
+	{
 
 		static char buffer[RECEIVE_BUF_SIZE] = {0};
-		std::string	str;
-		std::string	final_str;
+		std::string str;
+		std::string final_str;
 
-		int	valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
+		int valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
 		if (valread == -1)
 			DEBUG2("client disconnect");
-		while (valread > 0) {
+		if (valread == 0)
+		{
+			if (epoll.erase(epoll.events[i].data.fd) == -1)
+				DEBUG2("epoll.erase() failed");
+			clients.erase(epoll.events[i].data.fd);
+			return ;
+		}
+		while (valread > 0)
+		{
 			str.assign(buffer, valread);
 			final_str += str;
 			usleep(500);
@@ -340,7 +362,7 @@ namespace HTTP
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
 				DEBUG2("epoll.erase() failed");
 			clients.erase(epoll.events[i].data.fd);
-			return ;
+			return;
 		}
 
 		if (cli.req.conf)
@@ -358,14 +380,16 @@ namespace HTTP
 		}
 	}
 
-	void	Server::check_times(void) {
-		
+	void Server::check_times(void)
+	{
+
 		double seconds = time(NULL);
 
 		for (std::map<int, Client>::iterator it = clients.begin();
-			it != clients.end(); it++)
+			 it != clients.end(); it++)
 		{
-			if (seconds - it->second.timestamp >= 10) {
+			if (seconds - it->second.timestamp >= 10)
+			{
 				DEBUG2(it->first << " was erased by timeout!!!!!");
 				if (epoll.erase(it->first) == -1)
 					DEBUG2("epoll.erase() failed");

@@ -71,21 +71,24 @@ namespace HTTP
 	int Sockets::listen( void )
 	{
 		std::vector<int> ports_used;
+			unsigned int port;
 
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
 		{
-			if (std::find(ports_used.begin(), ports_used.end(), (*it).addr.sin_port) != ports_used.end())
+			port = ntohl((*it).addr.sin_addr.s_addr);
+			if (std::find(ports_used.begin(), ports_used.end(),
+				(*it).addr.sin_port) != ports_used.end())
 				continue ;
 			if (isock(*it) == -1)
 			{
 				std::cerr << "webserv: " \
-					<< (((*it).addr.sin_addr.s_addr & 0xff000000) >> 24) << '.' \
-					<< (((*it).addr.sin_addr.s_addr & 0x00ff0000) >> 16) << '.' \
-					<< (((*it).addr.sin_addr.s_addr & 0x0000ff00) >> 8) << '.' \
-					<< ((*it).addr.sin_addr.s_addr & 0x000000ff) << ':' << \
-				(*it).addr.sin_port << ": ";
-				std::perror(0);
+					<< ((port & 0xff000000) >> 24) << '.' \
+					<< ((port & 0x00ff0000) >> 16) << '.' \
+					<< ((port & 0x0000ff00) >> 8) << '.' \
+					<< (port & 0x000000ff) << ':'
+					<< htons((*it).addr.sin_port) << ": ";
+				std::perror("");
 				while (it != list.begin())
 				{
 					close((*it).fd);
@@ -96,7 +99,6 @@ namespace HTTP
 				return -1;
 			}
 			ports_used.push_back((*it).addr.sin_port);
-			unsigned int port = ntohl((*it).addr.sin_addr.s_addr);
 			DEBUG2("listening " \
 				<< ((port & 0xff000000) >> 24) << '.' \
 				<< ((port & 0x00ff0000) >> 16) << '.' \

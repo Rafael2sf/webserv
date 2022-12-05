@@ -20,13 +20,10 @@ namespace HTTP
 	*/
 	typedef struct s_sock_info
 	{
-		int						fd;
-		// u_int32_t				host;
-		// u_int16_t				port;
-		sockaddr_in				addr;
-		JSON::JsonToken * 		config;
-		//std::map<int, double>	clients;
-	}							t_sock_info;
+		int				fd;
+		sockaddr_in		addr;
+		JSON::Node *	config;
+	}					t_sock_info;
 
 	/**
 	 * @brief Store and manipulate all listening sockets,

@@ -1,16 +1,31 @@
 #include "Json.hpp"
+#include "Parser.hpp"
 
 namespace JSON
 {
+	ParseError::~ParseError() throw()
+	{}
+
+	ParseError::ParseError( char const* e )
+	: _err(e)
+	{}
+
+	char const* ParseError::what( void ) const throw()
+	{
+		return _err.c_str();
+	}
+
 	Json::~Json()
 	{
 		this->clear();
 	}
 
 	Json::Json( void )
+	: tokens(0)
 	{}
 
 	Json::Json( Json const& other )
+	: tokens(0)
 	{
 		*this = other;
 	}
@@ -21,47 +36,167 @@ namespace JSON
 		return *this;
 	}
 
-	char const*
-	Json::getStringOf( JsonToken const* t )
+	bool Json::empty( void ) const
 	{
-		return dynamic_cast<JsonString const*>(t)->getValue();
+		return !tokens;
 	}
 
-	bool const&
-	Json::getBooleanOf( JsonToken const* t )
+	static std::pair<int, std::string>
+	  readFile( char const* file )
 	{
-		return dynamic_cast<JsonBoolean const*>(t)->getValue();
-	}
-		
-	int const&
-	Json::getIntegerOf( JsonToken const* t )
-	{
-		return dynamic_cast<JsonInteger const*>(t)->getValue();
+		std::ifstream	ifs;
+		std::string		buffer;
+
+		if (!file)
+			return std::make_pair(-1, "");
+		ifs.open(file);
+		if (!ifs.is_open())
+			return std::make_pair(-1, "");
+		try
+		{
+			ifs.seekg (0, std::ios::end);
+			buffer.reserve(ifs.tellg());
+			ifs.seekg (0, std::ios::beg);
+			if (!ifs.good())
+			{
+				ifs.close();
+				return std::make_pair(-1, "");
+			}
+			buffer.assign((
+				std::istreambuf_iterator<char>(ifs)),
+				std::istreambuf_iterator<char>());
+		}
+		catch (std::exception const& err)
+		{
+			if (ifs.is_open())
+				ifs.close();
+			std::cerr << err.what() << std::endl;
+			return std::make_pair(-1, "");
+		}
+		ifs.close();
+		return std::make_pair(0, buffer);
 	}
 
-	std::vector<JsonToken*> const&
-	Json::getObjectOf( JsonToken const* t )
+	static std::string toString( int x )
 	{
-		return dynamic_cast<JsonObject const*>(t)->data;
+		std::stringstream	ss;
+		std::string			s;
+
+		ss << x;
+		ss >> s;
+		return s;
 	}
 
+	int Json::from( char const* file )
+	{
+		Parser parser;
+		std::pair<int, std::string> f;
+		std::pair<size_t, size_t> loc;
+
+		f = readFile(file);
+		if (f.first == -1)
+			return -1;
+		try
+		{
+			tokens = parser.build(f.second); 
+		}
+		catch (ParseError const& e)
+		{
+			tokens = 0;
+			loc = parser.errPos();
+			_err = toString(loc.first) + ":" \
+				+ toString(loc.second) + ": " + e.what();
+			parser.clear();
+		}
+		catch (std::exception const& e)
+		{
+			tokens = 0;
+			_err = e.what();
+			parser.clear();
+		}
+		return tokens ? 0 : -1;
+	}
+
+	std::string const& Json::err( void ) const
+	{
+		return _err;
+	}
+
+	static void rprint(Node const* p, size_t depth)
+	{
+		size_t i = 0;
+
+		while (i++ != depth)
+			std::cout << " ";
+		std::cerr << '\'' << p->getProperty() << "\' : ";
+		if (p->type() == object)
+		{
+		std::cerr << "{" << std::endl;
+			Object const* tmp = dynamic_cast<Object const*>(p);
+			for (std::multiset<Node *>::const_iterator it = tmp->impl.begin();
+				it != tmp->impl.end(); it++)
+			{
+				rprint(*it, depth + 1);
+			}
+			i = 0;
+			while (i++ != depth)
+				std::cout << " ";
+			std::cerr << "}" << std::endl;
+			return ;
+		}
+		else if (p->type() == array)
+		{
+			std::cerr << "[" << std::endl;
+			Array const* tmp = dynamic_cast<Array const*>(p);
+			for (std::vector<Node *>::const_iterator it = tmp->impl.begin();
+				it != tmp->impl.end(); it++)
+			{
+				rprint(*it, depth + 2);
+			}
+			i = 0;
+			while (i++ != depth)
+				std::cout << " ";
+			std::cerr << ']' << std::endl;
+			return ;
+		}
+		switch (p->type())
+		{
+			case string:
+				std::cerr << '\"' << p->as<std::string const&>() << '\"';
+				break ;
+			case boolean:
+				std::cerr << '^' << p->as<bool>();
+				break ;
+			case integer:
+				std::cerr << p->as<int>();
+				break ;
+			case null:
+				std::cerr << "<null>";
+				break ;
+			default:
+				break ;
+		}
+		std::cerr << std::endl;
+	}
+
+	// void Json::begin( void )
+	// {
+	// 	return tokens.b
+	// }
+
+	// void Json::end( void )
+	// {
+
+	// }
+	
 	void Json::cout( void ) const
 	{
-		for (std::list<JsonToken *>::const_iterator it = tokens.begin();
-			it != tokens.end(); it++)
-			(*it)->print();
+		rprint(tokens, 0);
 	}
 
 	void Json::clear(void)
 	{
-		if (!tokens.empty())
-		{
-			for (std::list<JsonToken *>::const_iterator it = tokens.begin();
-				it != tokens.end(); it++)
-			{
-				delete *it;
-			}
-			tokens.clear();
-		}
+		if (tokens)
+			delete tokens;
 	}
 }

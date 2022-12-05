@@ -27,6 +27,12 @@ namespace HTTP
 		Server( Server const& other );
 		Server & operator=( Server const& rhs);
 
+		static int				state;
+		Sockets					socks;
+		Epoll					epoll;
+		JSON::Json				config;
+		std::map<int, Client>	clients;
+
 		/**
 		 * @brief Handles the reception, treatment and response
 		 * to a request.
@@ -35,12 +41,6 @@ namespace HTTP
 		 * the method stated.
 		*/
 		void ft_handle(Client & cli, int i, Mediator & med);
-
-		Sockets		socks;
-		Epoll	epoll;
-		JSON::Json	conf;
-		static int	state;
-		std::map<int, Client> clients;
 
 		/**
 		 * @brief Initiates the server with default configurations.
