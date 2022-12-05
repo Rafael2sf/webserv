@@ -184,7 +184,7 @@ namespace HTTP
 			DEBUG2(request.getMethod()[0] << " " << request.getMethod()[1]);
 			DEBUG2("location = " << request.conf->getProperty());
 		}
-		DEBUG2(request.responseString());
+		// DEBUG2(request.responseString());
 		med.methodChoice(request, epoll.events[i].data.fd);
 		if (request.getHeaderVal("connection") == "close")
 		{
