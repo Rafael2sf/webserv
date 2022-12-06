@@ -67,5 +67,9 @@ namespace HTTP
 		*/
 		void	loop( void );
 		void	check_times(void);
+
+	private:
+		void _receiveConnection( int socket, t_sock_info * si );
+		void _updateConnection( int i, int socket, Mediator & med );
 	};
 }

@@ -37,6 +37,7 @@ SRCS		=	$(addsuffix .cpp, \
 					Parser \
 					Iterator \
 					Node \
+					Client \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
 INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))

@@ -1,10 +1,13 @@
 {
 	"server" : {
+		"error_pages" : {
+			"index.html" : [400, 500, 402]
+		},
 		"listen" : "localhost:8000",
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
-				"autoindex" : true
+				"autoindex" : false
 			},
 			"/images/" : {
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/www",

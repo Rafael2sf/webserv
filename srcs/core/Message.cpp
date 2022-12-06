@@ -1,4 +1,5 @@
 #include "Message.hpp"
+#include "Client.hpp"
 
 namespace HTTP {
 

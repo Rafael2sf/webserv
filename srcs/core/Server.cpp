@@ -174,73 +174,102 @@ namespace HTTP
 		return (0);
 	}
 
-	// void test(t_sock_info * si)
-	// {
-	// 	struct addrinfo *res;
-	// 	struct addrinfo *it;
+	void
+	Server::_receiveConnection( int socket, t_sock_info * si )
+	{
+		Client * 			cl;
+		struct sockaddr_in	addr;
+		socklen_t			addrlen;
 
-	// 	(void) si;
-	// 	if (getaddrinfo("", NULL, NULL, &res) != 0)
-	// 		return ;
-	// 	for (it = res; it != NULL; it = it->ai_next)
-	// 	{
-	// 		char hostname[NI_MAXHOST] = "";
-	// 		if (getnameinfo(it->ai_addr, it->ai_addrlen, hostname, NI_MAXHOST, NULL, 0, 0) != 0)
-	// 			continue ;
-	// 		DEBUG2("hostname = " << hostname);
-	// 	}
-	// 	freeaddrinfo(res);
-	// }
+		memset(&addr, 0, sizeof(addr));
+		try
+		{
+			if ((socket = accept(
+				socket, (struct sockaddr *)&addr, &addrlen)) == -1)
+			{
+				err(-1);
+				return ;
+			}
+			if (epoll.insert(socket) == -1)
+			{
+				err(-1);
+				return ;
+			}
+			cl = &clients.insert(clients.end(), 
+				std::make_pair(socket, Client()))->second;
+			cl->fd = socket;
+			cl->ai.sin_addr.s_addr = addr.sin_addr.s_addr;
+			cl->ai.sin_port = si->addr.sin_port;
+			cl->timestamp = time(NULL);
+		}
+		catch ( std::exception const& e )
+		{
+			DEBUG2("failed to create client: " << e.what());
+			epoll.erase(socket);
+			close(socket);
+		}
+	}
+
+	void
+	Server::_updateConnection( int i, int socket, Mediator & med )
+	{
+		Client * cl;
+
+		(void) med;
+		try
+		{
+			cl = &clients.at(socket);
+			//cl->timestamp = time(NULL);
+			if (cl->update() == -1)
+			{
+				write(cl->fd, "bad", 3);
+				if (epoll.erase(epoll.events[i].data.fd) == -1)
+					DEBUG2("epoll.erase() failed");
+				clients.erase(epoll.events[i].data.fd);
+			}
+			if (cl->ok())
+			{
+				write(cl->fd, "good", 4);
+				if (epoll.erase(epoll.events[i].data.fd) == -1)
+					DEBUG2("epoll.erase() failed");
+				clients.erase(epoll.events[i].data.fd);
+			}
+		}
+		catch (const std::exception &e)
+		{
+			DEBUG2("failed to update client: " << e.what());
+			clients.erase(socket);
+			epoll.erase(socket);
+			close(socket);
+		}
+	}
 
 	void
 	Server::loop(void)
 	{
-		Client *ci;
-		Mediator med;
-		t_sock_info *csock;
+		t_sock_info *	si;
+		Mediator 		med;
+		int				socket;
+		int				events;
 
-		if (socks.list.empty())
-			exit(err(1, "logic error", "no sockets available"));
+		// if (socks.list.empty())
+		// 	exit(err(1, "logic error", "no sockets available"));
 		while (1)
 		{
 			if (!state)
 				break;
 			check_times();
-			int ev_count = epoll.wait();
-			if (ev_count <= 0)
+			events = epoll.wait();
+			if (events <= 0)
 				continue;
-			int ev_socket;
-			for (int i = 0; i < ev_count; i++)
+			for (int i = 0; i < events; i++)
 			{
-				ev_socket = epoll.events[i].data.fd;
-				csock = socks.find(ev_socket);
-				if (csock)
-				{
-					if ((ev_socket = accept(ev_socket, 0, 0)) == -1)
-						err(-1, "accept()");
-					if (epoll.insert(ev_socket) == -1)
-						err(-1, "insert()");
-
-					ci = &clients.insert(clients.end(), 
-						std::make_pair(ev_socket, Client()))->second;
-					ci->fd = ev_socket;
-					ci->ai.sin_addr.s_addr = csock->addr.sin_addr.s_addr;
-					ci->ai.sin_port = csock->addr.sin_port;
-					ci->timestamp = time(NULL);
-				}
+				socket = epoll.events[i].data.fd;
+				si = socks.find(socket);
+				if (si)
+					_receiveConnection(socket, si);
 				else
-				{
-					try
-					{
-						ci = &clients.at(ev_socket);
-						ci->timestamp = time(NULL);
-						ft_handle(*ci, i, med);
-					}
-					catch (const std::exception &e)
-					{
-						DEBUG2(e.what() << ev_socket);
-					}
-				}
+					_updateConnection(i, socket, med);
 			}
 		}
 	}
@@ -290,17 +319,11 @@ namespace HTTP
 		JSON::Node *last_match = 0;
 		size_t i = 0;
 
-		size_t x = 0;
 		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
 		if (!tmp)
-		{
-			//DEBUG2(serv->getProperty());
 			return 0;
-		}
-		for (JSON::Node::iterator loc = tmp->begin();
-			 loc != tmp->end(); loc++)
+		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc++)
 		{
-			DEBUG2(loc->getProperty());
 			if (path.size() == 1)
 				i = path.find_first_of(*path.c_str());
 			else
@@ -316,9 +339,6 @@ namespace HTTP
 					last_match = &*loc;
 				}
 			}
-			x++;
-			if (x == 10)
-				exit(3);
 		}
 		return last_match;
 	}
@@ -367,10 +387,17 @@ namespace HTTP
 
 		if (cli.req.conf)
 		{
+			unsigned int port = htonl(cli.ai.sin_addr.s_addr);
 			std::cerr << std::endl;
-			DEBUG2(cli.req.get_method()[0] << " " << cli.req.get_method()[1]);
-			DEBUG2("location = " << cli.req.conf->getProperty());
+			DEBUG2('[' << epoll.events[i].data.fd << "] [FROM " \
+				<< ((port & 0xff000000) >> 24) << '.' \
+				<< ((port & 0x00ff0000) >> 16) << '.' \
+				<< ((port & 0x0000ff00) >> 8) << '.' \
+				<< (port & 0x000000ff) << ':' << htons(cli.ai.sin_port) << "] [" \
+				<< cli.req.get_method()[0] << ' ' << cli.req.get_method()[1] \
+				<< "] [location " << cli.req.conf->getProperty() << ']');
 		}
+		DEBUG2(cli.req.response_string());
 		med.method_choice(cli.req, epoll.events[i].data.fd);
 		if (cli.req.get_head_val("connection") == "close")
 		{
@@ -388,7 +415,7 @@ namespace HTTP
 		for (std::map<int, Client>::iterator it = clients.begin();
 			 it != clients.end(); it++)
 		{
-			if (seconds - it->second.timestamp >= 10)
+			if (seconds - it->second.timestamp >= 60)
 			{
 				DEBUG2(it->first << " was erased by timeout!!!!!");
 				if (epoll.erase(it->first) == -1)

@@ -130,8 +130,7 @@ namespace HTTP {
 	{
 		std::vector<std::string>	method(req.get_method());
 
-		DEBUG2("Handling client");
-		if (method[0] =="POST")
+		if (method[0] == "POST")
 			post(req, client_fd);
 		else if (method[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
 			cgi_dealer(req, client_fd);
@@ -200,7 +199,7 @@ namespace HTTP {
 		}
 		catch(const std::exception& e)
 		{
-			DEBUG2(e.what());
+			//DEBUG2(e.what());
 			// TODO: error_page
 			res.add("Content-length", "12");
 			res.setBody("<h1>" + code + "</h1>");
@@ -380,7 +379,7 @@ namespace HTTP {
 			waitpid(pid, &exit_stat, 0);
 		}
 	};
-	
+
 	void	Mediator::post(Message & req, int client_fd) {
 		DEBUG2("This is a POST request");
 		// int	read_nbr = 1;

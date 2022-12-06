@@ -12,6 +12,7 @@
 
 namespace HTTP {
 
+	class Client;
 	class Message {
 
 		public:
@@ -45,11 +46,12 @@ namespace HTTP {
 
 			JSON::Node * conf;
 			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
+			friend class Client;
 		private:
 
 			std::vector<std::string>			method; //Max size: 8k
 			std::string							_body;
-			
+
 			/**
 			 * @brief Helper function, creates a key-value pair based on one header
 			 * line of the original request string and adds it to the header map.
@@ -67,8 +69,11 @@ namespace HTTP {
 			 * string without the previously mentioned whitespaces.
 			*/
 			std::string	wp_trimmer(std::string const& str);
-			
-	};
+		private:
+			int _updateStatusLine( std::stringstream & ss, size_t n );
+			int _updateHeaders( std::stringstream & ss, size_t n );
+			int _updateBody( char const * buff, size_t readval, size_t content_length );
 
+	};
 	int	ftStoi(std::string str);
 }
