@@ -40,12 +40,11 @@ namespace HTTP
 		else if (end != std::string::npos)
 			method[1].erase(end + 1);
 
-		std::cout
-			<< method[0] << " " \
-			<< method[1] << " " \
-			<< method[2] << " " \
-			<< method[3] << " " \
-			<< method[4] << std::endl;
+		// DEBUG2(method[0] << " "
+		// 	<< method[1] << " "
+		// 	<< method[2] << " "
+		// 	<< method[3] << " "
+		// 	<< method[4]);
 		return 0;
 	}
 
@@ -64,20 +63,22 @@ namespace HTTP
 		if (val.empty())
 			return -1;
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		std::cout << "[FIELD] " << key << " : " << val << std::endl;
+		//DEBUG2("[FIELD] " << key << " : " << val);
 		this->add(key, val);
 		return 0;
 	}
 
 	int Message::_updateBody( char const * buff, size_t readval, size_t content_length )
 	{
-		if (_body.size() + readval <= content_length)
-			_body += buff;
+		if (_body.size() + readval < content_length)
+			_body.append(buff, readval);
 		else
 		{
 			_body += std::string(buff, content_length - _body.size());
+			//DEBUG2("BODY OK [" << readval << "] [" << content_length << "] [" << _body.size() << ']');
 			return 0;
 		}
+		//DEBUG2("BODY UPDATE [" << readval << "] [" << content_length << "] [" << _body.size() << ']');
 		return readval;
 	}
 
@@ -87,23 +88,36 @@ namespace HTTP
 		ssize_t				readval;
 		char				buff[TMP_BUFF];
 
+		if (state == CONNECTED)
+		{
+			timestamp = time(NULL);
+			state = STATUS_LINE;
+		}
 		while ((readval = recv(fd, buff, TMP_BUFF - 1, 0)) > 0)
 		{
 			ssize_t i = 0;
 			char * j = 0;
 			size_t n = 0;
 			buff[readval] = 0;
-			DEBUG2("RECEIVED = " << buff);
-			while (i < readval)
+			//DEBUG2('[' << readval << "] " << "RECEIVED = " << buff);
+			if (readval == 2)
+			{
+				printf("[%d:%d]\n", buff[0], buff[1]);
+				//DEBUG2("HERE");
+			}
+			// else
+			// 	DEBUG2("X.X");
+			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
 				{
 					size_t content_length = ftStoi(req.get_head_val("content-length"));
+					//DEBUG2("CONTENT_LENGTH = " << content_length);
 					if (!content_length || req._updateBody(buff + i,
-						(buff + readval) - (buff + i) + 1, content_length) == 0)
+						(buff + readval) - (buff + i), content_length) == 0)
 					{
-						std::cout << req._body << std::endl;
-						DEBUG2("PARSE SUCCESS");
+						//std::cout << req._body << std::endl;
+						//DEBUG2("PARSE SUCCESS");
 						state = OK;
 						return 0;
 					}
@@ -112,13 +126,13 @@ namespace HTTP
 				j = std::find(buff + i, buff + readval, '\n');
 				if (j != (buff + readval))
 				{
-					if (*(j - 1) == '\r')
+					if (j != (buff + i) && *(j - 1) == '\r')
 						j--;
 
 					n = j - (buff + i);
 					if (n > 0)
 					{
-						std::cout << n << std::endl;
+						//DEBUG2("updating");
 						ss.str(std::string(buff + i, n));
 						ss.seekg(0);
 
@@ -126,21 +140,24 @@ namespace HTTP
 						{
 							if (req._updateStatusLine(ss, n) == -1)
 							{
-								DEBUG2("exit 2");
+								//DEBUG2("exit 2");
 								return -1;
 							}
 							state = HEADER_FIELDS;
 						}
-						else if(req._updateHeaders(ss, n) == -1)
+						else if (req._updateHeaders(ss, n) == -1)
 						{
-							DEBUG2("exit 1");
+							//DEBUG2("exit 1");
 							return -1;
 						}
 					}
 					else
+					{
+						//DEBUG2("EMPTY");
 						state = BODY_CONTENT;
+					}
 					if (state == HEADER_FIELDS
-						&& !strncmp(j, "\r\n\r\n", 4))
+						&& (!strncmp(j, "\r\n\r\n", 4) || !strncmp(j, "\n\r\n\r", 4)))
 					{
 						state = BODY_CONTENT;
 						j += 4;
@@ -151,7 +168,7 @@ namespace HTTP
 						state = BODY_CONTENT;
 						j += 2;
 					}
-					else if (!strncmp(j, "\r\n", 2))
+					else if (!strncmp(j, "\r\n", 2) || !strncmp(j, "\n\r", 2))
 						j += 2;
 					else
 						j++;
@@ -161,12 +178,19 @@ namespace HTTP
 				i += j - (buff + i);
 			}
 		}
-		DEBUG2("read = " << read(fd, buff, TMP_BUFF));
+		//DEBUG2("read = " << read(fd, buff, TMP_BUFF));
 		return 0;
 	}
 
 	bool Client::ok( void )
 	{
 		return state == OK;
+	}
+
+	void Client::reset( void )
+	{
+		req.clear();
+		res.clear();
+		state = CONNECTED;
 	}
 }

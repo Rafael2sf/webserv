@@ -41,7 +41,7 @@ namespace HTTP {
 			void						create_vec_method(std::string const& str);
 			std::string					response_string(void);
 
-			std::string 				getBody(void) const;
+			std::string const&			getBody(void) const;
 			void						setBody(std::string bod);
 
 			JSON::Node * conf;
@@ -69,6 +69,7 @@ namespace HTTP {
 			 * string without the previously mentioned whitespaces.
 			*/
 			std::string	wp_trimmer(std::string const& str);
+			void clear();
 		private:
 			int _updateStatusLine( std::stringstream & ss, size_t n );
 			int _updateHeaders( std::stringstream & ss, size_t n );

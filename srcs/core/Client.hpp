@@ -11,10 +11,11 @@
 
 namespace HTTP
 {
-	#define TMP_BUFF 8000
+	#define TMP_BUFF 8192
 
 	enum
 	{
+		CONNECTED,
 		STATUS_LINE,
 		HEADER_FIELDS,
 		BODY_CONTENT,
@@ -37,6 +38,7 @@ namespace HTTP
 
 		int update( void );
 		bool ok( void );
+		void reset( void );
 
 	private:
 		int state;

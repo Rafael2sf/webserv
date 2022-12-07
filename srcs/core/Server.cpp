@@ -222,22 +222,17 @@ namespace HTTP
 			//cl->timestamp = time(NULL);
 			if (cl->update() == -1)
 			{
-				write(cl->fd, "bad", 3);
+				write(cl->fd, "[408] failed parsing", 3);
 				if (epoll.erase(epoll.events[i].data.fd) == -1)
 					DEBUG2("epoll.erase() failed");
 				clients.erase(epoll.events[i].data.fd);
 			}
 			if (cl->ok())
-			{
-				write(cl->fd, "good", 4);
-				if (epoll.erase(epoll.events[i].data.fd) == -1)
-					DEBUG2("epoll.erase() failed");
-				clients.erase(epoll.events[i].data.fd);
-			}
+				ft_handle(*cl, i, med);
 		}
 		catch (const std::exception &e)
 		{
-			DEBUG2("failed to update client: " << e.what());
+			DEBUG2("[500] failed to update client: " << e.what());
 			clients.erase(socket);
 			epoll.erase(socket);
 			close(socket);
@@ -346,31 +341,31 @@ namespace HTTP
 	void Server::ft_handle(Client &cli, int i, Mediator &med)
 	{
 
-		static char buffer[RECEIVE_BUF_SIZE] = {0};
-		std::string str;
-		std::string final_str;
+		// static char buffer[RECEIVE_BUF_SIZE] = {0};
+		// std::string str;
+		// std::string final_str;
 
-		int valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
-		if (valread == -1)
-			DEBUG2("client disconnect");
-		if (valread == 0)
-		{
-			if (epoll.erase(epoll.events[i].data.fd) == -1)
-				DEBUG2("epoll.erase() failed");
-			clients.erase(epoll.events[i].data.fd);
-			return ;
-		}
-		while (valread > 0)
-		{
-			str.assign(buffer, valread);
-			final_str += str;
-			usleep(500);
-			valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
-			if (valread == -1)
-				perror("recv error: ");
-		}
+		// int valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
+		// if (valread == -1)
+		// 	DEBUG2("client disconnect");
+		// if (valread == 0)
+		// {
+		// 	if (epoll.erase(epoll.events[i].data.fd) == -1)
+		// 		DEBUG2("epoll.erase() failed");
+		// 	clients.erase(epoll.events[i].data.fd);
+		// 	return ;
+		// }
+		// while (valread > 0)
+		// {
+		// 	str.assign(buffer, valread);
+		// 	final_str += str;
+		// 	usleep(500);
+		// 	valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
+		// 	if (valread == -1)
+		// 		perror("recv error: ");
+		// }
 
-		cli.req.init(final_str);
+		//cli.req.init(final_str);
 		if (!cli.req.headers.empty())
 		{
 			cli.req.conf = matchCon(socks, cli);
@@ -397,7 +392,7 @@ namespace HTTP
 				<< cli.req.get_method()[0] << ' ' << cli.req.get_method()[1] \
 				<< "] [location " << cli.req.conf->getProperty() << ']');
 		}
-		DEBUG2(cli.req.response_string());
+		//DEBUG2(cli.req.response_string());
 		med.method_choice(cli.req, epoll.events[i].data.fd);
 		if (cli.req.get_head_val("connection") == "close")
 		{
@@ -405,6 +400,7 @@ namespace HTTP
 				DEBUG2("epoll.erase() failed");
 			clients.erase(epoll.events[i].data.fd);
 		}
+		cli.reset();
 	}
 
 	void Server::check_times(void)
@@ -415,9 +411,9 @@ namespace HTTP
 		for (std::map<int, Client>::iterator it = clients.begin();
 			 it != clients.end(); it++)
 		{
-			if (seconds - it->second.timestamp >= 60)
+			if (seconds - it->second.timestamp >= 10)
 			{
-				DEBUG2(it->first << " was erased by timeout!!!!!");
+				DEBUG2('[' << it->first << "] timed out");
 				if (epoll.erase(it->first) == -1)
 					DEBUG2("epoll.erase() failed");
 				clients.erase(it->first);

@@ -122,7 +122,6 @@ namespace HTTP {
 		headers[key] += value_to_add;
 	};
 
-
 	std::string				Message::response_string(void) {
 		
 		std::string	final_str;
@@ -139,7 +138,7 @@ namespace HTTP {
 		return final_str;
 	};
 
-	std::string 				Message::getBody(void) const {
+	std::string const&				Message::getBody(void) const {
 		return this->_body;
 	};
 
@@ -149,10 +148,18 @@ namespace HTTP {
 
 	int					ftStoi(std::string str) {
 		std::stringstream	ss;
-		int					ret;
+		int					ret = 0;
 		
 		ss << str;
 		ss >> ret;
 		return ret;
+	}
+
+	void Message::clear( void )
+	{
+		_body.clear();
+		headers.clear();
+		method.clear();
+		conf = 0;
 	}
 }

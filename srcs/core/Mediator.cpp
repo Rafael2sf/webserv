@@ -438,7 +438,7 @@ namespace HTTP {
 			int	bytes = 0;
 			while (1)
 			{
-				if (playing.size() - bytes > 65000)
+				if (playing.size() - bytes > 32000)
 				{
 					write(p[1], playing.c_str() + bytes, 65000);
 					bytes += 65000;
@@ -446,9 +446,11 @@ namespace HTTP {
 				else
 				{
 					write(p[1], playing.c_str() + bytes, playing.size() - bytes);
+					bytes += playing.size() - bytes;
 					break ;
 				}
 			}
+			DEBUG2("BYES SENT => " << bytes);
 			close(p[1]);
 			waitpid(pid, &exit_stat, 0);
 		}
