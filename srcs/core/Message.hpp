@@ -132,4 +132,6 @@ namespace HTTP {
 	 * string is poorly formatted.
 	*/
 	int	ftStoi(std::string const& str);
+
+	std::string	ftItos(int const& n);
 }

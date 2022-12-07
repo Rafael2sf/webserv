@@ -40,7 +40,8 @@ namespace HTTP {
 			*/
 			std::string	getDate(time_t const& tm_info);
 			
-			std::map<std::string, std::string> mime;
+			std::map<std::string, std::string>	mime;
+			std::map<int, std::string>			errorText;
 		
 		private:
 			
@@ -87,7 +88,7 @@ namespace HTTP {
 			 * @return True if successful; False if any error happens during the
 			 * attempt to get the file.
 			*/
-			bool	getFile(Message const& req, Message& resp, std::string& path);
+			FILE*	getFile(Message const& req, std::string& path, int const& client_fd);
 			
 			/**
 			 * @brief Helper function to GET request handler. Continues the response
@@ -100,6 +101,10 @@ namespace HTTP {
 			 * made the request (used to send the response).
 			 * @param resp Final response to be sent to the client.
 			*/
-			void	contentEncoding(std::fstream & ifs, int client_fd, Message& resp);
+			void	contentEncoding(FILE * fp, int client_fd, Message& resp);
+	
+			void	errorPage(Message const& req, int fd, int code);
+
+			void	dirIndex(Message const& req, int fd, std::string const& path);
 	};
 }

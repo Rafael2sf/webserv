@@ -163,4 +163,15 @@ namespace HTTP {
 		ss >> ret;
 		return ret;
 	}
+
+	std::string	ftItos(int const& n) {
+		
+		std::stringstream	ss;
+		std::string			ret;
+
+		ss << n;
+		ss >> ret;
+		return ret;
+	}
+
 }

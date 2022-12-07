@@ -119,7 +119,6 @@ namespace HTTP
 		t_sock_info		tmp;
 		t_sock_info const*	match;
 
-		memset(&tmp, 0, sizeof(tmp));
 		port_token = block->find_first("listen");
 		if (!port_token)
 			return 0;

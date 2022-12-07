@@ -232,7 +232,7 @@ namespace JSON
 		JsonToken::_type = json_string_type;
 	}
 
-	JsonString::JsonString( JsonString const& other )
+	JsonString::JsonString( JsonString const& other ): JsonToken()
 	{
 		*this = other;
 	}
@@ -262,7 +262,7 @@ namespace JSON
 		JsonToken::_type = json_object_type;
 	}
 
-	JsonObject::JsonObject( JsonObject const& other )
+	JsonObject::JsonObject( JsonObject const& other ): JsonToken()
 	{
 		*this = other;
 	}
@@ -289,7 +289,7 @@ namespace JSON
 		JsonToken::_type = json_integer_type;
 	}
 
-	JsonInteger::JsonInteger( JsonInteger const& other )
+	JsonInteger::JsonInteger( JsonInteger const& other ): JsonToken()
 	{
 		*this = other;
 	}
@@ -321,7 +321,7 @@ namespace JSON
 		JsonToken::_type = json_boolean_type;
 	}
 
-	JsonBoolean::JsonBoolean( JsonBoolean const& other )
+	JsonBoolean::JsonBoolean( JsonBoolean const& other ): JsonToken()
 	{
 		*this = other;
 	}
@@ -347,7 +347,7 @@ namespace JSON
 		JsonToken::_type = json_null_type;
 	}
 
-	JsonNull::JsonNull( JsonNull const& other )
+	JsonNull::JsonNull( JsonNull const& other ): JsonToken()
 	{
 		*this = other;
 	}
@@ -373,12 +373,12 @@ namespace JSON
 	}
 
 	JsonArray::JsonArray( std::vector<JsonToken*> const& value )
-	: data(value)
+	: JsonToken(), data(value)
 	{
 		JsonToken::_type = json_array_type;
 	}
 
-	JsonArray::JsonArray( JsonArray const& other )
+	JsonArray::JsonArray( JsonArray const& other ): JsonToken()
 	{
 		*this = other;
 	}

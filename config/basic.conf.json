@@ -5,7 +5,7 @@
 			"/" : {
 				"index": "index.html",
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
-				"autoindex" : false
+				"autoindex" : true
 			},
 			"/images/" : {
 				"index": "grass.jpeg",

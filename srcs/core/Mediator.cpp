@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <cstdio>
 #include "Mediator.hpp"
 #include "Server.hpp"
 
@@ -124,6 +125,19 @@ namespace HTTP {
 		mime["asf"]		=	"video/x-ms-asf";
 		mime["wmv"]		=	"video/x-ms-wmv";
 		mime["avi"]		=	"video/x-msvideo";
+
+		//Creation of default error pages map
+		errorText[400] = "Bad Request";
+		errorText[403] = "Forbidden";
+		errorText[404] = "Not Found";
+		errorText[405] = "Not Allowed";
+		errorText[406] = "Not Acceptable";
+		errorText[408] = "Request Timeout";
+		errorText[411] = "Length Required";
+		errorText[413] = "Content Too Large";
+		errorText[414] = "URI Too Long";
+		errorText[415] = "Unsuported Media Type";
+		errorText[501] = "Not Implemented";
 	}
 
 	void	Mediator::methodChoice(Message& req, int client_fd)
@@ -137,7 +151,7 @@ namespace HTTP {
 		else if (method[0] == "DELETE")
 			del(req, client_fd);
 		else
-			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 28, 0);
+			errorPage(req, client_fd, 501);
 	}
 
 	static bool replace(std::string& str, const std::string& from, const std::string& to) {
@@ -148,17 +162,18 @@ namespace HTTP {
 		return true;
 	}
 
-	static void errorPage(Message const& req, Message & res,
-		int fd, std::string const& code, std::string const& path)
-	{
-		std::string	str;
+	void	Mediator::dirIndex(Message const& req, int fd, std::string const& path) {
 
-		res.createMethodVec("HTTP/1.1 " + code + " Not Found");
+		std::string	str;
+		Message		res;
+
+		res.createMethodVec("HTTP/1.1 404 Not Found");
 		res.add("content-type", "text/html");
+		res.add("date", getDate(time(0)));
 		try
 		{
 			if (!req.conf)
-				throw std::logic_error("request doesn't mach any configuration");
+				throw std::logic_error("request doesn't match any configuration");
 			if ((*req.conf)["autoindex"].as<bool>())
 			{
 				str = "<html><head>file explorer</head><body><hr><pre>";
@@ -199,8 +214,26 @@ namespace HTTP {
 			DEBUG2(e.what());
 			// TODO: error_page
 			res.add("content-length", "12");
-			res.setBody("<h1>" + code + "</h1>");
+			res.setBody("<h1>404</h1>");
 		}
+		str = res.responseString();
+		send(fd, str.c_str(), str.size(), 0);
+		return ;
+	};
+
+	void	Mediator::errorPage(Message const& req, int fd, int code)
+	{
+		std::string	str;
+		Message 	res;
+		(void)req;
+
+
+		res.createMethodVec("HTTP/1.1 " + ftItos(code) + errorText[code]);
+		res.add("content-type", "text/html");
+		res.add("date", getDate(time(0)));
+
+		res.add("content-length", "12");
+		res.setBody("<h1>" + ftItos(code) + "</h1>");
 		str = res.responseString();
 		send(fd, str.c_str(), str.size(), 0);
 		return ;
@@ -216,15 +249,9 @@ namespace HTTP {
 		}
 
 		std::string	path;
+		FILE*		fp;
 		Message		res;
 
-		// set all standart headers
-		res.add("server", "Webserv/0.3");
-		res.add("date", getDate(time(0)));
-		if (req.getHeaderVal("connection") == "close")
-			res.add("connection", "close");
-		else
-			res.add("connection", "keep-alive");
 
 		if (req.conf)
 		{
@@ -234,70 +261,93 @@ namespace HTTP {
 				replace(path,
 					req.conf->getProperty(),
 					(*req.conf)["root"].as<char const*>());
+				fp = getFile(req, path, client_fd);
+				if (fp == NULL)
+					return;
 				DEBUG2("path = " << path);
 			}
 			catch (std::exception const&) {path.clear();}
 
-			if (path.empty() || !getFile(req, res, path))
-				return errorPage(req, res, client_fd, "404", path);
-			//Last-Modified header creation
-			struct stat f_info;
-			stat(path.c_str(), &f_info);
-			res.add("last-modified", getDate(f_info.st_mtime));
+			if (path.empty())
+				return dirIndex(req, client_fd, path);
 		}
 		else
-			return errorPage(req, res, client_fd, "404", path);
+			return dirIndex(req, client_fd, path);
 
-		std::fstream	ifs(path.c_str());
-		if (!ifs.is_open())
-			DEBUG2("I AM CLOSED!!!!");
-		contentEncoding(ifs, client_fd, res);
-	}
-
-	bool	Mediator::getFile(Message const& req,
-		Message& resp, std::string& path)
-	{
-		std::ifstream	ifs(path.c_str());
-		struct stat		stat;
-		std::string		path_index;
-
-		if (!ifs.is_open())
-			return false;
-		if (lstat(path.c_str(), &stat) == -1)
-			return false;
-		if (S_ISDIR(stat.st_mode))
-		{
-			try
-			{
-				path_index = path + (*req.conf)["index"].as<const char*>();
-				DEBUG2("path = " << path_index);
-				ifs.close();
-				ifs.open(path_index.c_str());
-				if (!ifs.is_open())
-					return false;
-				path = path_index;
-			}
-			catch (std::exception const&) {return false;}
-		}
-
-		resp.createMethodVec("HTTP/1.1 200 OK");
+		res.createMethodVec("HTTP/1.1 200 OK");
 		size_t index = path.find(".");
 		//temporary mimes
 		//DEBUG2("str = " << str);
 		// char const* dot = strrchr(str , '.');
 		if (index == std::string::npos)
-			resp.add("content-type", "text/html"); // default
+			res.add("content-type", "text/html"); // default
 		else
 		{
 			//DEBUG2("type = " << *dot);
 			std::map<std::string, std::string>::const_iterator
 					mime_val =	mime.find(path.c_str() + index + 1);
 			if (mime_val != mime.end())
-				resp.add("content-type", mime_val->second);
+				res.add("content-type", mime_val->second);
 			else
-				resp.add("content-type", "text/html"); // default
+				res.add("content-type", "text/html"); // default
 		}
-		return true;
+		// set all standart headers
+		res.add("server", "Webserv/0.3");
+		res.add("date", getDate(time(0)));
+		if (req.getHeaderVal("connection") == "close")
+			res.add("connection", "close");
+		else
+			res.add("connection", "keep-alive");
+		//Last-Modified header creation
+		struct stat f_info;
+		lstat(path.c_str(), &f_info);
+		res.add("last-modified", getDate(f_info.st_mtime));
+		contentEncoding(fp, client_fd, res);
+	}
+
+	FILE*	Mediator::getFile(Message const& req,
+		std::string& path, int const& client_fd)
+	{
+		struct stat		stat;
+		std::string		path_index;
+		FILE*			fp = fopen(path.c_str(), "r");
+
+		if (fp == NULL && errno == ENOENT) {
+			errorPage(req, client_fd, 404);
+			return NULL;
+		}
+		else if (fp == NULL && errno == EACCES) {
+			errorPage(req, client_fd, 403);
+			return NULL;
+		}
+		if (lstat(path.c_str(), &stat) == -1) {
+			fclose(fp);
+			errorPage(req, client_fd, 404);        //temporary
+			return NULL;
+		}
+		if (S_ISDIR(stat.st_mode))
+		{
+			try
+			{
+				path_index = path + (*req.conf)["index"].as<const char*>();
+				DEBUG2("path = " << path_index);
+
+				fclose(fp);
+				if ((fp = fopen(path_index.c_str(), "r")) == NULL) {
+					if (errno == ENOENT) {
+						dirIndex(req, client_fd, path);
+						return NULL;
+					}
+					else if (errno == EACCES) {
+						errorPage(req, client_fd, 403);
+						return NULL;
+					}
+				}
+				path = path_index;
+			}
+			catch (std::exception const&) {return NULL;}
+		}
+		return fp;
 	};
 
 	std::string	Mediator::getDate(time_t const& tm_info) {
@@ -313,7 +363,7 @@ namespace HTTP {
 		return ret;
 	};
 
-	void		Mediator::contentEncoding(std::fstream & ifs, int client_fd, Message& resp) {
+	void		Mediator::contentEncoding(FILE * fp, int client_fd, Message& resp) {
 		
 		char				buf[READ_BUF_SIZE];
 		std::stringstream	ss;
@@ -322,8 +372,8 @@ namespace HTTP {
 		std::string			new_buf;
 		
 		memset(buf, 0, READ_BUF_SIZE);
-		ifs.read(buf, READ_BUF_SIZE);
-		read_nbr = ifs.gcount();
+		read_nbr = fread(buf, 1, READ_BUF_SIZE, fp);
+		DEBUG2("BYTES READ: " << read_nbr);
 		if (read_nbr != READ_BUF_SIZE) {
 			ss << read_nbr;
 			ss >> str;
@@ -351,11 +401,11 @@ namespace HTTP {
 				memset(buf, 0, READ_BUF_SIZE);
 				new_buf.clear();
 				str.clear();
-				ifs.read(buf, READ_BUF_SIZE);
-				read_nbr = ifs.gcount();
+				read_nbr = fread(buf, 1, READ_BUF_SIZE, fp);
 			}
 			send(client_fd, "0\r\n\r\n", 5, 0);
 		}
+		fclose(fp);
 	};
 
 	
