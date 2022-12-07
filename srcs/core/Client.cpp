@@ -1,6 +1,7 @@
 #include "Client.hpp"
 #include <fcntl.h>
 #include <iomanip>
+#include "Node.hpp"
 
 namespace HTTP
 {
@@ -100,18 +101,25 @@ namespace HTTP
 			size_t n = 0;
 			buff[readval] = 0;
 			//DEBUG2('[' << readval << "] " << "RECEIVED = " << buff);
-			if (readval == 2)
-			{
-				printf("[%d:%d]\n", buff[0], buff[1]);
-				//DEBUG2("HERE");
-			}
-			// else
-			// 	DEBUG2("X.X");
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
 				{
 					size_t content_length = ftStoi(req.get_head_val("content-length"));
+					if (req._body.size() == 0)
+					{
+						size_t			max_body_size;
+						JSON::Node * 	max_body;
+						if (req.conf)
+							max_body = req.conf->search(1, "client_max_body_size");
+						max_body_size = max_body ? max_body->as<int>() : 1048576;
+						if (max_body_size < content_length)
+						{
+							send(fd, "413", 3, 0);
+							return -1;
+						}
+						
+					}
 					//DEBUG2("CONTENT_LENGTH = " << content_length);
 					if (!content_length || req._updateBody(buff + i,
 						(buff + readval) - (buff + i), content_length) == 0)
@@ -178,7 +186,8 @@ namespace HTTP
 				i += j - (buff + i);
 			}
 		}
-		//DEBUG2("read = " << read(fd, buff, TMP_BUFF));
+		if (state == STATUS_LINE)
+			return -1;
 		return 0;
 	}
 

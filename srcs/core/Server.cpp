@@ -174,101 +174,6 @@ namespace HTTP
 		return (0);
 	}
 
-	void
-	Server::_receiveConnection( int socket, t_sock_info * si )
-	{
-		Client * 			cl;
-		struct sockaddr_in	addr;
-		socklen_t			addrlen;
-
-		memset(&addr, 0, sizeof(addr));
-		try
-		{
-			if ((socket = accept(
-				socket, (struct sockaddr *)&addr, &addrlen)) == -1)
-			{
-				err(-1);
-				return ;
-			}
-			if (epoll.insert(socket) == -1)
-			{
-				err(-1);
-				return ;
-			}
-			cl = &clients.insert(clients.end(), 
-				std::make_pair(socket, Client()))->second;
-			cl->fd = socket;
-			cl->ai.sin_addr.s_addr = addr.sin_addr.s_addr;
-			cl->ai.sin_port = si->addr.sin_port;
-			cl->timestamp = time(NULL);
-		}
-		catch ( std::exception const& e )
-		{
-			DEBUG2("failed to create client: " << e.what());
-			epoll.erase(socket);
-			close(socket);
-		}
-	}
-
-	void
-	Server::_updateConnection( int i, int socket, Mediator & med )
-	{
-		Client * cl;
-
-		(void) med;
-		try
-		{
-			cl = &clients.at(socket);
-			//cl->timestamp = time(NULL);
-			if (cl->update() == -1)
-			{
-				write(cl->fd, "[408] failed parsing", 3);
-				if (epoll.erase(epoll.events[i].data.fd) == -1)
-					DEBUG2("epoll.erase() failed");
-				clients.erase(epoll.events[i].data.fd);
-			}
-			if (cl->ok())
-				ft_handle(*cl, i, med);
-		}
-		catch (const std::exception &e)
-		{
-			DEBUG2("[500] failed to update client: " << e.what());
-			clients.erase(socket);
-			epoll.erase(socket);
-			close(socket);
-		}
-	}
-
-	void
-	Server::loop(void)
-	{
-		t_sock_info *	si;
-		Mediator 		med;
-		int				socket;
-		int				events;
-
-		// if (socks.list.empty())
-		// 	exit(err(1, "logic error", "no sockets available"));
-		while (1)
-		{
-			if (!state)
-				break;
-			check_times();
-			events = epoll.wait();
-			if (events <= 0)
-				continue;
-			for (int i = 0; i < events; i++)
-			{
-				socket = epoll.events[i].data.fd;
-				si = socks.find(socket);
-				if (si)
-					_receiveConnection(socket, si);
-				else
-					_updateConnection(i, socket, med);
-			}
-		}
-	}
-
 	static JSON::Node *matchCon(Sockets &so, Client const &cli)
 	{
 		std::list<t_sock_info *> interest;
@@ -279,7 +184,7 @@ namespace HTTP
 		{
 			if ((*it).addr.sin_port == cli.ai.sin_port
 				&& (((*it).addr.sin_addr.s_addr == cli.ai.sin_addr.s_addr)
-					|| cli.ai.sin_addr.s_addr == 0))
+					|| (*it).addr.sin_addr.s_addr == 0))
 			{
 				if (((*it).addr.sin_addr.s_addr) != 0)
 					perfect_match = true;
@@ -306,6 +211,102 @@ namespace HTTP
 		// TODO -- look at server_name
 		return (*interest.begin())->config;
 	}
+
+	void
+	Server::_receiveConnection( int socket, t_sock_info * si )
+	{
+		Client * 			cl;
+		struct sockaddr_in	addr;
+		socklen_t			addrlen;
+
+		memset(&addr, 0, sizeof(addr));
+		DEBUG2("New connection: " << socket);
+		try
+		{
+			if ((socket = accept(
+				socket, (struct sockaddr *)&addr, &addrlen)) == -1)
+			{
+				err(-1);
+				return ;
+			}
+			if (epoll.insert(socket) == -1)
+			{
+				err(-1);
+				return ;
+			}
+			cl = &clients.insert(clients.end(), 
+				std::make_pair(socket, Client()))->second;
+			cl->fd = socket;
+			cl->ai.sin_addr.s_addr = addr.sin_addr.s_addr;
+			cl->ai.sin_port = si->addr.sin_port;
+			cl->req.conf = matchCon(socks, *cl);
+			cl->timestamp = time(NULL);
+		}
+		catch ( std::exception const& e )
+		{
+			DEBUG2("failed to create client: " << e.what());
+			epoll.erase(socket);
+			close(socket);
+		}
+	}
+
+	void
+	Server::_updateConnection( int i, int socket, Mediator & med )
+	{
+		Client * cl;
+
+		(void) med;
+		try
+		{
+			cl = &clients.at(socket);
+			if (cl->update() == -1)
+			{
+				write(cl->fd, "[408] failed parsing", 3);
+				if (epoll.erase(epoll.events[i].data.fd) == -1)
+					DEBUG2("epoll.erase() failed");
+				clients.erase(epoll.events[i].data.fd);
+			}
+			if (cl->ok())
+				ft_handle(*cl, i, med);
+		}
+		catch (const std::exception &e)
+		{
+			DEBUG2("[500] failed to update client: " << e.what());
+			epoll.erase(socket);
+			clients.erase(socket);
+		}
+	}
+
+	void
+	Server::loop(void)
+	{
+		t_sock_info *	si;
+		Mediator 		med;
+		int				socket;
+		int				events;
+
+		if (socks.list.empty())
+			exit(err(1, "logic error", "no sockets available"));
+		while (1)
+		{
+			if (!state)
+				break;
+			check_times();
+			events = epoll.wait();
+			if (events <= 0)
+				continue;
+			for (int i = 0; i < events; i++)
+			{
+				socket = epoll.events[i].data.fd;
+				si = socks.find(socket);
+				if (si)
+					_receiveConnection(socket, si);
+				else
+					_updateConnection(i, socket, med);
+			}
+		}
+	}
+
 
 	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
 	{
@@ -340,48 +341,9 @@ namespace HTTP
 
 	void Server::ft_handle(Client &cli, int i, Mediator &med)
 	{
-
-		// static char buffer[RECEIVE_BUF_SIZE] = {0};
-		// std::string str;
-		// std::string final_str;
-
-		// int valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
-		// if (valread == -1)
-		// 	DEBUG2("client disconnect");
-		// if (valread == 0)
-		// {
-		// 	if (epoll.erase(epoll.events[i].data.fd) == -1)
-		// 		DEBUG2("epoll.erase() failed");
-		// 	clients.erase(epoll.events[i].data.fd);
-		// 	return ;
-		// }
-		// while (valread > 0)
-		// {
-		// 	str.assign(buffer, valread);
-		// 	final_str += str;
-		// 	usleep(500);
-		// 	valread = recv(epoll.events[i].data.fd, buffer, RECEIVE_BUF_SIZE, 0);
-		// 	if (valread == -1)
-		// 		perror("recv error: ");
-		// }
-
-		//cli.req.init(final_str);
-		if (!cli.req.headers.empty())
-		{
-			cli.req.conf = matchCon(socks, cli);
-			if (cli.req.conf)
-				cli.req.conf = matchLocation(cli.req.conf, cli.req.get_method()[1]);
-		}
-		else
-		{
-			if (epoll.erase(epoll.events[i].data.fd) == -1)
-				DEBUG2("epoll.erase() failed");
-			clients.erase(epoll.events[i].data.fd);
-			return;
-		}
-
 		if (cli.req.conf)
 		{
+			cli.req.conf = matchLocation(cli.req.conf, cli.req.get_method()[1]);
 			unsigned int port = htonl(cli.ai.sin_addr.s_addr);
 			std::cerr << std::endl;
 			DEBUG2('[' << epoll.events[i].data.fd << "] [FROM " \
