@@ -1,9 +1,10 @@
 {
 	"server" : {
-		"listen" : "localhost:8000",
+		"listen" : ["8000"],
+		"client_max_body_size" : 52428800,
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"root" : "/home/rafernan/Projects/webserv/www/",
 				"autoindex" : true
 			}
 		}

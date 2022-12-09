@@ -13,7 +13,7 @@ if fileitem.filename:
    # strip leading path from file name to avoid 
    # directory traversal attacks
    fn = os.path.basename(fileitem.filename)
-   open('/nfs/homes/rafernan/Desktop/webserv/posts/' + fn, 'wb').write(fileitem.file.read())
+   open('/home/rafernan/Projects/webserv/posts/' + fn, 'wb').write(fileitem.file.read())
 
    message = 'The file "' + fn + '" was uploaded successfully'
    

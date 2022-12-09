@@ -35,7 +35,7 @@ namespace HTTP
 		vec.push_back("CONTENT_TYPE=" + req.get_head_val("content-type"));
 		vec.push_back("CONTENT_LENGTH=" + req.get_head_val("content-length"));
 		vec.push_back("HTTP_USER_AGENT=" + req.get_head_val("user-agent"));
-		vec.push_back("SCRIPT_FILENAME=/nfs/homes/rafernan/Desktop/webserv" + req.get_method()[1]);
+		vec.push_back("SCRIPT_FILENAME=/home/rafernan/Projects/webserv" + req.get_method()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.get_method()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.3");
 		vec.push_back("QUERY_STRING=" + req.get_method()[3]);

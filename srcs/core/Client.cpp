@@ -9,7 +9,7 @@ namespace HTTP
 	{}
 
 	Client::Client( void )
-	: state(STATUS_LINE)
+	: state(CONNECTED)
 	{}
 
 	int Message::_updateStatusLine( std::stringstream & ss, size_t n )
@@ -90,11 +90,8 @@ namespace HTTP
 		char				buff[TMP_BUFF];
 
 		if (state == CONNECTED)
-		{
-			timestamp = time(NULL);
 			state = STATUS_LINE;
-		}
-		while ((readval = recv(fd, buff, TMP_BUFF - 1, 0)) > 0)
+		if ((readval = recv(fd, buff, TMP_BUFF - 1, 0)) > 0)
 		{
 			ssize_t i = 0;
 			char * j = 0;
@@ -106,16 +103,22 @@ namespace HTTP
 				if (state == BODY_CONTENT)
 				{
 					size_t content_length = ftStoi(req.get_head_val("content-length"));
-					if (req._body.size() == 0)
+					if (content_length && req._body.size() == 0)
 					{
 						size_t			max_body_size;
-						JSON::Node * 	max_body;
+						JSON::Node * 	max_body = 0;
 						if (req.conf)
 							max_body = req.conf->search(1, "client_max_body_size");
-						max_body_size = max_body ? max_body->as<int>() : 1048576;
+						if (max_body)
+						{
+							max_body_size = max_body->as<int>();
+						}
+						else
+							max_body_size = 1048576;
 						if (max_body_size < content_length)
 						{
-							send(fd, "413", 3, 0);
+							DEBUG2("content-length exceeds max_client_body_size: " << max_body_size);
+							// send(fd, "413", 3, 0);
 							return -1;
 						}
 						
@@ -140,28 +143,21 @@ namespace HTTP
 					n = j - (buff + i);
 					if (n > 0)
 					{
-						//DEBUG2("updating");
 						ss.str(std::string(buff + i, n));
 						ss.seekg(0);
 
 						if (state == STATUS_LINE)
 						{
 							if (req._updateStatusLine(ss, n) == -1)
-							{
-								//DEBUG2("exit 2");
 								return -1;
-							}
 							state = HEADER_FIELDS;
 						}
 						else if (req._updateHeaders(ss, n) == -1)
-						{
-							//DEBUG2("exit 1");
 							return -1;
-						}
 					}
 					else
 					{
-						//DEBUG2("EMPTY");
+						//DEBUG2("BODY");
 						state = BODY_CONTENT;
 					}
 					if (state == HEADER_FIELDS

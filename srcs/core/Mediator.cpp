@@ -359,7 +359,7 @@ namespace HTTP {
 	void	Mediator::cgi_dealer(Message const& req, int client_fd) {
 
 		int	pid, exit_stat;
-		std::string	path("/nfs/homes/rafernan/Desktop/webserv");
+		std::string	path("/home/rafernan/Projects/webserv");
 		path += req.get_method()[1];
 		pid = fork();
 		if (pid == -1)
@@ -450,7 +450,6 @@ namespace HTTP {
 					break ;
 				}
 			}
-			DEBUG2("BYES SENT => " << bytes);
 			close(p[1]);
 			waitpid(pid, &exit_stat, 0);
 		}

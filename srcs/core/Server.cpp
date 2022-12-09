@@ -162,7 +162,11 @@ namespace HTTP
 	{
 		DEBUG2("reading configuration file");
 		if (config.from(filepath) < 0)
+		{
+			std::cerr << "webserv: error: " \
+				<< filepath << ":" << config.err() << std::endl;
 			return -1;
+		}
 		DEBUG2("mapping server sockets");
 		if (listenMap(config, socks) == -1)
 			return -1;
@@ -192,6 +196,7 @@ namespace HTTP
 			}
 		}
 		// if full match remove 0.0.0.0
+		std::list<t_sock_info *>::iterator tmp;
 		if (perfect_match && cli.ai.sin_addr.s_addr != 0)
 		{
 			for (std::list<t_sock_info *>::iterator it = interest.begin();
@@ -199,8 +204,9 @@ namespace HTTP
 			{
 				if (((*it)->addr.sin_addr.s_addr) == 0)
 				{
-					it++;
-					interest.erase(it);
+					tmp = it++;
+					interest.erase(tmp);
+					it--;
 				}
 			}
 		}
@@ -220,7 +226,6 @@ namespace HTTP
 		socklen_t			addrlen;
 
 		memset(&addr, 0, sizeof(addr));
-		DEBUG2("New connection: " << socket);
 		try
 		{
 			if ((socket = accept(
@@ -239,7 +244,7 @@ namespace HTTP
 			cl->fd = socket;
 			cl->ai.sin_addr.s_addr = addr.sin_addr.s_addr;
 			cl->ai.sin_port = si->addr.sin_port;
-			cl->req.conf = matchCon(socks, *cl);
+			cl->req.conf = 0;
 			cl->timestamp = time(NULL);
 		}
 		catch ( std::exception const& e )
@@ -259,9 +264,12 @@ namespace HTTP
 		try
 		{
 			cl = &clients.at(socket);
+			cl->timestamp = time(NULL);
+			if (!cl->req.conf)
+				cl->req.conf = matchCon(socks, *cl);
 			if (cl->update() == -1)
 			{
-				write(cl->fd, "[408] failed parsing", 3);
+				//write(cl->fd, "[408] failed parsing", 3);
 				if (epoll.erase(epoll.events[i].data.fd) == -1)
 					DEBUG2("epoll.erase() failed");
 				clients.erase(epoll.events[i].data.fd);
@@ -344,16 +352,17 @@ namespace HTTP
 		if (cli.req.conf)
 		{
 			cli.req.conf = matchLocation(cli.req.conf, cli.req.get_method()[1]);
-			unsigned int port = htonl(cli.ai.sin_addr.s_addr);
-			std::cerr << std::endl;
-			DEBUG2('[' << epoll.events[i].data.fd << "] [FROM " \
-				<< ((port & 0xff000000) >> 24) << '.' \
-				<< ((port & 0x00ff0000) >> 16) << '.' \
-				<< ((port & 0x0000ff00) >> 8) << '.' \
-				<< (port & 0x000000ff) << ':' << htons(cli.ai.sin_port) << "] [" \
-				<< cli.req.get_method()[0] << ' ' << cli.req.get_method()[1] \
-				<< "] [location " << cli.req.conf->getProperty() << ']');
 		}
+		unsigned int port = htonl(cli.ai.sin_addr.s_addr);
+		std::cerr << std::endl;
+		DEBUG2('[' << epoll.events[i].data.fd << "] [FROM " \
+			<< ((port & 0xff000000) >> 24) << '.' \
+			<< ((port & 0x00ff0000) >> 16) << '.' \
+			<< ((port & 0x0000ff00) >> 8) << '.' \
+			<< (port & 0x000000ff) << ':' << htons(cli.ai.sin_port) << "] [" \
+			<< cli.req.get_method()[0] << ' ' << cli.req.get_method()[1] \
+			<< "] [location " \
+			<< (cli.req.conf ? cli.req.conf->getProperty()  : "NONE") << ']');
 		//DEBUG2(cli.req.response_string());
 		med.method_choice(cli.req, epoll.events[i].data.fd);
 		if (cli.req.get_head_val("connection") == "close")
