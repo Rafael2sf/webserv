@@ -40,7 +40,7 @@ namespace HTTP
 		 * @param med Object that distributes requests based on
 		 * the method stated.
 		*/
-		void ft_handle(Client & cli, int i, Mediator & med);
+		void clientHandler(Client & cli, int i, Mediator & med);
 
 		/**
 		 * @brief Initiates the server with default configurations.
@@ -66,7 +66,7 @@ namespace HTTP
 		 * @ Server must be initialized before looping
 		*/
 		void	loop( void );
-		void	check_times(void);
+		void	connectionTimer(void);
 
 	private:
 		void _receiveConnection( int socket, t_sock_info * si );

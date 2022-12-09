@@ -32,6 +32,10 @@ SRCS		=	$(addsuffix .cpp, \
 					Epoll \
 					Message \
 					Mediator \
+					ARequestHandler \
+					GetHandler \
+					PostHandler \
+					DelHandler \
 					err \
 					Json \
 					Parser \

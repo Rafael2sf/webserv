@@ -60,7 +60,8 @@ namespace HTTP
 			key.erase(--key.end());
 		else
 			return -1;
-		val = wp_trimmer(ss.str().substr(key.size() + 1, n - key.size() - 1));
+		val = ss.str().substr(key.size() + 1, n - key.size() - 1);
+		owsTrimmer(val);
 		if (val.empty())
 			return -1;
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
@@ -102,7 +103,7 @@ namespace HTTP
 			{
 				if (state == BODY_CONTENT)
 				{
-					size_t content_length = ftStoi(req.get_head_val("content-length"));
+					size_t content_length = ftStoi(req.getHeaderVal("content-length"));
 					if (content_length && req._body.size() == 0)
 					{
 						size_t			max_body_size;

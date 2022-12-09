@@ -2,34 +2,43 @@
 
 #include <map>
 #include <string>
-#include <fstream>
-#include <sstream>
 #include <ctime>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 #include "Message.hpp"
 #include "webserv.hpp"
-#include "CGI.hpp"
+#include "GetHandler.hpp"
+#include "DelHandler.hpp"
+#include "PostHandler.hpp"
+
 
 namespace HTTP {
 
+	/**
+	 * @brief Middleman of the server, receives a request and handles it
+	 * depending on the request method.
+	*/
 	class Mediator {
 
 		public:
 			Mediator(void);
 
-			void		method_choice(Message& req, int client_fd);
-			std::string	get_date(time_t now);
-			std::map<std::string, std::string> mime;
-		private:
+			/**
+			 * @brief Redirects the request to the correct handler depending on
+			 * its method.
+			 * @param req Original request as a Message object.
+			 * @param client_fd  File descriptor corresponding to the client who
+			 * made the request (used to send the response).
+			*/
+			void		methodChoice(Client & cl);
 			
-			void	cgi_dealer(Message const& req, int client_fd);
-			void	get(Message const& req, int client_fd);
-			void	post(Message & req, int client_fd);
-			void	del(Message const& req,int client_fd);
+			std::map<std::string, std::string>	mime;
+			std::map<int, std::string>			errorText;
+		
+		private:
 
-			bool	get_file(Message const& req, Message& resp, std::string& path);
-			void	content_encoding(std::fstream & ifs, int client_fd, Message& resp);
+			void	errorPage(Message const& req, int fd, int code);
+
 	};
 }

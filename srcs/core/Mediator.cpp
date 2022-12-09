@@ -1,11 +1,5 @@
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <dirent.h>
 #include "Mediator.hpp"
-#include "Server.hpp"
-
-#define	READ_BUF_SIZE 8000
-#define	DATE_BUF_SIZE 40
+#include "Client.hpp"
 
 namespace HTTP {
 
@@ -124,340 +118,52 @@ namespace HTTP {
 		mime["asf"]		=	"video/x-ms-asf";
 		mime["wmv"]		=	"video/x-ms-wmv";
 		mime["avi"]		=	"video/x-msvideo";
+
+		//Creation of default error pages map
+		errorText[400] = "Bad Request";
+		errorText[403] = "Forbidden";
+		errorText[404] = "Not Found";
+		errorText[405] = "Not Allowed";
+		errorText[406] = "Not Acceptable";
+		errorText[408] = "Request Timeout";
+		errorText[411] = "Length Required";
+		errorText[413] = "Content Too Large";
+		errorText[414] = "URI Too Long";
+		errorText[415] = "Unsuported Media Type";
+		errorText[501] = "Not Implemented";
 	}
 
-	void	Mediator::method_choice(Message& req, int client_fd)
+	void	Mediator::methodChoice(Client & cl)
 	{
-		std::vector<std::string>	method(req.get_method());
+		std::vector<std::string>	method(cl.req.getMethod());
 
-		if (method[0] == "POST")
-			post(req, client_fd);
-		else if (method[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
-			cgi_dealer(req, client_fd);
+		if (method[0] =="POST")
+			PostHandler().execute(cl.req, cl.fd);
 		else if (method[0] == "GET") 
-			get(req, client_fd);
+			GetHandler(mime).execute(cl.req, cl.fd);
 		else if (method[0] == "DELETE")
-			del(req, client_fd);
+			DelHandler().execute(cl.req, cl.fd);
 		else
-			send(client_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", 28, 0);
+			errorPage(cl.req, cl.fd, 501);
+		cl.reset();
 	}
 
-	// static bool replace(std::string& str, const std::string& from, const std::string& to) {
-	// 	size_t start_pos = str.find(from);
-	// 	if (start_pos == std::string::npos)
-	// 		return false;
-	// 	str.replace(start_pos, from.length(), to);
-	// 	return true;
-	// }
-
-	static void errorPage(Message const& req, Message & res,
-		int fd, std::string const& code, std::string const& path)
+	void	Mediator::errorPage(Message const& req, int fd, int code)
 	{
 		std::string	str;
+		Message 	res;
+		(void)req;
 
-		res.create_vec_method("HTTP/1.1 " + code + " Not Found");
-		res.add("Content-Type", "text/html");
-		try
-		{
-			if (!req.conf)
-				throw std::logic_error("request doesn't mach any configuration");
-			if ((*req.conf)["autoindex"].as<bool>())
-			{
-				str = "<html><head>file explorer</head><body><hr><pre>";
-				DIR * dirp = opendir(path.c_str());
-				if (!dirp)
-					throw std::invalid_argument("no such directory");
-				dirent * dp;
-				str += "<a href=\"../\"/>../</a>\n";
-				while ((dp = readdir(dirp)) != NULL)
-				{
-					struct stat stat;
-					if (dp->d_name[0] != '.')
-					{
-						if (lstat(std::string(path.c_str() + std::string(dp->d_name)).c_str(), &stat) != -1
-							&& S_ISDIR(stat.st_mode))
-						{
-							str += "<a href=\"" + std::string(dp->d_name) \
-							+ "/\"/>" + std::string(dp->d_name) + "/</a>\n";
-						}
-						else
-						{
-							str += "<a href=\"" + std::string(dp->d_name) \
-							+ "\"/>" + std::string(dp->d_name) + "</a>\n";
-						}
-					}
-				}
-				closedir(dirp);
-				str += "</hr></pre></body></html>";
-				std::ostringstream ss;
-				ss << str.length();
-				res.add("Content-length", ss.str());
-				res.setBody(str);
-			}
-			else
-				throw std::invalid_argument("autoindex: false");
-		}
-		catch(const std::exception& e)
-		{
-			//DEBUG2(e.what());
-			// TODO: error_page
-			res.add("Content-length", "12");
-			res.setBody("<h1>" + code + "</h1>");
-		}
-		str = res.response_string();
+
+		res.createMethodVec("HTTP/1.1 " + ftItos(code) + errorText[code]);
+		res.add("content-type", "text/html");
+		//res.add("date", getDate(time(0)));
+
+		res.add("content-length", "12");
+		res.setBody("<h1>" + ftItos(code) + "</h1>");
+		str = res.responseString();
 		send(fd, str.c_str(), str.size(), 0);
 		return ;
 	}
-
-	void	Mediator::get(Message const& req, int client_fd)
-	{
-		std::string	path;
-		Message		res;
-
-		// set all standart headers
-		res.add("Server", "Webserv/0.3");
-		res.add("Date", get_date(time(0)));
-		if (req.get_head_val("connection") == "close")
-			res.add("Connection", "close");
-		else
-			res.add("Connection", "keep-alive");
-
-		if (req.conf)
-		{
-			// find full path
-			try {
-				path = (*req.conf)["root"].as<std::string const&>();
-				if (*--path.end() == '/')
-					path.erase(--path.end());
-				path += req.get_method()[1];
-				DEBUG2("path = " << path);
-			}
-			catch (std::exception const&) {path.clear();}
-
-			if (path.empty() || !get_file(req, res, path))
-				return errorPage(req, res, client_fd, "404", path);
-			//Last-Modified header creation
-			struct stat f_info;
-			stat(path.c_str(), &f_info);
-			res.add("Last-Modified", get_date(f_info.st_mtime));
-		}
-		else
-		{
-			DEBUG2("no config");
-			return errorPage(req, res, client_fd, "404", path);
-		}
-
-		std::fstream	ifs(path.c_str());
-		if (!ifs.is_open())
-			DEBUG2("I AM CLOSED!!!!");
-		content_encoding(ifs, client_fd, res);
-	}
-
-	bool	Mediator::get_file(Message const& req,
-		Message& resp, std::string& path)
-	{
-		std::ifstream	ifs(path.c_str());
-		struct stat		stat;
-		std::string		path_index;
-
-		if (!ifs.is_open())
-			return false;
-		if (lstat(path.c_str(), &stat) == -1)
-			return false;
-		if (S_ISDIR(stat.st_mode))
-		{
-			try
-			{
-				path_index = path + (*req.conf)["index"].as<std::string const&>();
-				ifs.close();
-				ifs.open(path_index.c_str());
-				if (!ifs.is_open())
-					return false;
-				path = path_index;
-			}
-			catch (std::exception const&) {return false;}
-		}
-
-		resp.create_vec_method("HTTP/1.1 200 OK");
-		size_t index = path.find(".");
-		//temporary mimes
-		//DEBUG2("str = " << str);
-		// char const* dot = strrchr(str , '.');
-		if (index == std::string::npos)
-			resp.add("Content-type", "text/html"); // default
-		else
-		{
-			//DEBUG2("type = " << *dot);
-			std::map<std::string, std::string>::const_iterator
-					mime_val =	mime.find(path.c_str() + index + 1);
-			if (mime_val != mime.end())
-				resp.add("Content-type", mime_val->second);
-			else
-				resp.add("Content-type", "text/html"); // default
-		}
-		return true;
-	};
-
-	std::string	Mediator::get_date(time_t now) {
-		
-		tm*		current_time;
-		char	buffer[DATE_BUF_SIZE];
-		std::string	ret;
-
-		memset(buffer, 0, DATE_BUF_SIZE);
-		current_time = localtime(&now);
-		strftime(buffer, DATE_BUF_SIZE, "%a, %d %b %Y %X %Z",current_time);
-		ret = buffer;
-		return ret;
-	};
-
-	void		Mediator::content_encoding(std::fstream & ifs, int client_fd, Message& resp) {
-		
-		char				buf[READ_BUF_SIZE];
-		std::stringstream	ss;
-		std::string			str;
-		int					read_nbr;
-		std::string			new_buf;
-		
-		memset(buf, 0, READ_BUF_SIZE);
-		ifs.read(buf, READ_BUF_SIZE);
-		read_nbr = ifs.gcount();
-		if (read_nbr != READ_BUF_SIZE) {
-			ss << read_nbr;
-			ss >> str;
-			resp.add("Content-Length", str);
-			new_buf.assign(buf, read_nbr);
-			resp.setBody(new_buf);
-			str = resp.response_string();
-			send(client_fd, str.c_str(), str.size(), 0);
-		}
-		else
-		{
-			resp.add("Transfer-Encoding", "chunked");
-			str = resp.response_string();
-			str += "\r\n";
-			send(client_fd, str.c_str(), str.size(), 0);
-			str.clear();
-			while (read_nbr != 0) {
-				ss << std::hex << read_nbr;
-				ss >> str;
-				ss.clear();
-				str += "\r\n";
-				new_buf.assign(buf, read_nbr);
-				str += new_buf + "\r\n";
-				send(client_fd, str.c_str(), str.size(), 0);
-				memset(buf, 0, READ_BUF_SIZE);
-				new_buf.clear();
-				str.clear();
-				ifs.read(buf, READ_BUF_SIZE);
-				read_nbr = ifs.gcount();
-			}
-			send(client_fd, "0\r\n\r\n", 5, 0);
-		}
-	};
-
-	void	Mediator::cgi_dealer(Message const& req, int client_fd) {
-
-		int	pid, exit_stat;
-		std::string	path("/home/rafernan/Projects/webserv");
-		path += req.get_method()[1];
-		pid = fork();
-		if (pid == -1)
-			DEBUG2("fork failed");
-		if (pid == 0) {
-			
-			CGI	test(req);
-			if (dup2(client_fd, STDOUT_FILENO) == -1)
-			{
-				write(2, "error: fatal\n", 13);
-				exit(EXIT_FAILURE);
-			}
-			execve("/usr/bin/python3", test.getArgs(), test.getEnv());
-			DEBUG2("EXECVE FAILED!!");
-		}
-		else {
-			waitpid(pid, &exit_stat, 0);
-		}
-	};
-
-	void	Mediator::post(Message & req, int client_fd) {
-		DEBUG2("This is a POST request");
-		// int	read_nbr = 1;
-		// char buf[RECEIVE_BUF_SIZE];
-		// std::string	new_buf;
-		
-		// read_nbr = recv(client_fd, buf, 30000, 0);
-		// while (read_nbr > 0) {
-		// 	new_buf.assign(buf, read_nbr);
-		// 	req.addToVal("body", new_buf);
-		// 	memset(buf, 0, 30000);
-		// 	new_buf.clear();
-		// 	read_nbr = recv(client_fd, buf, 30000, 0);
-		// 	//DEBUG2(read_nbr);
-		// }
-		
-		std::string playing = req.getBody();
-
-		int	exit_stat;
-		int p[2];
-		pipe(p);
-		int	pid = fork();
-		if (pid == -1)
-			DEBUG2("fork failed");
-		if (pid == 0) {
-			
-			close(p[1]);
-			CGI	test(req);
-			//write(p[1], playing.c_str(), playing.size());
-			if (dup2(p[0], STDIN_FILENO) == -1)
-			{
-				write(2, "error: fatal\n", 13);
-				exit(EXIT_FAILURE);
-			}
-			close (p[0]);
-			if (dup2(client_fd, STDOUT_FILENO) == -1)
-			{
-				write(2, "error: fatal\n", 13);
-				exit(EXIT_FAILURE);
-			}
-			execve("/usr/bin/python3", test.getArgs(), test.getEnv());
-			exit (1);
-		}
-		else {
-			close(p[0]);
-			// size_t wsize = 0;
-			// for (size_t b = 0; b < playing.size(); b += 65000)
-			// {
-			// 	wsize = 65000;
-			// 	if (b > playing.size())
-			// 		wsize = b - playing.size();
-			// 	write(p[1], playing.c_str() + b, wsize);
-			// }
-			// close(p[1]);
-			// waitpid(pid, &exit_stat, 0);
-			int	bytes = 0;
-			while (1)
-			{
-				if (playing.size() - bytes > 32000)
-				{
-					write(p[1], playing.c_str() + bytes, 65000);
-					bytes += 65000;
-				}
-				else
-				{
-					write(p[1], playing.c_str() + bytes, playing.size() - bytes);
-					bytes += playing.size() - bytes;
-					break ;
-				}
-			}
-			close(p[1]);
-			waitpid(pid, &exit_stat, 0);
-		}
-	}
-
-	void	Mediator::del(Message const& req, int client_fd) {
-		(void)req;
-		(void)client_fd;
-		DEBUG2("This is a DELETE request");
-	}
+	
 }

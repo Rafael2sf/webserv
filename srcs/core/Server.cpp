@@ -275,7 +275,7 @@ namespace HTTP
 				clients.erase(epoll.events[i].data.fd);
 			}
 			if (cl->ok())
-				ft_handle(*cl, i, med);
+				clientHandler(*cl, i, med);
 		}
 		catch (const std::exception &e)
 		{
@@ -298,11 +298,9 @@ namespace HTTP
 		while (1)
 		{
 			if (!state)
-				break;
-			check_times();
+				break ;
+			connectionTimer();
 			events = epoll.wait();
-			if (events <= 0)
-				continue;
 			for (int i = 0; i < events; i++)
 			{
 				socket = epoll.events[i].data.fd;
@@ -347,12 +345,10 @@ namespace HTTP
 		return last_match;
 	}
 
-	void Server::ft_handle(Client &cli, int i, Mediator &med)
+	void Server::clientHandler(Client &cli, int i, Mediator &med)
 	{
 		if (cli.req.conf)
-		{
-			cli.req.conf = matchLocation(cli.req.conf, cli.req.get_method()[1]);
-		}
+			cli.req.conf = matchLocation(cli.req.conf, cli.req.getMethod()[1]);
 		unsigned int port = htonl(cli.ai.sin_addr.s_addr);
 		std::cerr << std::endl;
 		DEBUG2('[' << epoll.events[i].data.fd << "] [FROM " \
@@ -360,12 +356,12 @@ namespace HTTP
 			<< ((port & 0x00ff0000) >> 16) << '.' \
 			<< ((port & 0x0000ff00) >> 8) << '.' \
 			<< (port & 0x000000ff) << ':' << htons(cli.ai.sin_port) << "] [" \
-			<< cli.req.get_method()[0] << ' ' << cli.req.get_method()[1] \
+			<< cli.req.getMethod()[0] << ' ' << cli.req.getMethod()[1] \
 			<< "] [location " \
 			<< (cli.req.conf ? cli.req.conf->getProperty()  : "NONE") << ']');
 		//DEBUG2(cli.req.response_string());
-		med.method_choice(cli.req, epoll.events[i].data.fd);
-		if (cli.req.get_head_val("connection") == "close")
+		med.methodChoice(cli);
+		if (cli.req.getHeaderVal("connection") == "close")
 		{
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
 				DEBUG2("epoll.erase() failed");
@@ -374,9 +370,8 @@ namespace HTTP
 		cli.reset();
 	}
 
-	void Server::check_times(void)
-	{
-
+	void	Server::connectionTimer(void) {
+		
 		double seconds = time(NULL);
 
 		for (std::map<int, Client>::iterator it = clients.begin();
