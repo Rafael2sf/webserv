@@ -19,5 +19,4 @@ namespace HTTP {
 
 		cgiDealer(req, client_fd);
 	};
-
 }

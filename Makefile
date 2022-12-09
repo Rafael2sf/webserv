@@ -31,7 +31,6 @@ SRCS		=	$(addsuffix .cpp, \
 					Sockets \
 					Epoll \
 					Message \
-					Mediator \
 					ARequestHandler \
 					GetHandler \
 					PostHandler \

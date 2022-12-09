@@ -39,6 +39,7 @@ namespace HTTP
 		int update( void );
 		bool ok( void );
 		void reset( void );
+		void error(int code);
 
 	private:
 		int state;

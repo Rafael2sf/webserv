@@ -54,6 +54,6 @@ namespace HTTP {
 			void	cgiDealer(Message const& req, int client_fd);
 
 			
-			std::map<int, std::string>			errorText;
+			//std::map<int, std::string>			errorText;
 	};
 }

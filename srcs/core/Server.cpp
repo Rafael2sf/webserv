@@ -1,8 +1,16 @@
 #include "Server.hpp"
+#include "PostHandler.hpp"
+#include "GetHandler.hpp"
+#include "DelHandler.hpp"
 
 namespace HTTP
 {
-	int Server::state = 1;
+	int 
+		Server::state = 1;
+	std::map<std::string, std::string>	
+		Server::mime = std::map<std::string, std::string>();
+	std::map<int, std::string>
+		Server::error = std::map<int, std::string>();
 
 	Server::~Server(void)
 	{
@@ -219,17 +227,14 @@ namespace HTTP
 	}
 
 	void
-	Server::_receiveConnection( int socket, t_sock_info * si )
+	Server::_accept( t_sock_info const& si )
 	{
+		int					socket;
 		Client * 			cl;
-		struct sockaddr_in	addr;
-		socklen_t			addrlen;
 
-		memset(&addr, 0, sizeof(addr));
 		try
 		{
-			if ((socket = accept(
-				socket, (struct sockaddr *)&addr, &addrlen)) == -1)
+			if ((socket = accept(si.fd, 0, 0)) == -1)
 			{
 				err(-1);
 				return ;
@@ -242,8 +247,8 @@ namespace HTTP
 			cl = &clients.insert(clients.end(), 
 				std::make_pair(socket, Client()))->second;
 			cl->fd = socket;
-			cl->ai.sin_addr.s_addr = addr.sin_addr.s_addr;
-			cl->ai.sin_port = si->addr.sin_port;
+			cl->ai.sin_addr.s_addr = si.addr.sin_addr.s_addr;
+			cl->ai.sin_port = si.addr.sin_port;
 			cl->req.conf = 0;
 			cl->timestamp = time(NULL);
 		}
@@ -256,11 +261,10 @@ namespace HTTP
 	}
 
 	void
-	Server::_updateConnection( int i, int socket, Mediator & med )
+	Server::_update( int i, int socket )
 	{
 		Client * cl;
 
-		(void) med;
 		try
 		{
 			cl = &clients.at(socket);
@@ -275,11 +279,11 @@ namespace HTTP
 				clients.erase(epoll.events[i].data.fd);
 			}
 			if (cl->ok())
-				clientHandler(*cl, i, med);
+				clientHandler(*cl, i);
 		}
 		catch (const std::exception &e)
 		{
-			DEBUG2("[500] failed to update client: " << e.what());
+			cl->error(500);
 			epoll.erase(socket);
 			clients.erase(socket);
 		}
@@ -289,7 +293,7 @@ namespace HTTP
 	Server::loop(void)
 	{
 		t_sock_info *	si;
-		Mediator 		med;
+		//Mediator 		med;
 		int				socket;
 		int				events;
 
@@ -299,20 +303,19 @@ namespace HTTP
 		{
 			if (!state)
 				break ;
-			connectionTimer();
+			_timeout();
 			events = epoll.wait();
 			for (int i = 0; i < events; i++)
 			{
 				socket = epoll.events[i].data.fd;
 				si = socks.find(socket);
 				if (si)
-					_receiveConnection(socket, si);
+					_accept(*si);
 				else
-					_updateConnection(i, socket, med);
+					_update(i, socket);
 			}
 		}
 	}
-
 
 	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
 	{
@@ -345,7 +348,21 @@ namespace HTTP
 		return last_match;
 	}
 
-	void Server::clientHandler(Client &cli, int i, Mediator &med)
+	void	Server::methodChoice(Client & cl)
+	{
+		std::vector<std::string>	method(cl.req.getMethod());
+
+		if (method[0] =="POST")
+			PostHandler().execute(cl.req, cl.fd);
+		else if (method[0] == "GET") 
+			GetHandler().execute(cl.req, cl.fd);
+		else if (method[0] == "DELETE")
+			DelHandler().execute(cl.req, cl.fd);
+		else
+			cl.error(501);
+	}
+
+	void Server::clientHandler(Client &cli, int i)
 	{
 		if (cli.req.conf)
 			cli.req.conf = matchLocation(cli.req.conf, cli.req.getMethod()[1]);
@@ -360,7 +377,7 @@ namespace HTTP
 			<< "] [location " \
 			<< (cli.req.conf ? cli.req.conf->getProperty()  : "NONE") << ']');
 		//DEBUG2(cli.req.response_string());
-		med.methodChoice(cli);
+		methodChoice(cli);
 		if (cli.req.getHeaderVal("connection") == "close")
 		{
 			if (epoll.erase(epoll.events[i].data.fd) == -1)
@@ -370,7 +387,7 @@ namespace HTTP
 		cli.reset();
 	}
 
-	void	Server::connectionTimer(void) {
+	void	Server::_timeout(void) {
 		
 		double seconds = time(NULL);
 
@@ -388,5 +405,136 @@ namespace HTTP
 					break;
 			}
 		}
+	}
+
+	void  Server::_init( void )
+	{
+		mime["html"]	=	"text/html";
+		mime["htm"]		=	"text/html";
+		mime["shtml"]	=	"text/html";
+		mime["css"]		=	"text/css";
+		mime["xml"]		=	"text/xml";
+		mime["gif"]		=	"image/gif";
+		mime["jpeg"]	=	"image/jpeg";
+		mime["jpg"]		=	"image/jpeg";
+		mime["js"]		=	"application/javascript";
+		mime["atom"]	=	"application/atom+xml";
+		mime["rss"]		=	"application/rss+xml";
+
+		mime["mml"]		=	"text/mathml";
+		mime["txt"]		=	"text/plain";
+		mime["jad"]		=	"text/vnd.sun.j2me.app-descriptor";
+		mime["wml"]		=	"text/vnd.wap.wml";
+		mime["htc"]		=	"text/x-component";
+
+		mime["png"]		=	"image/png";
+		mime["tif"]		=	"image/tiff";
+		mime["tiff"]	=	"image/tiff";
+		mime["wbmp"]	=	"image/vnd.wap.wbmp";
+		mime["ico"]		=	"image/x-icon";
+		mime["jng"]		=	"image/x-jng";
+		mime["bmp"]		=	"image/x-ms-bmp";
+		mime["svg"]		=	"image/svg+xml";
+		mime["svgz"]	=	"image/svg+xml";
+		mime["webp"]	=	"image/webp";
+
+		mime["woff"]	=	"application/font-woff";
+		mime["jar"]		=	"application/java-archive";
+		mime["war"]		=	"application/java-archive";
+		mime["ear"]		=	"application/java-archive";
+		mime["json"]	=	"application/json";
+		mime["hqx"]		=	"application/mac-binhex40";
+		mime["doc"]		=	"application/msword";
+		mime["pdf"]		=	"application/pdf";
+		mime["ps"]		=	"application/postscript";
+		mime["eps"]		=	"application/postscript";
+		mime["ai"]		=	"application/postscript";
+		mime["rtf"]		=	"application/rtf";
+		mime["m3u8"]	=	"application/vnd.apple.mpegurl";
+		mime["xls"]		=	"application/vnd.ms-excel";
+		mime["eot"]		=	"application/vnd.ms-fontobject";
+		mime["ppt"]		=	"application/vnd.ms-powerpoint";
+		mime["wmlc"]	=	"application/vnd.wap.wmlc";
+		mime["kml"]		=	"application/vnd.google-earth.kml+xml";
+		mime["kmz"]		=	"application/vnd.google-earth.kmz";
+		mime["7z"]		=	"application/x-7z-compressed";
+		mime["cco"]		=	"application/x-cocoa";
+		mime["jardiff"]	=	"application/x-java-archive-diff";
+		mime["jnlp"]	=	"application/x-java-jnlp-file";
+		mime["run"]		=	"application/x-makeself";
+		mime["pl"]		=	"application/x-perl";
+		mime["pm"]		=	"application/x-perl";
+		mime["prc"]		=	"application/x-pilot";
+		mime["pdb"]		=	"application/x-pilot";
+		mime["rar"]		=	"application/x-rar-compressed";
+		mime["rpm"]		=	"application/x-redhat-package-manager";
+		mime["sea"]		=	"application/x-sea";
+		mime["swf"]		=	"application/x-shockwave-flash";
+		mime["sit"]		=	"application/x-stuffit";
+		mime["tcl"]		=	"application/x-tcl";
+		mime["tk"]		=	"application/x-tcl";
+		mime["der"]		=	"application/x-x509-ca-cert";
+		mime["pem"]		=	"application/x-x509-ca-cert";
+		mime["crt"]		=	"application/x-x509-ca-cert";
+		mime["xpi"]		=	"application/x-xpinstall";
+		mime["xhtml"]	=	"application/xhtml+xml";
+		mime["xspf"]	=	"application/xspf+xml";
+		mime["zip"]		=	"application/zip";
+
+		mime["bin"]		=	"application/octet-stream";
+		mime["exe"]		=	"application/octet-stream";
+		mime["dll"]		=	"application/octet-stream";
+		mime["deb"]		=	"application/octet-stream";
+		mime["dmg"]		=	"application/octet-stream";
+		mime["iso"]		=	"application/octet-stream";
+		mime["img"]		=	"application/octet-stream";
+		mime["msi"]		=	"application/octet-stream";
+		mime["msp"]		=	"application/octet-stream";
+		mime["msm"]		=	"application/octet-stream";
+
+		mime["docx"]	=	\
+		 "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+		mime["xlsx"]	=	\
+		 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+		mime["pptx"]	=	\
+		 "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+		mime["mid"]		=	"audio/midi";
+		mime["midi"]	=	"audio/midi";
+		mime["kar"]		=	"audio/midi";
+		mime["mp3"]		=	"audio/mpeg";
+		mime["ogg"]		=	"audio/ogg";
+		mime["m4a"]		=	"audio/x-m4a";
+		mime["ra"]		=	"audio/x-realaudio";
+
+		mime["3gpp"]	=	"video/3gpp";
+		mime["3gp"]		=	"video/3gpp";
+		mime["ts"]		=	"video/mp2t";
+		mime["mp4"]		=	"video/mp4";
+		mime["mpeg"]	=	"video/mpeg";
+		mime["mpg"]		=	"video/mpeg";
+		mime["mov"]		=	"video/quicktime";
+		mime["webm"]	=	"video/webm";
+		mime["flv"]		=	"video/x-flv";
+		mime["m4v"]		=	"video/x-m4v";
+		mime["mng"]		=	"video/x-mng";
+		mime["asx"]		=	"video/x-ms-asf";
+		mime["asf"]		=	"video/x-ms-asf";
+		mime["wmv"]		=	"video/x-ms-wmv";
+		mime["avi"]		=	"video/x-msvideo";
+
+		//Creation of default error pages map
+		error[400] = "Bad Request";
+		error[403] = "Forbidden";
+		error[404] = "Not Found";
+		error[405] = "Not Allowed";
+		error[406] = "Not Acceptable";
+		error[408] = "Request Timeout";
+		error[411] = "Length Required";
+		error[413] = "Content Too Large";
+		error[414] = "URI Too Long";
+		error[415] = "Unsuported Media Type";
+		error[500] = "Internal Server Error";
+		error[501] = "Not Implemented";
 	}
 }

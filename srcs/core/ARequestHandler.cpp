@@ -1,4 +1,6 @@
 #include "ARequestHandler.hpp"
+//#include "Mediator.hpp"
+#include "Server.hpp"
 
 namespace HTTP
 {
@@ -6,17 +8,17 @@ namespace HTTP
 	ARequestHandler::ARequestHandler(void) {
 
 		//Creation of default error pages map
-		errorText[400] = "Bad Request";
-		errorText[403] = "Forbidden";
-		errorText[404] = "Not Found";
-		errorText[405] = "Not Allowed";
-		errorText[406] = "Not Acceptable";
-		errorText[408] = "Request Timeout";
-		errorText[411] = "Length Required";
-		errorText[413] = "Content Too Large";
-		errorText[414] = "URI Too Long";
-		errorText[415] = "Unsuported Media Type";
-		errorText[501] = "Not Implemented";
+		// errorText[400] = "Bad Request";
+		// errorText[403] = "Forbidden";
+		// errorText[404] = "Not Found";
+		// errorText[405] = "Not Allowed";
+		// errorText[406] = "Not Acceptable";
+		// errorText[408] = "Request Timeout";
+		// errorText[411] = "Length Required";
+		// errorText[413] = "Content Too Large";
+		// errorText[414] = "URI Too Long";
+		// errorText[415] = "Unsuported Media Type";
+		// errorText[501] = "Not Implemented";
 	};
 
 	ARequestHandler::ARequestHandler(ARequestHandler const& cpy) { (void)cpy;} ;
@@ -91,7 +93,7 @@ namespace HTTP
 		(void)req;
 
 
-		res.createMethodVec("HTTP/1.1 " + ftItos(code) + errorText[code]);
+		res.createMethodVec("HTTP/1.1 " + ftItos(code) + Server::error[code]);
 		res.add("content-type", "text/html");
 		res.add("date", getDate(time(0)));
 
@@ -99,7 +101,6 @@ namespace HTTP
 		res.setBody("<h1>" + ftItos(code) + "</h1>");
 		str = res.responseString();
 		send(fd, str.c_str(), str.size(), 0);
-		DEBUG2("ERROR SENT");
 		return ;
 	}
 }

@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <iomanip>
 #include "Node.hpp"
+#include "Server.hpp"
 
 namespace HTTP
 {
@@ -98,7 +99,6 @@ namespace HTTP
 			char * j = 0;
 			size_t n = 0;
 			buff[readval] = 0;
-			//DEBUG2('[' << readval << "] " << "RECEIVED = " << buff);
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
@@ -119,17 +119,14 @@ namespace HTTP
 						if (max_body_size < content_length)
 						{
 							DEBUG2("content-length exceeds max_client_body_size: " << max_body_size);
-							// send(fd, "413", 3, 0);
+							error(413);
 							return -1;
 						}
 						
 					}
-					//DEBUG2("CONTENT_LENGTH = " << content_length);
 					if (!content_length || req._updateBody(buff + i,
 						(buff + readval) - (buff + i), content_length) == 0)
 					{
-						//std::cout << req._body << std::endl;
-						//DEBUG2("PARSE SUCCESS");
 						state = OK;
 						return 0;
 					}
@@ -150,11 +147,17 @@ namespace HTTP
 						if (state == STATUS_LINE)
 						{
 							if (req._updateStatusLine(ss, n) == -1)
+							{
+								error(400);
 								return -1;
+							}
 							state = HEADER_FIELDS;
 						}
 						else if (req._updateHeaders(ss, n) == -1)
+						{
+							error(400);
 							return -1;
+						}
 					}
 					else
 					{
@@ -179,13 +182,32 @@ namespace HTTP
 						j++;
 				}
 				else
+				{
+					error(400);
 					return -1;
+				}
 				i += j - (buff + i);
 			}
 		}
 		if (state == STATUS_LINE)
+		{
+			error(400);
 			return -1;
+		}
 		return 0;
+	}
+
+	void Client::error(int code)
+	{
+		std::string str;
+
+		res.createMethodVec("HTTP/1.1 " + ftItos(code) + Server::error[code]);
+		res.add("content-type", "text/html");
+		res.add("content-length", "12");
+		res.setBody("<h1>" + ftItos(code) + "</h1>");
+		str = res.responseString();
+		send(fd, str.c_str(), str.size(), 0);
+		return ;
 	}
 
 	bool Client::ok( void )

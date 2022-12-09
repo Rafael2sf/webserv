@@ -12,6 +12,11 @@ void handle_ctrl_c( int signum )
 	DEBUG2("stopping ...");
 }
 
+// static void add_handler(std::string const& str, void *(*HTTP::ARequestHandler::execute f)(void) )
+// {
+
+// }
+
 int		main( int argc, char **argv )
 {
 	HTTP::Server	server;

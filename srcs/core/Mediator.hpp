@@ -33,9 +33,9 @@ namespace HTTP {
 			*/
 			void		methodChoice(Client & cl);
 			
-			std::map<std::string, std::string>	mime;
-			std::map<int, std::string>			errorText;
-		
+			static std::map<std::string, std::string>	mime;
+			static std::map<int, std::string>			error;
+
 		private:
 
 			void	errorPage(Message const& req, int fd, int code);

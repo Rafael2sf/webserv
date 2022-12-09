@@ -5,7 +5,7 @@
 		"location" : {
 			"/" : {
 				"root" : "/home/rafernan/Projects/webserv/www/",
-				"autoindex" : false
+				"autoindex" : true
 			}
 		}
 	}

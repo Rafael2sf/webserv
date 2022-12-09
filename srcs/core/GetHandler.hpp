@@ -13,16 +13,16 @@ namespace HTTP {
 
 	class GetHandler : public ARequestHandler {
 		public:
-			GetHandler(std::map<std::string, std::string> const& mime);
+			//GetHandler(std::map<std::string, std::string> const& mime);
 			virtual ~GetHandler();
-			GetHandler(GetHandler const& cpy);
+			GetHandler( void );
 			GetHandler&	operator=(GetHandler const& rhs);
 
 			virtual void execute(Message const& req, int client_fd);
-		
+
 		private:
 
-			std::map<std::string, std::string> const&	mime;
+			//std::map<std::string, std::string> const&	mime;
 			/**
 			 * @brief Helper function to GET request handler. It first verifies
 			 * if the file exists and has the necessary permissions, then, if so,

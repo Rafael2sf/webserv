@@ -5,7 +5,7 @@
 #include "Sockets.hpp"
 #include "Epoll.hpp"
 #include "Message.hpp"
-#include "Mediator.hpp"
+//#include "Mediator.hpp"
 #include "webserv.hpp"
 #include "Client.hpp"
 #include "Json.hpp"
@@ -28,10 +28,7 @@ namespace HTTP
 		Server & operator=( Server const& rhs);
 
 		static int				state;
-		Sockets					socks;
-		Epoll					epoll;
-		JSON::Json				config;
-		std::map<int, Client>	clients;
+
 
 		/**
 		 * @brief Handles the reception, treatment and response
@@ -40,7 +37,7 @@ namespace HTTP
 		 * @param med Object that distributes requests based on
 		 * the method stated.
 		*/
-		void clientHandler(Client & cli, int i, Mediator & med);
+		void clientHandler(Client & cli, int i);
 
 		/**
 		 * @brief Initiates the server with default configurations.
@@ -66,10 +63,21 @@ namespace HTTP
 		 * @ Server must be initialized before looping
 		*/
 		void	loop( void );
-		void	connectionTimer(void);
+
+		void	methodChoice(Client & cl);
+
+		static std::map<std::string, std::string>	mime;
+		static std::map<int, std::string>			error;
 
 	private:
-		void _receiveConnection( int socket, t_sock_info * si );
-		void _updateConnection( int i, int socket, Mediator & med );
+		Sockets					socks;
+		Epoll					epoll;
+		JSON::Json				config;
+		std::map<int, Client>	clients;
+
+		void _init( void );
+		void _timeout(void);
+		void _accept( t_sock_info const& si );
+		void _update( int i, int socket );
 	};
 }

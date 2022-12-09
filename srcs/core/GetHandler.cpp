@@ -1,36 +1,31 @@
 #include "GetHandler.hpp"
+//#include "Mediator.hpp"
+#include "Server.hpp"
 
 namespace HTTP {
 
-	GetHandler::GetHandler(std::map<std::string, std::string> const& m): ARequestHandler(), mime(m) {
-	}
+	// GetHandler::GetHandler(std::map<std::string, std::string> const& m)
+	// : ARequestHandler()
+	// {}
 
-	GetHandler::~GetHandler(void) {
-	}
+	GetHandler::~GetHandler(void)
+	{}
 
-	GetHandler::GetHandler(GetHandler const& cpy): ARequestHandler(), mime(cpy.mime) {};
+	GetHandler::GetHandler( void )
+	{}
 
 	GetHandler&	GetHandler::operator=(GetHandler const& rhs) {
 		(void)rhs;
 		return *this;
 	};
 
-	// static bool replace(std::string& str, const std::string& from, const std::string& to) {
-	// 	size_t start_pos = str.find(from);
-	// 	if (start_pos == std::string::npos)
-	// 		return false;
-	// 	str.replace(start_pos, from.length(), to);
-	// 	return true;
-	// }
-
-	void GetHandler::execute(Message const& req, int client_fd) {
+	void GetHandler::execute(Message const& req, int client_fd)
+	{
 		if (req.getMethod()[1].find(".py") != std::string::npos) //Deal with names containing .cgi elsewhere
 		{
 			cgiDealer(req, client_fd);
 			return;
 		}
-
-		DEBUG2("GET");
 
 		std::string	path;
 		FILE*		fp;
@@ -45,11 +40,9 @@ namespace HTTP {
 				if (*--path.end() == '/')
 					path.erase(--path.end());
 				path += req.getMethod()[1];
-				DEBUG2("PATH OK");
 				fp = getFile(req, path, client_fd);
 				if (fp == NULL)
 					return;
-				DEBUG2("path = " << path);
 			}
 			catch (std::exception const&) {path.clear();}
 
@@ -70,8 +63,8 @@ namespace HTTP {
 		{
 			//DEBUG2("type = " << *dot);
 			std::map<std::string, std::string>::const_iterator
-					mime_val =	mime.find(path.c_str() + index + 1);
-			if (mime_val != mime.end())
+					mime_val =	Server::mime.find(path.c_str() + index + 1);
+			if (mime_val != Server::mime.end())
 				res.add("content-type", mime_val->second);
 			else
 				res.add("content-type", "text/html"); // default
@@ -113,8 +106,6 @@ namespace HTTP {
 			try
 			{
 				path_index = path + (*req.conf)["index"].as<std::string const&>();
-				DEBUG2("path = " << path_index);
-
 				fclose(fp);
 				if ((fp = fopen(path_index.c_str(), "r")) == NULL) {
 					if (errno == ENOENT) {
@@ -135,6 +126,7 @@ namespace HTTP {
 		}
 		return fp;
 	}
+
 	void	GetHandler::contentEncoding(FILE * fp, int client_fd, Message& resp) {
 		
 		char				buf[READ_BUF_SIZE];
@@ -145,7 +137,6 @@ namespace HTTP {
 		
 		memset(buf, 0, READ_BUF_SIZE);
 		read_nbr = fread(buf, 1, READ_BUF_SIZE, fp);
-		DEBUG2("BYTES READ: " << read_nbr);
 		if (read_nbr != READ_BUF_SIZE) {
 			ss << read_nbr;
 			ss >> str;
@@ -185,7 +176,6 @@ namespace HTTP {
 		std::string	str;
 		Message		res;
 
-		DEBUG2("INDEXING");
 		res.createMethodVec("HTTP/1.1 404 Not Found");
 		res.add("content-type", "text/html");
 		res.add("date", getDate(time(0)));
@@ -237,7 +227,6 @@ namespace HTTP {
 		}
 		str = res.responseString();
 		send(fd, str.c_str(), str.size(), 0);
-		DEBUG2("RESPONSE SENT");
 		return ;
 	};
 }

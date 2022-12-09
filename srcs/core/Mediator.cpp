@@ -1,7 +1,10 @@
-#include "Mediator.hpp"
 #include "Client.hpp"
+//#include "Mediator.hpp"
 
 namespace HTTP {
+
+	std::map<std::string, std::string>	Mediator::mime = std::map<std::string, std::string>	();
+	std::map<int, std::string>			Mediator::errors = std::map<int, std::string>();
 
 	Mediator::Mediator(void)
 	{
@@ -120,20 +123,20 @@ namespace HTTP {
 		mime["avi"]		=	"video/x-msvideo";
 
 		//Creation of default error pages map
-		errorText[400] = "Bad Request";
-		errorText[403] = "Forbidden";
-		errorText[404] = "Not Found";
-		errorText[405] = "Not Allowed";
-		errorText[406] = "Not Acceptable";
-		errorText[408] = "Request Timeout";
-		errorText[411] = "Length Required";
-		errorText[413] = "Content Too Large";
-		errorText[414] = "URI Too Long";
-		errorText[415] = "Unsuported Media Type";
-		errorText[501] = "Not Implemented";
+		errors[400] = "Bad Request";
+		errors[403] = "Forbidden";
+		errors[404] = "Not Found";
+		errors[405] = "Not Allowed";
+		errors[406] = "Not Acceptable";
+		errors[408] = "Request Timeout";
+		errors[411] = "Length Required";
+		errors[413] = "Content Too Large";
+		errors[414] = "URI Too Long";
+		errors[415] = "Unsuported Media Type";
+		errors[501] = "Not Implemented";
 	}
 
-	void	Mediator::methodChoice(Client & cl)
+	void	Ser::methodChoice(Client & cl)
 	{
 		std::vector<std::string>	method(cl.req.getMethod());
 
@@ -144,8 +147,7 @@ namespace HTTP {
 		else if (method[0] == "DELETE")
 			DelHandler().execute(cl.req, cl.fd);
 		else
-			errorPage(cl.req, cl.fd, 501);
-		cl.reset();
+			cl.error(cl.req, cl.fd, 501);
 	}
 
 	void	Mediator::errorPage(Message const& req, int fd, int code)
@@ -155,7 +157,7 @@ namespace HTTP {
 		(void)req;
 
 
-		res.createMethodVec("HTTP/1.1 " + ftItos(code) + errorText[code]);
+		res.createMethodVec("HTTP/1.1 " + ftItos(code) + error[code]);
 		res.add("content-type", "text/html");
 		//res.add("date", getDate(time(0)));
 
