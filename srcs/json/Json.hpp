@@ -1,46 +1,42 @@
 #pragma once
 
-#include <cstring>
-#include <list>
-#include <vector>
-#include <stdexcept>
-#include <cstdarg>
+#include <string>
+#include <fstream>
+#include <sstream>
 #include "webserv.hpp"
-#include "JsonToken.hpp"
+#include "Node.hpp"
+#include "Iterator.hpp"
 
 namespace JSON
 {
+	class Node;
+
 	class Json
 	{
 	public:
-		typedef std::list<JsonToken *>::iterator
-			iterator;
-		typedef std::list<JsonToken *>::const_iterator
-			const_iterator;
-		typedef std::list<JsonToken *>::reverse_iterator
-			reverse_iterator;
-		typedef std::list<JsonToken *>::const_reverse_iterator
-			const_reverse_iterator;
-
 		~Json();
 		Json( void );
+	
+		std::string const& err( void ) const;
+		bool empty( void ) const;
+		int from( char const* filepath );
+		void cout( void ) const;
+		void clear(void);
+
+		Node *		tokens;
+	private:
 		Json( Json const& other );
 		Json & operator=( Json const& other );
-		
-		int parse( char const* filepath );
-		
-		void cout( void ) const;
+		std::string	_err;
+	};
 
-		static char const*
-		 getStringOf( JsonToken const* t );
-		static bool const&
-		 getBooleanOf( JsonToken const* t );
-		static int const&
-		 getIntegerOf( JsonToken const* t );
-		static std::vector<JsonToken*> const&
-		 getObjectOf( JsonToken const* t );
-
-		void clear(void);
-		std::list<JsonToken *> tokens;
+	class	ParseError: public std::exception
+	{
+	private:
+		std::string _err;
+	public:
+		~ParseError() throw();
+		ParseError( char const* e );
+		virtual const char *what() const throw();
 	};
 }

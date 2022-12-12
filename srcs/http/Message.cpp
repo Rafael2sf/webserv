@@ -1,50 +1,52 @@
 #include "Message.hpp"
+#include "Client.hpp"
 
 namespace HTTP {
 
-	Message::Message(void) {
+	Message::Message(void)
+	{}
 
-	}
-
-	int	Message::init(std::string & req) {
-		
-		size_t		start = req.find("\n");
+	// int	Message::init(std::string & req)
+	// {
+	// 	size_t		start = req.find("\n");
 	
-		if (req.empty())
-			return -1;
-		createMethodVec(req.substr(0, start++));
-		req.erase(0, start);
-		start = 0;
-		for (size_t i = 0; req[i] != *(req.end()) ; i++) {
-			if (req[i] == '\n') {
-				std::string	new_header(req.substr(start, i - start - 1));
-				strToHeaderPair(new_header);
-				start = i + 1;
-				if (req[i + 1] == '\r')
-					break;
-			}
-		}
-		if (req[start] == '\r' && req[start + 2] != *(req.end()))
-			_body = req.assign(&req[start + 2], ftStoi(getHeaderVal("content-length")));
-		else
-			_body = "";
-		return 0;
+	// 	if (req.empty())
+	// 		return -1;
+	// 	createMethodVec(req.substr(0, start++));
+	// 	req.erase(0, start);
+	// 	start = 0;
+	// 	for (size_t i = 0; req[i] != *(req.end()) ; i++) {
+	// 		if (req[i] == '\n') {
+	// 			std::string	new_header(req.substr(start, i - start - 1));
+	// 			strToHeaderPair(new_header);
+	// 			start = i + 1;
+	// 			if (req[i + 1] == '\r')
+	// 				break;
+	// 		}
+	// 	}
+	// 	if (req[start] == '\r' && req[start + 2] != *(req.end()))
+	// 		_body = req.assign(&req[start + 2], ftStoi(getHeaderVal("content-length")));
+	// 	else
+	// 		_body = "";
+	// 	return 0;
+	// }
+
+	Message::Message(Message const& cpy)
+	{
+		(void)cpy;
 	}
 
-	Message::Message(Message const& cpy) {
-	(void)cpy;
-	}
+	Message::~Message(void)
+	{}
 
-	Message::~Message(void) {
-
-	}
-
-	Message& Message::operator=(Message const& rhs) {
+	Message& Message::operator=(Message const& rhs)
+	{
 		(void)rhs;
 		return *this;
 	}
 
-	void	Message::printMap(void) const {
+	void Message::printMap(void) const
+	{
 		for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); it++) {
 			std::cout << "\033[31m" << "header key: " << "\033[0m" << it->first
 					<< "\033[32m" << "; header value: " << "\033[0m" << it->second << ';' << std::endl;
@@ -53,8 +55,8 @@ namespace HTTP {
 		//std::cout << "The method is: " << method[0] << ", " << method[1] << ", " << method[2] << std::endl;
 	}
 
-	void	Message::createMethodVec(std::string const& str) {
-
+	void Message::createMethodVec(std::string const& str)
+	{
 		size_t	i = 0, start, end;
 
 		method.resize(4);
@@ -72,19 +74,8 @@ namespace HTTP {
 		}
 	}
 
-	void	Message::strToHeaderPair(std::string str) {
-		
-		std::string		key(str.substr(0, str.find(":")));
-		std::string 	value(str.substr(str.find(":") + 1));
-		
-		owsTrimmer(key);
-		owsTrimmer(value);
-		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		headers.insert(std::make_pair(key, value));
-	};
-
-	void	Message::owsTrimmer(std::string& str) {
-
+	void Message::owsTrimmer(std::string& str)
+	{
 		if (str.empty())
 			return ;
 		size_t	start = str.find_first_not_of(" \t\n\r\v\f");
@@ -97,20 +88,22 @@ namespace HTTP {
 		str = str.substr(start, finish - start + 1);
 	};
 
-	std::vector<std::string> const&	Message::getMethod(void) const {
-		
+	std::vector<std::string> const&	Message::getMethod(void) const
+	{
 		return this->method;
 	}
 
-	std::string				Message::getHeaderVal(std::string const& key) const {
+	std::string const* Message::getField(std::string const& key) const
+	{
 		std::map<std::string, std::string>::const_iterator it = headers.find(key);
 
 		if (it != headers.end())
-			return it->second;
-		return "";
+			return &(it->second);
+		return 0;
 	};
 
-	void					Message::add(std::string key, std::string value) {
+	void Message::setField(std::string const& key, std::string const& value)
+	{
 		if (key.empty()) {
 			DEBUG2("NEED A KEY VALUE, GENIUS!");
 			return ;
@@ -118,19 +111,17 @@ namespace HTTP {
 		headers.insert(std::make_pair(key, value));
 	};
 
-	void					Message::addToVal(std::string const& key, std::string const& value_to_add) {
+	// void Message::addToVal(std::string const& key, std::string const& value_to_add)
+	// {
+	// 	std::map<std::string, std::string>::iterator it = headers.find(key);
+	// 	if (it == headers.end())
+	// 		DEBUG2("INVALID KEY VALUE IN addToVal()!");
+	// 	else
+	// 		it->second += value_to_add;
+	// };
 
-		std::map<std::string, std::string>::iterator it = headers.find(key);
-		if (it == headers.end())
-			DEBUG2("INVALID KEY VALUE IN addToVal()!");
-		else
-			it->second += value_to_add;
-
-	};
-
-
-	std::string				Message::responseString(void) {
-		
+	std::string Message::toString(void)
+	{
 		std::string	final_str;
 
 		for (std::vector<std::string>::iterator it = method.begin(); it != method.end(); it++) {
@@ -142,30 +133,39 @@ namespace HTTP {
 		{
 			final_str += it->first + ": " + it->second + "\r\n";
 		}
-		final_str += "\r\n" + _body;
+		final_str += "\r\n" + body;
 		return final_str;
 	};
-	
-	std::string const&			Message::getBody(void) const {
-		return this->_body;
-	};
 
-	void						Message::setBody(std::string bod) {
-		_body = bod;
-	};
+	// std::string const& Message::getBody(void) const
+	// {
+	// 	return this->_body;
+	// };
 
-	int	ftStoi(std::string const& str) {
-		
+	// void Message::setBody(std::string const& str)
+	// {
+	// 	_body += bod;
+	// };
+
+	void Message::clear( void )
+	{
+		body.clear();
+		headers.clear();
+		method.clear();
+	}
+
+	int	ftStoi(std::string const& str)
+	{
 		std::stringstream	ss;
-		int					ret;
+		int					ret = 0;
 		
 		ss << str;
 		ss >> ret;
 		return ret;
 	}
 
-	std::string	ftItos(int const& n) {
-		
+	std::string	ftItos(int const& n)
+	{
 		std::stringstream	ss;
 		std::string			ret;
 
@@ -173,5 +173,4 @@ namespace HTTP {
 		ss >> ret;
 		return ret;
 	}
-
 }

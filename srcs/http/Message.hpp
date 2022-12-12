@@ -10,32 +10,25 @@
 #include <algorithm>
 #include "webserv.hpp"
 
-namespace HTTP {
+namespace HTTP
+{
+	class Client;
 
 	/**
 	 * @brief Holds all the information provided by an HTTP request/response.
 	*/	
-	class Message {
-
+	class Message
+	{
 		public:
+			~Message(void);
 			Message(void);
 			Message(Message const& cpy);
-			~Message(void);
-			Message&	operator=(Message const& rhs);
+			Message &operator=(Message const& rhs);
 			
 			/**
 			 * @brief Prints the content of the header map (debug use).
 			*/
-			void	printMap(void) const;
-
-			/**
-			 * @brief Parses an incoming request, separating the method
-			 * form the headers and body and organize them in their specific
-			 * structure.
-			 * @param request request received by the server.
-			 * @return	0 if successful, -1 if the request is empty.
-			*/
-			int							init(std::string & req);
+			void printMap(void) const;
 
 			/**
 			 * @brief Method getter.
@@ -46,26 +39,18 @@ namespace HTTP {
 			/**
 			 * @brief Getter for a mapped value in the headers map.
 			 * @param key Key value to look for in the map (name of a header).
-			 * @return	Returns a copy of mapped value if successful, if not, returns
-			 * an empty string.
+			 * @return	Returns a pointer to the mapped value if successful,
+			 * otherwise, null.
 			*/
-			std::string					getHeaderVal(std::string const& key) const;
-			
+			std::string const* getField(std::string const& key) const;
+
 			/**
 			 * @brief Adds a new key-value pair to the headers map.
 			 * @param key Key value.
 			 * @param value Mapped value.
 			*/
-			void						add(std::string key, std::string value);
-			
-			/**
-			 * @brief Allows to concatenate a string value to a mapped
-			 * value corresponding to a specific key.
-			 * @param key Key value.
-			 * @param value Mapped value.
-			*/
-			void						addToVal(std::string const& key, std::string const& value_to_add);
-			
+			void setField(std::string const& key, std::string const& val);
+
 			/**
 			 * @brief Creates the vector based on the method string. The vector
 			 * will have 4 elements:
@@ -76,8 +61,8 @@ namespace HTTP {
 			 * 3 - Values preceded by a '?', WITHOUT including the '?'.
 			 * @param str Base method string.
 			*/
-			void						createMethodVec(std::string const& str);
-			
+			void createMethodVec(std::string const& str);
+
 			/**
 			 * @brief Used when the Message object is a response. Constructs a
 			 * string object with the correct format to be sent to a user-agent
@@ -85,43 +70,30 @@ namespace HTTP {
 			 * present)
 			 * @return The string created.
 			*/
-			std::string					responseString(void);
+			std::string toString(void);
 
-			/**
-			 * @brief Getter for the body of a request.
-			 * @return	Returns a copy of mapped value if successful, if not, returns
-			 * an empty string.
-			*/
-			std::string const&			getBody(void) const;
-			
-			/**
-			 * @brief setter for the body of a request, gets its value and saves it
-			 * internally in the object.
-			 * @param bod body of the original request constructed as a string.
-			*/
-			void						setBody(std::string bod);
-
-			JSON::JsonToken * conf;
-			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
+			std::string	body;
+			friend class Client;
 		private:
-
+			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 			std::vector<std::string>			method; //Max size: 8k
-			std::string							_body;
-			
-			/**
-			 * @brief Helper function, creates a key-value pair based on one header
-			 * line of the original request string and adds it to the header map.
-			 * @param str string to be split in key and value pair.
-			*/
-			void	strToHeaderPair(std::string str);
-			
+
 			/**
 			 * @brief Removes starting and trailing whitespaces in a header string.
 			 * @param str Reference to the string to remove from which whitespaces 
 			 * will be removed.
 			*/
 			void	owsTrimmer(std::string& str);
-			
+
+			/**
+			 * Clears all the internal memory, making the class reusable.
+			*/
+			void	clear();
+		private:
+			// Put this somewhere else
+			int _updateStatusLine( std::stringstream & ss, size_t n );
+			int _updateHeaders( std::stringstream & ss, size_t n );
+			int _updateBody( char const * buff, size_t readval, size_t content_length );
 	};
 
 	/**
@@ -132,6 +104,5 @@ namespace HTTP {
 	 * string is poorly formatted.
 	*/
 	int	ftStoi(std::string const& str);
-
 	std::string	ftItos(int const& n);
 }

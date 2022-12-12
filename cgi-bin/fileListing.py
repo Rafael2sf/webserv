@@ -6,7 +6,7 @@ import cgi, os
 # Create instance of FieldStorage 
 form = cgi.FieldStorage()
 
-fileList = os.listdir('posts/')
+fileList = os.listdir('uploads/')
 fileString = ""
 
 if len(fileList) == 0:

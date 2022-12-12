@@ -22,8 +22,13 @@ namespace HTTP
 	*/
 	enum
 	{
+		S_DEFAULT_HOST = 0,
 		S_DEFAULT_PORT = 8000,
-		S_MAX_CLIENT = 32,
+		S_MAX_CLIENT = 42,
+		S_EPOLL_TIMEOUT = 5,
+		S_CONN_TIMEOUT = 10,
+		S_PIPE_LIMIT = 64000,
+		S_BUFFER_SIZE = 8192,
 	};
 
 	/* core/Sockets */
@@ -42,5 +47,5 @@ namespace JSON
 {
 	/* config/json */
 	class Json;
-	class JsonToken;
+	class Node;
 }

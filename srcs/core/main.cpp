@@ -2,14 +2,13 @@
 #include "Server.hpp"
 #include <cstdio>
 #include <csignal>
+#include "Get.hpp"
+#include "Delete.hpp"
+#include "Post.hpp"
 
 void handle_ctrl_c( int signum )
 {
-	(void) signum;
-	std::cerr << std::endl;
-	DEBUG2("received signal: SIGINT");
-	HTTP::Server::state = 0;
-	DEBUG2("stopping ...");
+	HTTP::Server::state = signum;
 }
 
 int		main( int argc, char **argv )
@@ -18,11 +17,16 @@ int		main( int argc, char **argv )
 
 	signal(SIGINT, handle_ctrl_c);
 	signal(SIGPIPE, SIG_IGN);
+
 	if (argc != 2)
 		return HTTP::err(EXIT_FAILURE, "Usage: ./webserv 'config_file'");
-	DEBUG2("starting ...");
 	if (server.init(argv[1]) == -1)
 		return (EXIT_FAILURE);
+
+	server.add_handler("GET", new HTTP::Get());
+	server.add_handler("POST", new HTTP::Post());
+	server.add_handler("DELETE", new HTTP::Delete());
+
 	server.loop();
 	return (EXIT_SUCCESS);
 }

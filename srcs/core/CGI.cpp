@@ -27,13 +27,24 @@ namespace HTTP
 	{
 		env = new char*[9];
 		std::vector<std::string>	vec;
+
+		vec.reserve(8);
 		vec.push_back("PATH_INFO=/usr/bin/python3");
-		vec.push_back("CONTENT_TYPE=" + req.getHeaderVal("content-type"));
-		vec.push_back("CONTENT_LENGTH=" + req.getHeaderVal("content-length"));
-		vec.push_back("HTTP_USER_AGENT=" + req.getHeaderVal("user-agent"));
-		vec.push_back("SCRIPT_FILENAME=/nfs/homes/daalmeid/Desktop/webserv" + req.getMethod()[1]);
+		if (req.getField("content-type"))
+			vec.push_back("CONTENT_TYPE=" + *req.getField("content-type"));
+		else
+			vec.push_back("CONTENT_TYPE=");
+		if (req.getField("content-length"))
+			vec.push_back("CONTENT_LENGTH=" + *req.getField("content-length"));
+		else
+			vec.push_back("CONTENT_LENGTH=");
+		if (req.getField("user-agent"))
+			vec.push_back("HTTP_USER_AGENT=" + *req.getField("user-agent"));
+		else
+			vec.push_back("HTTP_USER_AGENT=");
+		vec.push_back("SCRIPT_FILENAME=/nfs/homes/rafernan/Desktop/webserv" + req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.getMethod()[0]);
-		vec.push_back("SERVER_SOFTWARE=Webserv/0.3");
+		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
 		vec.push_back("QUERY_STRING=" + req.getMethod()[3]);
 
 		for (int i = 0; i < 8; i++) {
@@ -57,18 +68,18 @@ namespace HTTP
 	CGI &
 	CGI::operator=( CGI const& rhs )
 	{
-		DEBUG2("called non-implemented function: CGI::operator=( CGI const& rhs )");
+		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void) rhs;
 		return *this;
 	}
 
-	char**	CGI::getEnv(void) {
-
+	char**	CGI::getEnv(void)
+	{
 		return env;
 	};
 
-	char**	CGI::getArgs(void) {
-
+	char**	CGI::getArgs(void)
+	{
 		return args;
 	};
 }

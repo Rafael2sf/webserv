@@ -5,6 +5,7 @@ VPATH		=	$(addprefix $(_SRC), \
 					core \
 					json \
 					error \
+					http \
 				)
 
 # shell commands
@@ -31,17 +32,16 @@ SRCS		=	$(addsuffix .cpp, \
 					Sockets \
 					Epoll \
 					Message \
-					Mediator \
-					ARequestHandler \
-					GetHandler \
-					PostHandler \
-					DelHandler \
+					AMethod \
+					Get \
+					Post \
+					Delete \
 					err \
 					Json \
-					JsonToken \
-					json_parser \
-					json_loop \
-					json_utils \
+					Parser \
+					Iterator \
+					Node \
+					Client \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
 INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))
