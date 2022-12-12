@@ -11,7 +11,7 @@ filedir = form.getvalue('file')
 if filedir != 0:
 	filedir = os.path.basename(filedir)
 	try:
-		os.remove('/home/rafernan/Projects/webserv/uploads/' + filedir)
+		os.remove('/nfs/homes/rafernan/Desktop/webserv/uploads/' + filedir)
 
 	except:
 		filedir = 'File ' + filedir + ' not found!'

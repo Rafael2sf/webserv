@@ -73,13 +73,22 @@ namespace HTTP
 		std::vector<int> ports_used;
 		unsigned int port;
 
+		DEBUG(std::cout << "\n| Sockets |\n");
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
 		{
+			DEBUG(std::cout << "[socket] " \
+				<< ((port & 0xff000000) >> 24) << '.' \
+				<< ((port & 0x00ff0000) >> 16) << '.' \
+				<< ((port & 0x0000ff00) >> 8) << '.' \
+				<< (port & 0x000000ff) << ':' << htons((*it).addr.sin_port));
 			port = ntohl((*it).addr.sin_addr.s_addr);
 			if (std::find(ports_used.begin(), ports_used.end(),
 				(*it).addr.sin_port) != ports_used.end())
+			{
+				DEBUG(std::cout << " [inactive]" << std::endl;);
 				continue ;
+			}
 			if (isock(*it) == -1)
 			{
 				std::cerr << "webserv: " \
@@ -98,12 +107,8 @@ namespace HTTP
 					close((*it).fd);
 				return -1;
 			}
+			DEBUG(std::cout << " [active]" << std::endl;);
 			ports_used.push_back((*it).addr.sin_port);
-			DEBUG2("listening " \
-				<< ((port & 0xff000000) >> 24) << '.' \
-				<< ((port & 0x00ff0000) >> 16) << '.' \
-				<< ((port & 0x0000ff00) >> 8) << '.' \
-				<< (port & 0x000000ff) << ':' << htons((*it).addr.sin_port));
 		}
 		return 0;
 	}

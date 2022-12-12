@@ -30,19 +30,19 @@ namespace HTTP
 
 		vec.reserve(8);
 		vec.push_back("PATH_INFO=/usr/bin/python3");
-		if (req.getHeaderField("content-type"))
-			vec.push_back("CONTENT_TYPE=" + *req.getHeaderField("content-type"));
+		if (req.getField("content-type"))
+			vec.push_back("CONTENT_TYPE=" + *req.getField("content-type"));
 		else
 			vec.push_back("CONTENT_TYPE=");
-		if (req.getHeaderField("content-length"))
-			vec.push_back("CONTENT_LENGTH=" + *req.getHeaderField("content-length"));
+		if (req.getField("content-length"))
+			vec.push_back("CONTENT_LENGTH=" + *req.getField("content-length"));
 		else
 			vec.push_back("CONTENT_LENGTH=");
-		if (req.getHeaderField("user-agent"))
-			vec.push_back("HTTP_USER_AGENT=" + *req.getHeaderField("user-agent"));
+		if (req.getField("user-agent"))
+			vec.push_back("HTTP_USER_AGENT=" + *req.getField("user-agent"));
 		else
 			vec.push_back("HTTP_USER_AGENT=");
-		vec.push_back("SCRIPT_FILENAME=/home/rafernan/Projects/webserv" + req.getMethod()[1]);
+		vec.push_back("SCRIPT_FILENAME=/nfs/homes/rafernan/Desktop/webserv" + req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.getMethod()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
 		vec.push_back("QUERY_STRING=" + req.getMethod()[3]);

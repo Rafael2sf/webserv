@@ -127,11 +127,11 @@ namespace JSON
 		size_t i = 0;
 
 		while (i++ != depth)
-			std::cout << " ";
+			std::cerr << " ";
 		std::cerr << '\'' << p->getProperty() << "\' : ";
 		if (p->type() == object)
 		{
-		std::cerr << "{" << std::endl;
+			std::cerr << std::endl;
 			Object const* tmp = dynamic_cast<Object const*>(p);
 			for (std::multiset<Node *>::const_iterator it = tmp->impl.begin();
 				it != tmp->impl.end(); it++)
@@ -139,9 +139,9 @@ namespace JSON
 				rprint(*it, depth + 1);
 			}
 			i = 0;
-			while (i++ != depth)
-				std::cout << " ";
-			std::cerr << "}" << std::endl;
+			// while (i++ != depth)
+			// 	std::cout << " ";
+			//std::cerr << std::endl;
 			return ;
 		}
 		else if (p->type() == array)
@@ -154,9 +154,9 @@ namespace JSON
 				rprint(*it, depth + 2);
 			}
 			i = 0;
-			while (i++ != depth)
-				std::cout << " ";
-			std::cerr << ']' << std::endl;
+			// while (i++ != depth)
+			// 	std::cout << " ";
+			std::cerr << std::endl;
 			return ;
 		}
 		switch (p->type())

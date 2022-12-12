@@ -72,28 +72,28 @@ namespace HTTP
 		client.res.createMethodVec("HTTP/1.1 200 OK");
 		size_t index = path.find(".");
 		if (index == std::string::npos)
-			client.res.setHeaderField("content-type", "text/html");
+			client.res.setField("content-type", "text/html");
 		else
 		{
 			std::map<std::string, std::string>::const_iterator
 					mime_val =	Server::mime.find(path.c_str() + index + 1);
 			if (mime_val != Server::mime.end())
-				client.res.setHeaderField("content-type", mime_val->second);
+				client.res.setField("content-type", mime_val->second);
 			else
-				client.res.setHeaderField("content-type", "text/html");
+				client.res.setField("content-type", "text/html");
 		}
 		// set all standart headers
-		client.res.setHeaderField("server", "Webserv/0.4");
-		client.res.setHeaderField("date", getDate(time(0)));
-		if (client.req.getHeaderField("connection")
-			&& *client.req.getHeaderField("connection") == "close")
-			client.res.setHeaderField("connection", "close");
+		client.res.setField("server", "Webserv/0.4");
+		client.res.setField("date", getDate(time(0)));
+		if (client.req.getField("connection")
+			&& *client.req.getField("connection") == "close")
+			client.res.setField("connection", "close");
 		else
-			client.res.setHeaderField("connection", "keep-alive");
+			client.res.setField("connection", "keep-alive");
 		//Last-Modified header creation
 		struct stat f_info;
 		lstat(path.c_str(), &f_info);
-		client.res.setHeaderField("last-modified", getDate(f_info.st_mtime));
+		client.res.setField("last-modified", getDate(f_info.st_mtime));
 		contentEncoding(client, fp);
 	};
 
@@ -157,14 +157,14 @@ namespace HTTP
 		if (read_nbr != S_BUFFER_SIZE) {
 			ss << read_nbr;
 			ss >> str;
-			client.res.setHeaderField("content-length", str);
+			client.res.setField("content-length", str);
 			client.res.body.assign(buf, read_nbr);
 			str = client.res.toString();
 			send(client.fd, str.c_str(), str.size(), 0);
 		}
 		else
 		{
-			client.res.setHeaderField("transfer-encoding", "chunked");
+			client.res.setField("transfer-encoding", "chunked");
 			str = client.res.toString();
 			str += "\r\n";
 			send(client.fd, str.c_str(), str.size(), 0);
@@ -195,8 +195,8 @@ namespace HTTP
 		if (!location)
 			return client.error(404);
 		client.res.createMethodVec("HTTP/1.1 404 Not Found");
-		client.res.setHeaderField("content-type", "text/html");
-		client.res.setHeaderField("date", getDate(time(0)));
+		client.res.setField("content-type", "text/html");
+		client.res.setField("date", getDate(time(0)));
 
 		autoindex = location->search(1, "autoindex");
 		if (!autoindex || !autoindex->as<bool>())
@@ -227,7 +227,7 @@ namespace HTTP
 		}
 		closedir(dirp);
 		client.res.body += "</hr></pre></body></html>";
-		client.res.setHeaderField("content-length", ftItos(client.res.body.length()));
+		client.res.setField("content-length", ftItos(client.res.body.length()));
 		str = client.res.toString();
 		send(client.fd, str.c_str(), str.size(), 0);
 		return ;

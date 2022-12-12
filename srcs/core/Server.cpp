@@ -5,8 +5,7 @@
 
 namespace HTTP
 {
-	int 
-		Server::state = 1;
+	int Server::state = 0;
 	std::map<std::string, std::string>	
 		Server::mime = std::map<std::string, std::string>();
 	std::map<int, std::string>
@@ -137,6 +136,7 @@ namespace HTTP
 		unsigned int host, port;
 		JSON::Node *t;
 		std::vector<std::pair<unsigned int, unsigned int> > used;
+		t_sock_info * si;
 
 		for (JSON::Node::iterator it = json.tokens->begin();
 			 it != json.tokens->end(); it.skip())
@@ -157,9 +157,14 @@ namespace HTTP
 						return err(-1, "invalid listen field");
 					if (std::find(used.begin(), used.end(), std::make_pair(host, port)) != used.end())
 						return err(-1, "duplicate listen field");
-					so.insert(host, port)->config = &*it;
-					used.push_back(std::make_pair(host, port));
+					si = so.insert(host, port);
+					if (si)
+					{
+						si->config = &*it;
+						used.push_back(std::make_pair(host, port));
+					}
 				}
+				used.clear();
 			}
 		}
 		return 0;
@@ -174,7 +179,7 @@ namespace HTTP
 				<< filepath << ":" << config.err() << std::endl;
 			return -1;
 		}
-		config.cout();
+		DEBUG(std::cout << "| JSON |\n"; config.cout());
 		if (listenMap(config, socks) == -1)
 			return -1;
 		if (socks.listen() == -1)
@@ -297,7 +302,7 @@ namespace HTTP
 			exit(err(1, "logic error", "no sockets available"));
 		while (1)
 		{
-			if (!state)
+			if (state)
 				break ;
 			_timeout();
 			events = epoll.wait();
@@ -336,8 +341,8 @@ namespace HTTP
 		else
 			client.error(501);
 
-		if (client.req.getHeaderField("connection") &&
-				*client.req.getHeaderField("connection") == "close")
+		if (!client.req.getField("connection") ||
+				*client.req.getField("connection") == "close")
 		{
 			if (epoll.erase(client.fd) == -1)
 				DEBUG2("epoll.erase() failed");

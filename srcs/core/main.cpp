@@ -8,8 +8,7 @@
 
 void handle_ctrl_c( int signum )
 {
-	(void) signum;
-	HTTP::Server::state = 0;
+	HTTP::Server::state = signum;
 }
 
 int		main( int argc, char **argv )

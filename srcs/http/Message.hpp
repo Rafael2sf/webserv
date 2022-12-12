@@ -42,14 +42,14 @@ namespace HTTP
 			 * @return	Returns a pointer to the mapped value if successful,
 			 * otherwise, null.
 			*/
-			std::string const* getHeaderField(std::string const& key) const;
+			std::string const* getField(std::string const& key) const;
 
 			/**
 			 * @brief Adds a new key-value pair to the headers map.
 			 * @param key Key value.
 			 * @param value Mapped value.
 			*/
-			void setHeaderField(std::string const& key, std::string const& val);
+			void setField(std::string const& key, std::string const& val);
 
 			/**
 			 * @brief Creates the vector based on the method string. The vector

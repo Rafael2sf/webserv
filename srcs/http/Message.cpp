@@ -93,7 +93,7 @@ namespace HTTP {
 		return this->method;
 	}
 
-	std::string const* Message::getHeaderField(std::string const& key) const
+	std::string const* Message::getField(std::string const& key) const
 	{
 		std::map<std::string, std::string>::const_iterator it = headers.find(key);
 
@@ -102,7 +102,7 @@ namespace HTTP {
 		return 0;
 	};
 
-	void Message::setHeaderField(std::string const& key, std::string const& value)
+	void Message::setField(std::string const& key, std::string const& value)
 	{
 		if (key.empty()) {
 			DEBUG2("NEED A KEY VALUE, GENIUS!");

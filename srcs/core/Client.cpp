@@ -80,7 +80,7 @@ namespace HTTP
 			return -1;
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		//DEBUG2("[FIELD] " << key << " : " << val);
-		this->setHeaderField(key, val);
+		this->setField(key, val);
 		return 0;
 	}
 
@@ -117,8 +117,8 @@ namespace HTTP
 				if (state == BODY_CONTENT)
 				{
 					size_t content_length = 0;
-					if (req.getHeaderField("content-length"))
-						content_length = ftStoi(*req.getHeaderField("content-length"));
+					if (req.getField("content-length"))
+						content_length = ftStoi(*req.getField("content-length"));
 					if (content_length && req.body.size() == 0)
 					{
 						size_t			max_body_size;
@@ -213,8 +213,8 @@ namespace HTTP
 		std::string str;
 
 		res.createMethodVec("HTTP/1.1 " + ftItos(code) + Server::error[code]);
-		res.setHeaderField("content-type", "text/html");
-		res.setHeaderField("content-length", "12");
+		res.setField("content-type", "text/html");
+		res.setField("content-length", "12");
 		res.body = "<h1>" + ftItos(code) + "</h1>";
 		str = res.toString();
 		send(fd, str.c_str(), str.size(), 0);
