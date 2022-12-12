@@ -54,14 +54,6 @@ namespace HTTP
 		*/
 		void	loop( void );
 
-		/**
-		 * @brief Inserts a http method handler to the server list.
-		 * @param s method identifier
-		 * @param h unary function wich will be called using 
-		 *  the bool operator with Client as its paremeter.
-		*/
-		void	add_handler(std::string const& s, AMethod * h);
-
 	private:
 		Server( Server const& other );
 		Server & operator=( Server const& rhs);
@@ -69,7 +61,6 @@ namespace HTTP
 		Sockets socks;
 		Epoll epoll;
 		JSON::Json config;
-		std::map<std::string, AMethod *> methods;
 		std::map<int, Client> clients;
 
 		/**
@@ -103,5 +94,11 @@ namespace HTTP
 		 * @param client http client class
 		*/
 		void _handle( Client & client );
+
+		/**
+		 * @brief Chooses and launches the correct method handler
+		 * @param client http client class
+		*/
+		void _methodChoice( Client & client );
 	};
 }

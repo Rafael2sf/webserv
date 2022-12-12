@@ -21,7 +21,7 @@ namespace HTTP {
 		return *this;
 	};
 
-	void		Post::operator()(Client & client)
+	void		Post::response(Client & client)
 	{
 		cgi(client);
 	};

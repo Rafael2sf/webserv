@@ -320,8 +320,7 @@ namespace HTTP
 
 	void Server::_handle(Client & client)
 	{
-		std::map<std::string, AMethod *>::const_iterator it =
-			methods.find(client.req.getMethod()[0]);
+		_methodChoice(client);
 
 		DEBUG(
 			unsigned int port = htonl(client.ai.sin_addr.s_addr);
@@ -335,11 +334,6 @@ namespace HTTP
 				<< client.req.getMethod()[0] << ' ' \
 				<< client.req.getMethod()[1] << ']' << std::endl;
 		);
-
-		if (it != methods.end())
-			it->second->operator()(client);
-		else
-			client.error(501);
 
 		if (!client.req.getField("connection") ||
 				*client.req.getField("connection") == "close")
@@ -371,10 +365,18 @@ namespace HTTP
 		}
 	}
 
-	void Server::add_handler(std::string const& s, AMethod * h)
-	{
-		methods.insert(std::make_pair(s, h));
-	}
+	void Server::_methodChoice(Client & client) {
+
+		std::string str = client.req.getMethod()[0];
+		if (str =="POST")
+			Post().response(client);
+		else if (str == "GET") 
+			Get().response(client);
+		else if (str == "DELETE")
+			Delete().response(client);
+		else
+			client.error(501);
+	};
 
 	void  Server::_init( void )
 	{

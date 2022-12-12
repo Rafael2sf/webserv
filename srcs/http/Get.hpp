@@ -20,7 +20,7 @@ namespace HTTP
 			 * @brief Handler of DELETE requests.
 			 * @param Client http client class
 			*/
-			void operator()(Client & client);
+			void response(Client & client);
 
 		private:
 

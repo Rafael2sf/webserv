@@ -46,7 +46,7 @@ namespace HTTP
 		return last_match;
 	}
 
-	void Get::operator()(Client & client)
+	void Get::response(Client & client)
 	{
 		FILE *			fp;
 		std::string		path;

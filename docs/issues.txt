@@ -1,0 +1,8 @@
+ISSUES:
+
+-Full request construction if it does not come in one go;
+-If GET of very big file (over 5 Mb), send returns -1 (due to non blocking file descriptors);
+-Missing headers in responses, mostly from CGI responses;
+-Error code sending in every possible request error;
+-Check memory leaks;
+-Can CGI object construction throw an exception?
