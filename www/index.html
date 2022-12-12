@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+	<title>Index</title>
+</head>
+<body>
+	<h1>HELLO WOOOOOOORLD!</h1>
+	<br>
+	<form action="/cgi-bin/getExample.py" method="GET">
+		<label for="fname">First name:</label><br>
+		<input type="text" id="fname" name="fname" value="John"><br>
+		<label for="lname">Last name:</label><br>
+		<input type="text" id="lname" name="lname" value="Doe"><br><br>
+		<input type="submit" value="Submit">
+	  </form>
+	<br>
+	<h2>Upload</h2>
+	<form enctype="multipart/form-data" action="/cgi-bin/saveFile.py" method="POST">
+		<label for="fileTest">Upload file:</label><br>
+		<input type="file"
+				id="fileTest"
+				name="fileTest"><br>
+		<input type="submit" value="Submit">
+	</form>
+	<br>
+	<h2>Deletion</h2>
+	<select id="del_files" name="file_select" >
+		<option disabled>Select file to delete:</option>
+	</select>
+	<script src="./js/select.js"></script>
+	<button type="button" id="btn">Delete</button>
+	<script src="./js/delete.js"></script>
+	<p>
+		<img src="./images/smoking.jpg" alt="python image">
+	</p>
+
+</body>
+</html>

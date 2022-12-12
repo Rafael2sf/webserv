@@ -98,19 +98,19 @@ namespace JSON
 
 	Iterator Node::begin( void )
 	{
-		if (_type == array || _type == object) // return first elem
+		if (_type == array || _type == object)
 			return ++Iterator(this);
 		else
 			return Iterator(this);
 	}
 
-	// Iterator<Node const*> Node::begin( void ) const
-	// {
-	// 	if (_type == array || _type == object)
-	// 		return ++Iterator<Node const*>(this);
-	// 	else
-	// 		return Iterator<Node const*>(this);
-	// }
+	ConstIterator Node::begin( void ) const
+	{
+		if (_type == array || _type == object)
+			return ++ConstIterator(this);
+		else
+			return ConstIterator(this);
+	}
 
 	Iterator Node::end( void )
 	{
@@ -130,13 +130,23 @@ namespace JSON
 		return Iterator(this);
 	}
 
-	// Iterator<Node const*> Node::end( void ) const
-	// {
-	// 	if (_type == array || _type == object)
-	// 		return ++Iterator<Node *>(*(--dynamic_cast<Object const*>(this)->impl.end()));
-	// 	else
-	// 		return Iterator<Node *>(this);
-	// }
+	ConstIterator Node::end( void ) const
+	{
+		ConstIterator it;
+
+		if (getParent())
+		{
+			if (_type == array || _type == object)
+			{
+				it = ConstIterator(this);
+				it.skip();
+				return it;
+			}
+			it = this;
+			return ++it;
+		}
+		return ConstIterator(this);
+	}
 
 	Node::~Node()
 	{}

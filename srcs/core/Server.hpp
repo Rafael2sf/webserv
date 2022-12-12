@@ -9,6 +9,7 @@
 #include "webserv.hpp"
 #include "Client.hpp"
 #include "Json.hpp"
+#include "AMethod.hpp"
 
 #define	RECEIVE_BUF_SIZE 30000
 
@@ -21,23 +22,12 @@ namespace HTTP
 	class Server
 	{
 		public:
-
 		~Server();
 		Server( void );
-		Server( Server const& other );
-		Server & operator=( Server const& rhs);
 
-		static int				state;
-
-
-		/**
-		 * @brief Handles the reception, treatment and response
-		 * to a request.
-		 * @param i File descriptor of the client;
-		 * @param med Object that distributes requests based on
-		 * the method stated.
-		*/
-		void clientHandler(Client & cli, int i);
+		static int state;
+		static std::map<std::string, std::string> mime;
+		static std::map<int, std::string> error;
 
 		/**
 		 * @brief Initiates the server with default configurations.
@@ -64,20 +54,54 @@ namespace HTTP
 		*/
 		void	loop( void );
 
-		void	methodChoice(Client & cl);
-
-		static std::map<std::string, std::string>	mime;
-		static std::map<int, std::string>			error;
+		/**
+		 * @brief Inserts a http method handler to the server list.
+		 * @param s method identifier
+		 * @param h unary function wich will be called using 
+		 *  the bool operator with Client as its paremeter.
+		*/
+		void	add_handler(std::string const& s, AMethod * h);
 
 	private:
-		Sockets					socks;
-		Epoll					epoll;
-		JSON::Json				config;
-		std::map<int, Client>	clients;
+		Server( Server const& other );
+		Server & operator=( Server const& rhs);
 
+		Sockets socks;
+		Epoll epoll;
+		JSON::Json config;
+		std::map<std::string, AMethod *> methods;
+		std::map<int, Client> clients;
+
+		/**
+		 * @brief Initializes the mime and error
+		 * map with default values.
+		*/
 		void _init( void );
+
+		/**
+		 * @brief Everytime a loop occurs, this
+		 *  functions is called to check for clients
+		 * that exceeded S_CONN_TIMEOUT since their last
+		 * event proceeded by removing them.
+		*/
 		void _timeout(void);
+
+		/**
+		 * @brief Accepts a client connection on
+		 * a server socket %si.
+		*/
 		void _accept( t_sock_info const& si );
-		void _update( int i, int socket );
+
+		/**
+		 * @brief Updates an existing connection
+		 * by veryfing its state.
+		*/
+		void _update( int socket );
+
+		/**
+		 * @brief Handles the creation of the http response
+		 * @param client http client class
+		*/
+		void _handle( Client & client );
 	};
 }

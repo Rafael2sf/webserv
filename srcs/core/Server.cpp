@@ -1,7 +1,7 @@
 #include "Server.hpp"
-#include "PostHandler.hpp"
-#include "GetHandler.hpp"
-#include "DelHandler.hpp"
+#include "Post.hpp"
+#include "Get.hpp"
+#include "Delete.hpp"
 
 namespace HTTP
 {
@@ -28,7 +28,7 @@ namespace HTTP
 	Server &
 	Server::operator=(Server const &rhs)
 	{
-		DEBUG2("called non-implemented function: Server::operator=( Server const& rhs )");
+		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void)rhs;
 		return *this;
 	}
@@ -168,21 +168,19 @@ namespace HTTP
 	int
 	Server::init(char const *filepath)
 	{
-		DEBUG2("reading configuration file");
 		if (config.from(filepath) < 0)
 		{
 			std::cerr << "webserv: error: " \
 				<< filepath << ":" << config.err() << std::endl;
 			return -1;
 		}
-		DEBUG2("mapping server sockets");
+		config.cout();
 		if (listenMap(config, socks) == -1)
 			return -1;
-		DEBUG2("initiating server sockets");
 		if (socks.listen() == -1)
 			return -1;
 		epoll.init(socks);
-		DEBUG2("ready");
+		_init();
 		return (0);
 	}
 
@@ -249,7 +247,7 @@ namespace HTTP
 			cl->fd = socket;
 			cl->ai.sin_addr.s_addr = si.addr.sin_addr.s_addr;
 			cl->ai.sin_port = si.addr.sin_port;
-			cl->req.conf = 0;
+			cl->config = 0;
 			cl->timestamp = time(NULL);
 		}
 		catch ( std::exception const& e )
@@ -261,7 +259,7 @@ namespace HTTP
 	}
 
 	void
-	Server::_update( int i, int socket )
+	Server::_update( int socket )
 	{
 		Client * cl;
 
@@ -269,17 +267,16 @@ namespace HTTP
 		{
 			cl = &clients.at(socket);
 			cl->timestamp = time(NULL);
-			if (!cl->req.conf)
-				cl->req.conf = matchCon(socks, *cl);
+			if (!cl->config)
+				cl->config = matchCon(socks, *cl);
 			if (cl->update() == -1)
 			{
-				//write(cl->fd, "[408] failed parsing", 3);
-				if (epoll.erase(epoll.events[i].data.fd) == -1)
+				if (epoll.erase(cl->fd) == -1)
 					DEBUG2("epoll.erase() failed");
-				clients.erase(epoll.events[i].data.fd);
+				clients.erase(cl->fd);
 			}
 			if (cl->ok())
-				clientHandler(*cl, i);
+				_handle(*cl);
 		}
 		catch (const std::exception &e)
 		{
@@ -293,7 +290,6 @@ namespace HTTP
 	Server::loop(void)
 	{
 		t_sock_info *	si;
-		//Mediator 		med;
 		int				socket;
 		int				events;
 
@@ -307,94 +303,57 @@ namespace HTTP
 			events = epoll.wait();
 			for (int i = 0; i < events; i++)
 			{
-				socket = epoll.events[i].data.fd;
+				socket = epoll[i].data.fd;
 				si = socks.find(socket);
 				if (si)
 					_accept(*si);
 				else
-					_update(i, socket);
+					_update(socket);
 			}
 		}
 	}
 
-	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
+	void Server::_handle(Client & client)
 	{
-		JSON::Object *tmp;
-		size_t last_len = 0;
-		JSON::Node *last_match = 0;
-		size_t i = 0;
+		std::map<std::string, AMethod *>::const_iterator it =
+			methods.find(client.req.getMethod()[0]);
 
-		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
-		if (!tmp)
-			return 0;
-		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc++)
-		{
-			if (path.size() == 1)
-				i = path.find_first_of(*path.c_str());
-			else
-				i = path.find(loc->getProperty());
-			if (i != std::string::npos && i == 0)
-			{
-				i = loc->getProperty().size();
-				if (path.size() == i)
-					return &*loc;
-				if (i > last_len)
-				{
-					last_len = i;
-					last_match = &*loc;
-				}
-			}
-		}
-		return last_match;
-	}
+		DEBUG(
+			unsigned int port = htonl(client.ai.sin_addr.s_addr);
+			std::cerr << std::endl;
+			std::cerr << '[' << client.fd << "] [FROM " \
+				<< ((port & 0xff000000) >> 24) << '.' \
+				<< ((port & 0x00ff0000) >> 16) << '.' \
+				<< ((port & 0x0000ff00) >> 8) << '.' \
+				<< (port & 0x000000ff) << ':' << \
+				htons(client.ai.sin_port) << "] [" \
+				<< client.req.getMethod()[0] << ' ' \
+				<< client.req.getMethod()[1] << ']' << std::endl;
+		);
 
-	void	Server::methodChoice(Client & cl)
-	{
-		std::vector<std::string>	method(cl.req.getMethod());
-
-		if (method[0] =="POST")
-			PostHandler().execute(cl.req, cl.fd);
-		else if (method[0] == "GET") 
-			GetHandler().execute(cl.req, cl.fd);
-		else if (method[0] == "DELETE")
-			DelHandler().execute(cl.req, cl.fd);
+		if (it != methods.end())
+			it->second->operator()(client);
 		else
-			cl.error(501);
-	}
+			client.error(501);
 
-	void Server::clientHandler(Client &cli, int i)
-	{
-		if (cli.req.conf)
-			cli.req.conf = matchLocation(cli.req.conf, cli.req.getMethod()[1]);
-		unsigned int port = htonl(cli.ai.sin_addr.s_addr);
-		std::cerr << std::endl;
-		DEBUG2('[' << epoll.events[i].data.fd << "] [FROM " \
-			<< ((port & 0xff000000) >> 24) << '.' \
-			<< ((port & 0x00ff0000) >> 16) << '.' \
-			<< ((port & 0x0000ff00) >> 8) << '.' \
-			<< (port & 0x000000ff) << ':' << htons(cli.ai.sin_port) << "] [" \
-			<< cli.req.getMethod()[0] << ' ' << cli.req.getMethod()[1] \
-			<< "] [location " \
-			<< (cli.req.conf ? cli.req.conf->getProperty()  : "NONE") << ']');
-		//DEBUG2(cli.req.response_string());
-		methodChoice(cli);
-		if (cli.req.getHeaderVal("connection") == "close")
+		if (client.req.getHeaderField("connection") &&
+				*client.req.getHeaderField("connection") == "close")
 		{
-			if (epoll.erase(epoll.events[i].data.fd) == -1)
+			if (epoll.erase(client.fd) == -1)
 				DEBUG2("epoll.erase() failed");
-			clients.erase(epoll.events[i].data.fd);
+			clients.erase(client.fd);
 		}
-		cli.reset();
+		client.reset();
 	}
 
-	void	Server::_timeout(void) {
-		
+	void	Server::_timeout(void)
+	{
 		double seconds = time(NULL);
 
 		for (std::map<int, Client>::iterator it = clients.begin();
 			 it != clients.end(); it++)
 		{
-			if (seconds - it->second.timestamp >= 10)
+			if (seconds - it->second.timestamp >= S_CONN_TIMEOUT)
 			{
 				DEBUG2('[' << it->first << "] timed out");
 				if (epoll.erase(it->first) == -1)
@@ -405,6 +364,11 @@ namespace HTTP
 					break;
 			}
 		}
+	}
+
+	void Server::add_handler(std::string const& s, AMethod * h)
+	{
+		methods.insert(std::make_pair(s, h));
 	}
 
 	void  Server::_init( void )

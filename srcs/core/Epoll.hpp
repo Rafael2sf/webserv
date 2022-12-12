@@ -17,10 +17,7 @@
 #include <cerrno>
 #include <cstring>
 #include <unistd.h>
-
-#define FT_ERROR(A, B) std::cerr << A << ": " << B << strerror(errno) << std::endl
-#define EPOLL_SIZE 5
-#define EPOLL_TIMEOUT 5000
+#include "webserv.hpp"
 
 namespace HTTP {
 	class Sockets;
@@ -29,13 +26,17 @@ namespace HTTP {
 
 		public:
 
-			Epoll(void);
 			~Epoll(void);
-			Epoll(Epoll const& cpy);
+			Epoll(void);
 
-			/*Methods*/
+			/**
+			 * @brief Calls operator[] on epoll events array
+			 * @param index
+			 * @return 
+			 * returns epoll_event at %index position
+			*/
+			epoll_event & operator[](size_t index);
 
-			
 			/**
 			 * @brief Creates an epoll instance to monitor incoming connections.
 			 * @param socks Contains the opened sockets where connections will come
@@ -57,17 +58,16 @@ namespace HTTP {
 			 * errno is set to indicate the error.
 			*/
 			int insert( int sofd);
-			
+
 			/**
 			 * @brief Erases an event fd from the "events" struct and closes it.
 			 * This function should be called after the event has been handled.
-			 * @param ev_index index of the fd of the event to be deleted. This index
-			 * corresponds to a position in the internal array of the struct "events".
+			 * @param cli_fd the file descriptor to be removed
 			 * @return
 			 * On sucess, returns 0 and the event fd is removed and closed,
 			 *  otherwise, -1 and errno is set to indicate the error.
 			*/
-			int	erase(int ev_index);
+			int	erase(int cli_fd);
 
 			/**
 			 * @brief Abstracts the epoll_wait() function, which waits for
@@ -78,9 +78,11 @@ namespace HTTP {
 			*/
 			int	wait(void);
 
-			struct epoll_event	events[EPOLL_SIZE];
-		
 		private:
+			Epoll(Epoll const& cpy);
+			Epoll & operator=(Epoll const& cpy);
+
+			struct epoll_event	events[S_MAX_CLIENT];
 			int					fd;
 			int					size;
 			

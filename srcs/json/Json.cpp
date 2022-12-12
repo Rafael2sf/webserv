@@ -77,7 +77,7 @@ namespace JSON
 		return std::make_pair(0, buffer);
 	}
 
-	static std::string toString( int x )
+	static std::string toStringing( int x )
 	{
 		std::stringstream	ss;
 		std::string			s;
@@ -104,8 +104,8 @@ namespace JSON
 		{
 			tokens = 0;
 			loc = parser.errPos();
-			_err = toString(loc.first) + ":" \
-				+ toString(loc.second) + ": " + e.what();
+			_err = toStringing(loc.first) + ":" \
+				+ toStringing(loc.second) + ": " + e.what();
 			parser.clear();
 		}
 		catch (std::exception const& e)
@@ -179,16 +179,6 @@ namespace JSON
 		std::cerr << std::endl;
 	}
 
-	// void Json::begin( void )
-	// {
-	// 	return tokens.b
-	// }
-
-	// void Json::end( void )
-	// {
-
-	// }
-	
 	void Json::cout( void ) const
 	{
 		rprint(tokens, 0);

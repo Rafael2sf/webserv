@@ -5,6 +5,7 @@ VPATH		=	$(addprefix $(_SRC), \
 					core \
 					json \
 					error \
+					http \
 				)
 
 # shell commands
@@ -31,10 +32,10 @@ SRCS		=	$(addsuffix .cpp, \
 					Sockets \
 					Epoll \
 					Message \
-					ARequestHandler \
-					GetHandler \
-					PostHandler \
-					DelHandler \
+					AMethod \
+					Get \
+					Post \
+					Delete \
 					err \
 					Json \
 					Parser \

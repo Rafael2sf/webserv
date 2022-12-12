@@ -5,6 +5,7 @@
 #include <sstream>
 #include "webserv.hpp"
 #include "Node.hpp"
+#include "Iterator.hpp"
 
 namespace JSON
 {
@@ -23,8 +24,6 @@ namespace JSON
 		void clear(void);
 
 		Node *		tokens;
-		void begin( void );
-		void end( void );
 	private:
 		Json( Json const& other );
 		Json & operator=( Json const& other );

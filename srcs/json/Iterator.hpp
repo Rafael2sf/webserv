@@ -33,26 +33,26 @@ namespace JSON
 		Node * _findNextFromParent( Node * parent );
 	};
 
-	class constIterator: public std::iterator_traits<Node *>
+	class ConstIterator: public std::iterator_traits<Node *>
 	{
 	public:
 		typedef std::bidirectional_iterator_tag iterator_category;
 		Node * node;
 
-		constIterator( void );
-		constIterator( Node * __p );
-		constIterator( Iterator const& other );
-		constIterator( constIterator const& __other );
+		ConstIterator( void );
+		ConstIterator( Node const* __p );
+		ConstIterator( Iterator const& other );
+		ConstIterator( ConstIterator const& __other );
 
-		constIterator &	operator=( constIterator const& rhs );
+		ConstIterator &	operator=( ConstIterator const& rhs );
 		Node const&		operator*( void ) const;
 		Node const*		operator->( void ) const;
-		constIterator &	operator++( void );
-		constIterator 	operator++( int );
-		constIterator &	operator--( void );
-		constIterator	operator--( int );
-		bool		operator==( constIterator const&  rhs ) const;
-		bool		operator!=( constIterator const&  rhs ) const;
+		ConstIterator &	operator++( void );
+		ConstIterator 	operator++( int );
+		ConstIterator &	operator--( void );
+		ConstIterator	operator--( int );
+		bool		operator==( ConstIterator const&  rhs ) const;
+		bool		operator!=( ConstIterator const&  rhs ) const;
 		void		skip( void );
 	
 	private:

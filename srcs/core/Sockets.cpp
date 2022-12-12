@@ -71,7 +71,7 @@ namespace HTTP
 	int Sockets::listen( void )
 	{
 		std::vector<int> ports_used;
-			unsigned int port;
+		unsigned int port;
 
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
@@ -115,18 +115,6 @@ namespace HTTP
 			it != list.end(); it++)
 		{
 			if (it->fd == sock_fd && it->fd != -1)// || it->clients.count(sock_fd))
-				return &(*it);
-		}
-		return NULL;
-	}
-
-	t_sock_info const*
-	Sockets::findByPort( int port ) const
-	{
-		for (std::list<t_sock_info>::const_iterator it = list.begin();
-			it != list.end(); it++)
-		{
-			if (it->addr.sin_port == port)
 				return &(*it);
 		}
 		return NULL;

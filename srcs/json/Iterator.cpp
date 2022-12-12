@@ -154,46 +154,47 @@ namespace JSON
 		return node != rhs.node;
 	}
 
-	constIterator::constIterator( void )
+	ConstIterator::ConstIterator( void )
 	{}
 
-	constIterator::constIterator( Node * p )
-	: node(p)
-	{}
+	ConstIterator::ConstIterator( Node const* p )
+	{
+		node = const_cast<Node *>(p);
+	}
 
-	constIterator::constIterator( Iterator const& other )
+	ConstIterator::ConstIterator( Iterator const& other )
 	: node(other.node)
 	{
 		this->node = other.node;
 	}
 
-	constIterator::constIterator( constIterator const& other )
+	ConstIterator::ConstIterator( ConstIterator const& other )
 	: node(other.node)
 	{
 		*this = other;
 	}
 
-	constIterator &
-	constIterator::operator=( constIterator const& rhs )
+	ConstIterator &
+	ConstIterator::operator=( ConstIterator const& rhs )
 	{
 		node = rhs.node;
 		return *this;
 	}
 
 	Node const&
-	constIterator::operator*( void ) const
+	ConstIterator::operator*( void ) const
 	{
 		return *node;
 	}
 
 	Node const*
-	constIterator::operator->( void ) const
+	ConstIterator::operator->( void ) const
 	{
 		return node;
 	}
 
-	constIterator	&
-	constIterator::operator++( void )
+	ConstIterator	&
+	ConstIterator::operator++( void )
 	{
 		Object *	obj;
 		Array *		arr;
@@ -221,31 +222,31 @@ namespace JSON
 		return *this;
 	}
 
-	constIterator 
-	constIterator::operator++( int )
+	ConstIterator 
+	ConstIterator::operator++( int )
 	{
-		constIterator	it(*this);
+		ConstIterator	it(*this);
 
 		++(*this);
 		return (it);
 	}
 
-	constIterator	&
-	constIterator::operator--( void )
+	ConstIterator	&
+	ConstIterator::operator--( void )
 	{
 		return *this;
 	}
 
-	constIterator
-	constIterator::operator--( int )
+	ConstIterator
+	ConstIterator::operator--( int )
 	{
-		constIterator	it(*this);
+		ConstIterator	it(*this);
 
 		--(*this);
 		return (it);
 	}
 
-	Node * constIterator::_findNextFromParent( Node * parent )
+	Node * ConstIterator::_findNextFromParent( Node * parent )
 	{
 		Object * tmp;
 		Array * arr;
@@ -282,7 +283,7 @@ namespace JSON
 	}
 
 	// TO DO
-	void constIterator::skip( void )
+	void ConstIterator::skip( void )
 	{
 		if (!node->getParent())
 			return ;
@@ -300,12 +301,12 @@ namespace JSON
 		}
 	}
 
-	bool constIterator::operator==( constIterator const&  rhs ) const
+	bool ConstIterator::operator==( ConstIterator const&  rhs ) const
 	{
 		return node == rhs.node;
 	}
 
-	bool constIterator::operator!=( constIterator const&  rhs ) const
+	bool ConstIterator::operator!=( ConstIterator const&  rhs ) const
 	{
 		return node != rhs.node;
 	}

@@ -13,6 +13,19 @@ namespace HTTP
 	: state(CONNECTED)
 	{}
 
+	Client::Client( Client const& other )
+	: state(CONNECTED)
+	{
+		(void) other;
+	}
+
+	Client & Client::operator=( Client const& rhs )
+	{
+		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
+		(void) rhs;
+		return *this;
+	}
+
 	int Message::_updateStatusLine( std::stringstream & ss, size_t n )
 	{
 		std::string str;
@@ -67,17 +80,17 @@ namespace HTTP
 			return -1;
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		//DEBUG2("[FIELD] " << key << " : " << val);
-		this->add(key, val);
+		this->setHeaderField(key, val);
 		return 0;
 	}
 
 	int Message::_updateBody( char const * buff, size_t readval, size_t content_length )
 	{
-		if (_body.size() + readval < content_length)
-			_body.append(buff, readval);
+		if (body.size() + readval < content_length)
+			body.append(buff, readval);
 		else
 		{
-			_body += std::string(buff, content_length - _body.size());
+			body += std::string(buff, content_length - body.size());
 			//DEBUG2("BODY OK [" << readval << "] [" << content_length << "] [" << _body.size() << ']');
 			return 0;
 		}
@@ -89,11 +102,11 @@ namespace HTTP
 	{
 		std::stringstream	ss;
 		ssize_t				readval;
-		char				buff[TMP_BUFF];
+		char				buff[S_BUFFER_SIZE];
 
 		if (state == CONNECTED)
 			state = STATUS_LINE;
-		if ((readval = recv(fd, buff, TMP_BUFF - 1, 0)) > 0)
+		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
 		{
 			ssize_t i = 0;
 			char * j = 0;
@@ -103,13 +116,15 @@ namespace HTTP
 			{
 				if (state == BODY_CONTENT)
 				{
-					size_t content_length = ftStoi(req.getHeaderVal("content-length"));
-					if (content_length && req._body.size() == 0)
+					size_t content_length = 0;
+					if (req.getHeaderField("content-length"))
+						content_length = ftStoi(*req.getHeaderField("content-length"));
+					if (content_length && req.body.size() == 0)
 					{
 						size_t			max_body_size;
 						JSON::Node * 	max_body = 0;
-						if (req.conf)
-							max_body = req.conf->search(1, "client_max_body_size");
+						if (config)
+							max_body = config->search(1, "client_max_body_size");
 						if (max_body)
 						{
 							max_body_size = max_body->as<int>();
@@ -122,7 +137,6 @@ namespace HTTP
 							error(413);
 							return -1;
 						}
-						
 					}
 					if (!content_length || req._updateBody(buff + i,
 						(buff + readval) - (buff + i), content_length) == 0)
@@ -160,10 +174,7 @@ namespace HTTP
 						}
 					}
 					else
-					{
-						//DEBUG2("BODY");
 						state = BODY_CONTENT;
-					}
 					if (state == HEADER_FIELDS
 						&& (!strncmp(j, "\r\n\r\n", 4) || !strncmp(j, "\n\r\n\r", 4)))
 					{
@@ -202,10 +213,10 @@ namespace HTTP
 		std::string str;
 
 		res.createMethodVec("HTTP/1.1 " + ftItos(code) + Server::error[code]);
-		res.add("content-type", "text/html");
-		res.add("content-length", "12");
-		res.setBody("<h1>" + ftItos(code) + "</h1>");
-		str = res.responseString();
+		res.setHeaderField("content-type", "text/html");
+		res.setHeaderField("content-length", "12");
+		res.body = "<h1>" + ftItos(code) + "</h1>";
+		str = res.toString();
 		send(fd, str.c_str(), str.size(), 0);
 		return ;
 	}
@@ -220,5 +231,6 @@ namespace HTTP
 		req.clear();
 		res.clear();
 		state = CONNECTED;
+		config = 0;
 	}
 }

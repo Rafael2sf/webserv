@@ -11,8 +11,6 @@
 
 namespace HTTP
 {
-	#define TMP_BUFF 8192
-
 	enum
 	{
 		CONNECTED,
@@ -27,6 +25,8 @@ namespace HTTP
 	public:
 		~Client( void );
 		Client( void );
+		Client( Client const& other );
+		Client & operator=( Client const& rhs );
 
 		Message		req;
 		Message		res;
@@ -36,9 +36,31 @@ namespace HTTP
 		double		timestamp;
 		JSON::Node *config;
 
+		/**
+		 * @brief Updates the request message of the client
+		 * by reading from the %fd, if the request is complete.
+		 * method ok() will return true.
+		*/
 		int update( void );
+
+		/**
+		 * @brief return true if the request message has
+		 * been fully parsed and the http client is
+		 * waiting for a response.
+		*/
 		bool ok( void );
+
+		/**
+		 * @brief Clears all the internal memory used,
+		 * except for %fd and %timestamp allowing class to be reused.
+		*/
 		void reset( void );
+		
+		/**
+		 * @brief Sends a predefined error http response.
+		 * to the client.
+		 * @param code error code  
+		*/
 		void error(int code);
 
 	private:

@@ -23,7 +23,7 @@ namespace JSON
 	{
 	public:
 		typedef Iterator iterator;
-		typedef constIterator const_iterator;
+		typedef ConstIterator const_iterator;
 
 		virtual ~Node();
 		Node(void);
@@ -32,9 +32,9 @@ namespace JSON
 		Node & operator[](char const* key);
 
 		Iterator begin( void );
-		//Iterator<Node const*> begin( void ) const;
+		const_iterator begin( void ) const;
 		Iterator end( void );
-		//Iterator<Node const*> end( void ) const;
+		const_iterator end( void ) const;
 
 		std::string const &getProperty(void) const;
 		void setProperty(std::string const &);

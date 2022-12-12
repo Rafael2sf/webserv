@@ -52,7 +52,6 @@ namespace HTTP
 		*/
 		t_sock_info * insert( u_int32_t host, u_int16_t port );
 
-
 		/**
 		 * @brief Initiates all sockets previously added to the internal list
 		 * @return
@@ -70,22 +69,13 @@ namespace HTTP
 		 * On sucess, returns a pointer to the correspondent 
 		 * t_sock_info, otherwise, returns NULL
 		*/
-		t_sock_info	*	find( int sock_fd );
+		t_sock_info	* find( int sock_fd );
 
 		/**
 		 * @brief Closes all sockets and erases all elements.
 		*/
-		void	clear( void );
+		void clear( void );
 
 	private:
-		/**
-		 * @brief Searchs for a t_sock_info in the internal %list,
-		 *  by comparing the port.
-		 * @param port port to find
-		 * @return
-		 * On sucess, returns a pointer to the correspondent 
-		 * t_sock_info, otherwise, returns NULL
-		*/
-		t_sock_info	const*	findByPort( int port ) const;
 	};
 }

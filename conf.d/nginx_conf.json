@@ -1,0 +1,16 @@
+{
+	"server" : {
+		"listen" : "8000",
+		"client_max_body_size" : 2147483647,
+		"location" : {
+			"/" : {
+				"index" : "index.html",
+				"root" : "/home/rafernan/Projects/webserv/www/"
+			},
+			"/uploads/" : {
+				"root" : "/home/rafernan/Projects/webserv/",
+				"autoindex" : true
+			}
+		}
+	}
+}
