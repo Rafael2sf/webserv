@@ -26,76 +26,154 @@ namespace HTTP
 		return *this;
 	}
 
-	int Message::_updateStatusLine( std::stringstream & ss, size_t n )
+	void Client::owsTrimmer(std::string& str)
+	{
+		if (str.empty())
+			return ;
+		size_t	start = str.find_first_not_of(" \t\n\r\v\f");
+		size_t	finish = str.find_last_not_of(" \t\n\r\v\f");
+		if (start == std::string::npos)
+		{
+			str = "";
+			return ;
+		}
+		str = str.substr(start, finish - start + 1);
+	};
+
+	int Client::_updateStatusLine( char const* buff, size_t n )
 	{
 		std::string str;
 		size_t		start;
-		size_t		end;
 
-		(void) n;
-		method.resize(5);
-		ss >> method[0]; // Verify valid method - case sensitive
-		ss >> method[1]; // Veriy valid path
-		ss >> method[2]; // Verify valid protocl/version rfc 2.5 + case_sensitive
-		// method[4] -> fragment ?
-
-		start = method[1].find_first_of('?');
+		req.method.reserve(4);
+		req.createMethodVec(std::string().assign(buff, n));
+		if (req.method.size() != 3)
+		{
+			error(400);
+			return -1;
+		}
+		start = req.method[1].find_first_of('?');
 		if (start != std::string::npos)
-			start++;
-		end = method[1].find_first_of('#');
-		if (end != std::string::npos)
-			end--;
+		{
+			str = req.method[1].substr(start + 1);
+			req.method[1].erase(req.method[1].begin() \
+				+ start, req.method[1].end());
+			req.method.push_back(str);
+		}
+		else
+			req.method.push_back("");
 
-		if (start != std::string::npos && start < end)
-			method[3] = method[1].substr(start, end - start + 1);
-		if (end != std::string::npos)
-			method[4] = method[1].substr(end + 1);
-		if (start != std::string::npos && start < end)
-			method[1].erase(start - 1);
-		else if (end != std::string::npos)
-			method[1].erase(end + 1);
+		for (std::vector<std::string>::iterator it = req.method.begin();
+			it != req.method.end(); it++)
+		{ std::cout << *it << " "; }
+		std::cout << std::endl;
 
-		// DEBUG2(method[0] << " "
-		// 	<< method[1] << " "
-		// 	<< method[2] << " "
-		// 	<< method[3] << " "
-		// 	<< method[4]);
+		if (req.getMethodAt(0) != "GET"
+			&& req.getMethodAt(0) != "POST"
+			&& req.getMethodAt(0) != "DELETE")
+		{
+			error(405);
+			return -1;
+		}
+
+		state = HEADER_FIELDS;
 		return 0;
 	}
 
-	int Message::_updateHeaders( std::stringstream & ss, size_t n )
+	int Client::_updateHeaders( char const* buff, size_t n )
 	{
+		std::stringstream ss;
 		std::string key;
 		std::string val;
-		std::string str;
 
+		ss.str(std::string().assign(buff, n));
+		ss.seekg(0);
 		ss >> key;
 		if (*--key.end() == ':')
 			key.erase(--key.end());
 		else
+		{
+			error(400);
 			return -1;
+		}
 		val = ss.str().substr(key.size() + 1, n - key.size() - 1);
 		owsTrimmer(val);
-		if (val.empty())
-			return -1;
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		//DEBUG2("[FIELD] " << key << " : " << val);
-		this->setField(key, val);
+		if (key.empty() || val.empty())
+		{
+			error(400);
+			return -1;
+		}
+		req.setField(key, val);
+		std::cout << key << " " << val << std::endl;
 		return 0;
 	}
 
-	int Message::_updateBody( char const * buff, size_t readval, size_t content_length )
+	int Client::_updateBody( char const* buff, size_t readval )
 	{
-		if (body.size() + readval < content_length)
-			body.append(buff, readval);
+		if (req.body.size() == 0)
+		{
+			if (!req.getField("host"))
+			{
+				error(400);
+				return -1;
+			}
+			if (req.getField("content-length"))
+			{
+				size_t content_length = ftStoi(*req.getField("content-length"));
+				size_t			max_body_size;
+				JSON::Node * 	max_body = 0;
+
+				if (config)
+					max_body = config->search(1, "client_max_body_size");
+				if (max_body)
+					max_body_size = max_body->as<int>();
+				else
+					max_body_size = 1048576;
+				if (max_body_size < content_length)
+				{
+					error(413);
+					return -1;
+				}
+				req.content_length = content_length;
+			}
+			else
+			{
+				state = OK;
+				return 0;
+			}
+		}
+
+		if (req.body.size() + readval < req.content_length)
+			req.body.append(buff, readval);
 		else
 		{
-			body += std::string(buff, content_length - body.size());
-			//DEBUG2("BODY OK [" << readval << "] [" << content_length << "] [" << _body.size() << ']');
-			return 0;
+			req.body.append(buff, req.content_length - req.body.size());
+			std::cout << '[' << req.body.size() << ']' << std::endl;
+			state = OK;
+			return readval;
 		}
-		//DEBUG2("BODY UPDATE [" << readval << "] [" << content_length << "] [" << _body.size() << ']');
 		return readval;
+	}
+
+	static void nextField( int *state, char **j )
+	{
+		if (*state == HEADER_FIELDS
+			&& (!strncmp(*j, "\r\n\r\n", 4) || !strncmp(*j, "\n\r\n\r", 4)))
+		{
+			*state = BODY_CONTENT;
+			*j += 4;
+		}
+		else if (*state == HEADER_FIELDS
+			&& !strncmp(*j, "\n\n", 2))
+		{
+			*state = BODY_CONTENT;
+			*j += 2;
+		}
+		else if (!strncmp(*j, "\r\n", 2) || !strncmp(*j, "\n\r", 2))
+			*j += 2;
+		else
+			*j += 1;
 	}
 
 	int Client::update( void )
@@ -106,7 +184,7 @@ namespace HTTP
 
 		if (state == CONNECTED)
 			state = STATUS_LINE;
-		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
+		while ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
 		{
 			ssize_t i = 0;
 			char * j = 0;
@@ -116,34 +194,8 @@ namespace HTTP
 			{
 				if (state == BODY_CONTENT)
 				{
-					size_t content_length = 0;
-					if (req.getField("content-length"))
-						content_length = ftStoi(*req.getField("content-length"));
-					if (content_length && req.body.size() == 0)
-					{
-						size_t			max_body_size;
-						JSON::Node * 	max_body = 0;
-						if (config)
-							max_body = config->search(1, "client_max_body_size");
-						if (max_body)
-						{
-							max_body_size = max_body->as<int>();
-						}
-						else
-							max_body_size = 1048576;
-						if (max_body_size < content_length)
-						{
-							DEBUG2("content-length exceeds max_client_body_size: " << max_body_size);
-							error(413);
-							return -1;
-						}
-					}
-					if (!content_length || req._updateBody(buff + i,
-						(buff + readval) - (buff + i), content_length) == 0)
-					{
-						state = OK;
-						return 0;
-					}
+					if (_updateBody(buff + i, readval - i) < 0)
+						return -1;
 					break ;
 				}
 				j = std::find(buff + i, buff + readval, '\n');
@@ -151,46 +203,22 @@ namespace HTTP
 				{
 					if (j != (buff + i) && *(j - 1) == '\r')
 						j--;
-
 					n = j - (buff + i);
 					if (n > 0)
 					{
-						ss.str(std::string(buff + i, n));
-						ss.seekg(0);
-
 						if (state == STATUS_LINE)
 						{
-							if (req._updateStatusLine(ss, n) == -1)
-							{
-								error(400);
+							if (_updateStatusLine(buff + i, n) < 0)
 								return -1;
-							}
-							state = HEADER_FIELDS;
 						}
-						else if (req._updateHeaders(ss, n) == -1)
+						else if (_updateHeaders(buff + i, n) < 0)
 						{
-							error(400);
 							return -1;
 						}
 					}
 					else
 						state = BODY_CONTENT;
-					if (state == HEADER_FIELDS
-						&& (!strncmp(j, "\r\n\r\n", 4) || !strncmp(j, "\n\r\n\r", 4)))
-					{
-						state = BODY_CONTENT;
-						j += 4;
-					}
-					else if (state == HEADER_FIELDS
-						&& !strncmp(j, "\n\n", 2))
-					{
-						state = BODY_CONTENT;
-						j += 2;
-					}
-					else if (!strncmp(j, "\r\n", 2) || !strncmp(j, "\n\r", 2))
-						j += 2;
-					else
-						j++;
+					nextField(&state, &j);
 				}
 				else
 				{
@@ -200,7 +228,7 @@ namespace HTTP
 				i += j - (buff + i);
 			}
 		}
-		if (state == STATUS_LINE)
+		if (state == STATUS_LINE) // empty request
 		{
 			error(400);
 			return -1;
@@ -210,14 +238,24 @@ namespace HTTP
 
 	void Client::error(int code)
 	{
-		std::string str;
-
-		res.createMethodVec("HTTP/1.1 " + ftItos(code) + Server::error[code]);
+		std::string err;
+		
+		err = ftItos(code) + ' '+ Server::error[code];
+		res.createMethodVec("HTTP/1.1 " + err);
 		res.setField("content-type", "text/html");
-		res.setField("content-length", "12");
-		res.body = "<h1>" + ftItos(code) + "</h1>";
-		str = res.toString();
-		send(fd, str.c_str(), str.size(), 0);
+		res.setField("server", "webserv/0.4");
+		res.setField("connection", "close");
+		res.body = \
+"<html>\n\
+<head><title>"+ err + "</title></head>\n\
+<body bgcolor=\"white\">\n\
+<center><h1>" + err + "</h1></center>\n\
+<hr><center>webserv/0.4</center>\n\
+</body>\n\
+</html>\n";
+		res.setField("content-length", ftItos(res.body.size()));
+		err = res.toString();
+		send(fd, err.c_str(), err.size(), 0);
 		return ;
 	}
 

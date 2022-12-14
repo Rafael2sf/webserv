@@ -1,6 +1,6 @@
 {
 	"server" : {
-		"listen" : ["8000", "127.0.0.1:8080", "9000"],
+		"listen" : "8000",
 		"client_max_body_size" : 2147483647,
 		"location" : {
 			"/" : {

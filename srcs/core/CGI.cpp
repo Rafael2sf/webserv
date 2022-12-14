@@ -22,7 +22,7 @@ namespace HTTP
 	{
 		*this = other;
 	}
-	
+
 	CGI::CGI(Message const& req)
 	{
 		env = new char*[9];
@@ -45,7 +45,10 @@ namespace HTTP
 		vec.push_back("SCRIPT_FILENAME=/nfs/homes/rafernan/Desktop/webserv" + req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.getMethod()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
-		vec.push_back("QUERY_STRING=" + req.getMethod()[3]);
+		if (req.getMethod().size() >= 4)
+			vec.push_back("QUERY_STRING=" + req.getMethod()[3]);
+		else
+			vec.push_back("QUERY_STRING=");
 
 		for (int i = 0; i < 8; i++) {
 			env[i] = new char[vec[i].size() + 1];

@@ -41,6 +41,8 @@ namespace HTTP
 		int		p[2];
 		std::string const& body = client.req.body;
 
+		DEBUG2("POST");
+
 		pipe(p);
 		pid = fork();
 
@@ -63,6 +65,7 @@ namespace HTTP
 			exit (1);
 		}
 		close(p[0]);
+		DEBUG2("HI!");
 		while (1)
 		{
 			if (body.size() - bytes > S_PIPE_LIMIT)
@@ -73,8 +76,12 @@ namespace HTTP
 			else
 			{
 				write(p[1], body.c_str() + bytes, body.size() - bytes);
+				bytes += body.size() - bytes;
+				DEBUG2("BYTES SENT TO CGI " << bytes);
 				break ;
 			}
 		}
+		close(p[1]);
+		wait(0);
 	};
 }

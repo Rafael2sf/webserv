@@ -36,6 +36,8 @@ namespace HTTP
 			*/
 			std::vector<std::string> const&	getMethod(void) const;
 
+			std::string & getMethodAt( size_t i );
+
 			/**
 			 * @brief Getter for a mapped value in the headers map.
 			 * @param key Key value to look for in the map (name of a header).
@@ -75,25 +77,14 @@ namespace HTTP
 			std::string	body;
 			friend class Client;
 		private:
+			size_t	content_length;
 			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 			std::vector<std::string>			method; //Max size: 8k
-
-			/**
-			 * @brief Removes starting and trailing whitespaces in a header string.
-			 * @param str Reference to the string to remove from which whitespaces 
-			 * will be removed.
-			*/
-			void	owsTrimmer(std::string& str);
 
 			/**
 			 * Clears all the internal memory, making the class reusable.
 			*/
 			void	clear();
-		private:
-			// Put this somewhere else
-			int _updateStatusLine( std::stringstream & ss, size_t n );
-			int _updateHeaders( std::stringstream & ss, size_t n );
-			int _updateBody( char const * buff, size_t readval, size_t content_length );
 	};
 
 	/**
