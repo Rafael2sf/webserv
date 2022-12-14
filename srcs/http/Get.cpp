@@ -48,7 +48,9 @@ namespace HTTP
 
 	void Get::response(Client & client)
 	{
-		FILE *			fp;
+		if (client.sending())
+			return contentEncoding(client);
+		
 		std::string		path;
 		JSON::Node *	 location = 0;
 		JSON::Node *	 var = 0;
@@ -66,7 +68,7 @@ namespace HTTP
 		if (*--path.end() == '/')
 			path.erase(--path.end());
 		path += client.req.getMethod()[1];
-		if (!(fp = getFile(client, path, location)))
+		if (!(client.fp = getFile(client, path, location)))
 			return ;
 
 		client.res.createMethodVec("HTTP/1.1 200 OK");
@@ -94,7 +96,7 @@ namespace HTTP
 		struct stat f_info;
 		lstat(path.c_str(), &f_info);
 		client.res.setField("last-modified", getDate(f_info.st_mtime));
-		contentEncoding(client, fp);
+		contentEncoding(client);
 	};
 
 	FILE * Get::getFile(Client & client, std::string & path, JSON::Node * location)
@@ -145,7 +147,7 @@ namespace HTTP
 		return fp;
 	}
 
-	void Get::contentEncoding(Client & client, FILE * fp) 
+	void Get::contentEncoding(Client & client) 
 	{
 		char				buf[S_BUFFER_SIZE];
 		std::stringstream	ss;
@@ -153,8 +155,8 @@ namespace HTTP
 		int					read_nbr;
 
 		memset(buf, 0, S_BUFFER_SIZE);
-		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
-		if (read_nbr != S_BUFFER_SIZE) {
+		read_nbr = fread(buf, 1, S_BUFFER_SIZE, client.fp);
+		if (read_nbr != S_BUFFER_SIZE && client.ok()) {
 			ss << read_nbr;
 			ss >> str;
 			client.res.setField("content-length", str);
@@ -164,27 +166,32 @@ namespace HTTP
 		}
 		else
 		{
-			client.res.setField("transfer-encoding", "chunked");
-			str = client.res.toString();
-			str += "\r\n";
-			send(client.fd, str.c_str(), str.size(), 0);
-			str.clear();
-			while (read_nbr != 0) {
+			if (client.ok()) {
+				client.res.setField("transfer-encoding", "chunked");
+				str = client.res.toString();
+				client.setSending();
+				DEBUG2("First entry");
+			}
+			if (read_nbr != 0) {
+				std::string	temp;
 				ss << std::hex << read_nbr;
-				ss >> str;
-				ss.clear();
+				ss >> temp;
+				str += temp;
 				str += "\r\n";
 				client.res.body.assign(buf, read_nbr);
 				str += client.res.body + "\r\n";
-				send(client.fd, str.c_str(), str.size(), 0);
-				memset(buf, 0, S_BUFFER_SIZE);
+				DEBUG2("size: " << str.size());
+				DEBUG2(send(client.fd, str.c_str(), str.size(), 0));
 				client.res.body.clear();
-				str.clear();
-				read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
+				DEBUG2("Next entry");
+				// read_nbr = fread(buf, 1, S_BUFFER_SIZE, client.fp);
 			}
-			send(client.fd, "0\r\n\r\n", 5, 0);
+			else {
+				send(client.fd, "0\r\n\r\n", 5, 0);
+				fclose(client.fp);
+				client.setOk();
+			}
 		}
-		fclose(fp);
 	};
 
 	void Get::dirIndex(Client & client, std::string const& path, JSON::Node * location)

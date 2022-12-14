@@ -112,6 +112,7 @@ namespace HTTP
 			char * j = 0;
 			size_t n = 0;
 			buff[readval] = 0;
+			timestamp = time(NULL);
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
@@ -200,6 +201,8 @@ namespace HTTP
 				i += j - (buff + i);
 			}
 		}
+		if (readval == -1)			//Tried to read an EPOLLOUT!
+			return 0;
 		if (state == STATUS_LINE)
 		{
 			error(400);
@@ -226,6 +229,21 @@ namespace HTTP
 		return state == OK;
 	}
 
+	void Client::setOk( void )
+	{
+		state = OK;
+	}
+
+	bool Client::sending( void ) 
+	{
+		return state == SENDING;
+	}
+
+	void Client::setSending( void )
+	{
+		state = SENDING;
+	}
+	
 	void Client::reset( void )
 	{
 		req.clear();

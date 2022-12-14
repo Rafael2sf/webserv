@@ -18,6 +18,7 @@ namespace HTTP
 		HEADER_FIELDS,
 		BODY_CONTENT,
 		OK,
+		SENDING,
 	};
 
 	class Client
@@ -51,6 +52,22 @@ namespace HTTP
 		bool ok( void );
 
 		/**
+		 * @brief set the state to OK.
+		*/
+		void setOk( void );
+		
+		/**
+		 * @brief returns true if the server finished responding to
+		 * a request(used for chunked request sending).
+		*/
+		bool sending( void );
+
+		/**
+		 * @brief set the state to SEND.
+		*/
+		void setSending( void );
+
+		/**
 		 * @brief Clears all the internal memory used,
 		 * except for %fd and %timestamp allowing class to be reused.
 		*/
@@ -62,6 +79,8 @@ namespace HTTP
 		 * @param code error code  
 		*/
 		void error(int code);
+
+		FILE *			fp;
 
 	private:
 		int state;

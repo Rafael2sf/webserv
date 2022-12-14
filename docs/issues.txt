@@ -1,7 +1,16 @@
 ISSUES:
 
--Full request construction if it does not come in one go;
--If GET of very big file (over 5 Mb), send returns -1 (due to non blocking file descriptors);
+-Full request construction if it does not come in one go; DONE!!!!
+-If GET of very big file (over 5 Mb), send returns -1 (due to non blocking file descriptors); DONE!!!
+
+Edge triggered - Get a ready event alert only once per event, if you do not read or write all of it
+in one go, epoll_wait will NOT alert again for the same event;
+
+Is Level-triggered more adequate? Considering recv and send can only by done through epoll calling. -> Level-triggered is applied for now, dge does not seem to support EPOLLOUT the way we want;
+
+Receive buffer size: SO_RCVBUF
+Send buffer size: SO_SNDBUF
+
 -Missing headers in responses, mostly from CGI responses;
 -Error code sending in every possible request error;
 -Check memory leaks;

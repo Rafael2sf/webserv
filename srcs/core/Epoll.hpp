@@ -18,6 +18,8 @@
 #include <cstring>
 #include <unistd.h>
 #include "webserv.hpp"
+#define	LISTEN_SOCKET 0
+#define	CLIENT_CONNECT 1
 
 namespace HTTP {
 	class Sockets;
@@ -52,12 +54,13 @@ namespace HTTP {
 			 * @brief Inserts an incoming event fd in the "events" struct, allowing
 			 * its use to read/write. Flags are set appropriately.
 			 * @param sofd file descriptor of the socket from wich the event is coming from.
+			 * @param flag tells if the file descriptor belongs to a socket listen or a client connection.
 			 * @return
 			 * On sucess, returns 0 and the event fd is added to the list of fds to be
 			 * monitored, otherwise, -1 and
 			 * errno is set to indicate the error.
 			*/
-			int insert( int sofd);
+			int insert( int sofd, int flag);
 
 			/**
 			 * @brief Erases an event fd from the "events" struct and closes it.
