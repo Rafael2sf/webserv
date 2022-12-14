@@ -60,7 +60,7 @@ namespace HTTP
 		if (!location)
 			return dirIndex(client, path, location);
 		if (!(var = location->search(1, "root")))
-			return client.error(404);
+			return client.error(404, false);
 
 		path = var->as<std::string const&>();
 		if (*--path.end() == '/')
@@ -83,8 +83,8 @@ namespace HTTP
 				client.res.setField("content-type", "text/html");
 		}
 		// set all standart headers
-		client.res.setField("server", "Webserv/0.4");
-		client.res.setField("date", getDate(time(0)));
+		// client.res.setField("server", "Webserv/0.4");
+		// client.res.setField("date", getDate(time(0)));
 		if (client.req.getField("connection")
 			&& *client.req.getField("connection") == "close")
 			client.res.setField("connection", "close");
@@ -105,16 +105,16 @@ namespace HTTP
 		JSON::Node *	var = 0;
 
 		if (fp == NULL && errno == ENOENT) {
-			client.error(404);
+			client.error(404, false);
 			return NULL;
 		}
 		else if (fp == NULL && errno == EACCES) {
-			client.error(403);
+			client.error(403, false);
 			return NULL;
 		}
 		if (lstat(path.c_str(), &stat) == -1) {
 			fclose(fp);
-			client.error(404); // temporary ?
+			client.error(404, false); // temporary ?
 			return NULL;
 		}
 		if (S_ISDIR(stat.st_mode))
@@ -130,7 +130,7 @@ namespace HTTP
 						return NULL;
 					}
 					else if (errno == EACCES) {
-						client.error(403);
+						client.error(403, false);
 						return NULL;
 					}
 				}
@@ -193,19 +193,19 @@ namespace HTTP
 		std::string	 str;
 
 		if (!location)
-			return client.error(404);
-		client.res.createMethodVec("HTTP/1.1 404 Not Found");
+			return client.error(404, false);
+		client.res.createMethodVec("HTTP/1.1 200 OK");
 		client.res.setField("content-type", "text/html");
-		client.res.setField("date", getDate(time(0)));
+		// client.res.setField("date", getDate(time(0)));
 
 		autoindex = location->search(1, "autoindex");
 		if (!autoindex || !autoindex->as<bool>())
-			return client.error(404);
+			return client.error(404, false);
 
 		DIR * dirp = opendir(path.c_str());
 		if (!dirp)
-			return client.error(403);
-		client.res.body = "<html><head>file explorer</head><body><hr><pre><a href=\"../\"/>../</a>\n";
+			return client.error(403, false);
+		client.res.body = "<html>\n<headfile explorer</head>\n<body>\n<hr><pre><a href=\"../\"/>../</a>\n";
 		dirent * dp;
 		while ((dp = readdir(dirp)) != NULL)
 		{
@@ -226,8 +226,13 @@ namespace HTTP
 			}
 		}
 		closedir(dirp);
-		client.res.body += "</hr></pre></body></html>";
+		client.res.body += "</hr></pre>\n</body>\n</html>\n";
 		client.res.setField("content-length", ftItos(client.res.body.length()));
+		if (client.req.getField("connection")
+			&& *client.req.getField("connection") == "close")
+			client.res.setField("connection", "close");
+		else
+			client.res.setField("connection", "keep-alive");
 		str = client.res.toString();
 		send(client.fd, str.c_str(), str.size(), 0);
 		return ;

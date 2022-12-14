@@ -179,7 +179,7 @@ namespace HTTP
 				<< filepath << ":" << config.err() << std::endl;
 			return -1;
 		}
-		DEBUG(std::cout << "| JSON |\n"; config.cout());
+		DEBUG(std::cerr << "| JSON |\n"; config.cout());
 		if (listenMap(config, socks) == -1)
 			return -1;
 		if (socks.listen() == -1)
@@ -206,6 +206,7 @@ namespace HTTP
 				interest.push_back(&(*it));
 			}
 		}
+
 		// if full match remove 0.0.0.0
 		std::list<t_sock_info *>::iterator tmp;
 		if (perfect_match && cli.ai.sin_addr.s_addr != 0)
@@ -285,7 +286,6 @@ namespace HTTP
 		}
 		catch (const std::exception &e)
 		{
-			cl->error(500);
 			epoll.erase(socket);
 			clients.erase(socket);
 		}
@@ -323,32 +323,25 @@ namespace HTTP
 		std::map<std::string, AMethod *>::const_iterator it =
 			methods.find(client.req.getMethod()[0]);
 
-		DEBUG(
-			unsigned int port = htonl(client.ai.sin_addr.s_addr);
-			std::cerr << std::endl;
-			std::cerr << '[' << client.fd << "] [FROM " \
-				<< ((port & 0xff000000) >> 24) << '.' \
-				<< ((port & 0x00ff0000) >> 16) << '.' \
-				<< ((port & 0x0000ff00) >> 8) << '.' \
-				<< (port & 0x000000ff) << ':' << \
-				htons(client.ai.sin_port) << "] [" \
-				<< client.req.getMethod()[0] << ' ' \
-				<< client.req.getMethod()[1] << ']' << std::endl;
-		);
+		client.print_message(client.req, "-->");
 
 		if (it != methods.end())
 			it->second->operator()(client);
 		else
-			client.error(501);
+			client.error(501, false);
 
-		if (!client.req.getField("connection") ||
-				*client.req.getField("connection") == "close")
+		if (client.req.getField("connection") &&
+			*client.req.getField("connection") == "close")
 		{
 			if (epoll.erase(client.fd) == -1)
 				DEBUG2("epoll.erase() failed");
 			clients.erase(client.fd);
 		}
-		client.reset();
+		else
+		{
+			client.print_message(client.res, "<--");
+			client.reset();
+		}
 	}
 
 	void	Server::_timeout(void)
@@ -360,7 +353,7 @@ namespace HTTP
 		{
 			if (seconds - it->second.timestamp >= S_CONN_TIMEOUT)
 			{
-				DEBUG2('[' << it->first << "] timed out");
+				//DEBUG2('[' << it->first << "] timed out");
 				if (epoll.erase(it->first) == -1)
 					DEBUG2("epoll.erase() failed");
 				clients.erase(it->first);
@@ -505,5 +498,6 @@ namespace HTTP
 		error[415] = "Unsuported Media Type";
 		error[500] = "Internal Server Error";
 		error[501] = "Not Implemented";
+		error[505] = "HTTP Version not supported";
 	}
 }

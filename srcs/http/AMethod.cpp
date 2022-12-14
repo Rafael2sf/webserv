@@ -21,27 +21,12 @@ namespace HTTP
 		return *this;
 	};
 
-	std::string AMethod::getDate(time_t const& tm_info)
-	{
-		tm*		current_time;
-		char	buffer[DATE_BUF_SIZE];
-		std::string	ret;
-
-		memset(buffer, 0, DATE_BUF_SIZE);
-		current_time = localtime(&tm_info);
-		strftime(buffer, DATE_BUF_SIZE, "%a, %d %b %Y %X %Z",current_time);
-		ret = buffer;
-		return ret;
-	};
-
 	void AMethod::cgi(Client & client)
 	{
 		size_t	bytes = 0;
 		int		pid;
 		int		p[2];
 		std::string const& body = client.req.body;
-
-		DEBUG2("POST");
 
 		pipe(p);
 		pid = fork();
@@ -65,7 +50,6 @@ namespace HTTP
 			exit (1);
 		}
 		close(p[0]);
-		DEBUG2("HI!");
 		while (1)
 		{
 			if (body.size() - bytes > S_PIPE_LIMIT)
@@ -77,7 +61,7 @@ namespace HTTP
 			{
 				write(p[1], body.c_str() + bytes, body.size() - bytes);
 				bytes += body.size() - bytes;
-				DEBUG2("BYTES SENT TO CGI " << bytes);
+				//DEBUG2("BYTES SENT TO CGI " << bytes);
 				break ;
 			}
 		}

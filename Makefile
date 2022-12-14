@@ -4,7 +4,7 @@ NAME		=	webserv
 VPATH		=	$(addprefix $(_SRC), \
 					core \
 					json \
-					error \
+					utils \
 					http \
 				)
 
@@ -42,6 +42,7 @@ SRCS		=	$(addsuffix .cpp, \
 					Iterator \
 					Node \
 					Client \
+					date \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
 INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))

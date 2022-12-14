@@ -73,11 +73,11 @@ namespace HTTP
 		std::vector<int> ports_used;
 		unsigned int port;
 
-		DEBUG(std::cout << "\n| Sockets |\n");
+		DEBUG(std::cerr << "\n| Sockets |\n");
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
 		{
-			DEBUG(std::cout << "[socket] " \
+			DEBUG(std::cerr << "[socket] " \
 				<< ((port & 0xff000000) >> 24) << '.' \
 				<< ((port & 0x00ff0000) >> 16) << '.' \
 				<< ((port & 0x0000ff00) >> 8) << '.' \
@@ -86,7 +86,7 @@ namespace HTTP
 			if (std::find(ports_used.begin(), ports_used.end(),
 				(*it).addr.sin_port) != ports_used.end())
 			{
-				DEBUG(std::cout << " [inactive]" << std::endl;);
+				DEBUG(std::cerr << " [inactive]" << std::endl;);
 				continue ;
 			}
 			if (isock(*it) == -1)
@@ -107,7 +107,7 @@ namespace HTTP
 					close((*it).fd);
 				return -1;
 			}
-			DEBUG(std::cout << " [active]" << std::endl;);
+			DEBUG(std::cerr << " [active]" << std::endl;);
 			ports_used.push_back((*it).addr.sin_port);
 		}
 		return 0;

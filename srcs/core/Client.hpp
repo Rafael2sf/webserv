@@ -60,9 +60,12 @@ namespace HTTP
 		 * @brief Sends a predefined error http response.
 		 * to the client.
 		 * @param code error code  
+		 * @param close_connection if request asks to keep
+		 * connection alive, and this is set to true,
+		 * connecton will still be closed.
 		*/
-		void error(int code);
-
+		void error(int code, bool close_connection);
+		void print_message( Message const& m, std::string const& s );
 	private:
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.
@@ -74,5 +77,6 @@ namespace HTTP
 		int _updateHeaders( char const* buff, size_t n );
 		int _updateStatusLine( char const* buff, size_t n );
 		int _updateBody( char const * buff, size_t n );
+		int _validateStatusLine( void );
 	};
 }

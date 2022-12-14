@@ -44,6 +44,7 @@ namespace HTTP
 			 * @return	Returns a pointer to the mapped value if successful,
 			 * otherwise, null.
 			*/
+			std::string * getField(std::string const& key);
 			std::string const* getField(std::string const& key) const;
 
 			/**
@@ -73,11 +74,11 @@ namespace HTTP
 			 * @return The string created.
 			*/
 			std::string toString(void);
-
 			std::string	body;
 			friend class Client;
 		private:
 			size_t	content_length;
+			size_t	header_bytes;
 			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 			std::vector<std::string>			method; //Max size: 8k
 

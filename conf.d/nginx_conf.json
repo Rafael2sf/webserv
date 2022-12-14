@@ -5,7 +5,8 @@
 		"location" : {
 			"/" : {
 				"index" : "index.html",
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/"
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"limit_except" : ["GET", "POST"]
 			},
 			"/uploads/" : {
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/",

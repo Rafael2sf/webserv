@@ -26,7 +26,7 @@ namespace HTTP
 		S_DEFAULT_PORT = 8000,
 		S_MAX_CLIENT = 42,
 		S_EPOLL_TIMEOUT = 5,
-		S_CONN_TIMEOUT = 10,
+		S_CONN_TIMEOUT = 30,
 		S_PIPE_LIMIT = 64000,
 		S_BUFFER_SIZE = 8192,
 	};
@@ -35,12 +35,12 @@ namespace HTTP
 
 	typedef struct s_sock_info	t_sock_info;
 
-	/* error/err.cpp */
+	/* utils */
 
 	int	err( int ret );
 	int	err( int ret, char const*str );
 	int	err( int ret, char const*err, char const*str );
-
+	std::string getDate(time_t const& tm_info);
 }
 
 namespace JSON

@@ -40,16 +40,49 @@ namespace HTTP
 		str = str.substr(start, finish - start + 1);
 	};
 
+	int Client::_validateStatusLine( void )
+	{
+		int v[2];
+
+		if (req.method[0] != "GET"
+			&& req.method[0] != "POST"
+			&& req.method[0] != "DELETE")
+		{
+			error(405, true);
+			return -1;
+		}
+
+		if (req.method[1][0] != '/')
+		{
+			error(400, true);
+			return -1;
+		}
+
+		if (req.method[2].size() != 8
+			|| sscanf(req.method[2].c_str(), "HTTP/%d.%d", &v[0], &v[1]) != 2
+			|| v[0] == 0)
+		{
+			error(400, true);
+			return -1;
+		}
+
+		if (v[0] > 1 || v[1] > 1)
+		{
+			error(505, true);
+			return -1;
+		}
+		return 0;
+	}
+
 	int Client::_updateStatusLine( char const* buff, size_t n )
 	{
 		std::string str;
 		size_t		start;
 
-		req.method.reserve(4);
 		req.createMethodVec(std::string().assign(buff, n));
 		if (req.method.size() != 3)
 		{
-			error(400);
+			error(400, true);
 			return -1;
 		}
 		start = req.method[1].find_first_of('?');
@@ -63,18 +96,13 @@ namespace HTTP
 		else
 			req.method.push_back("");
 
-		for (std::vector<std::string>::iterator it = req.method.begin();
-			it != req.method.end(); it++)
-		{ std::cout << *it << " "; }
-		std::cout << std::endl;
-
-		if (req.getMethodAt(0) != "GET"
-			&& req.getMethodAt(0) != "POST"
-			&& req.getMethodAt(0) != "DELETE")
-		{
-			error(405);
+		if (_validateStatusLine() < 0)
 			return -1;
-		}
+
+		// for (std::vector<std::string>::iterator it = req.method.begin();
+		// 	it != req.method.end(); it++)
+		// { std::cout << *it << " "; }
+		// std::cout << std::endl;
 
 		state = HEADER_FIELDS;
 		return 0;
@@ -89,23 +117,37 @@ namespace HTTP
 		ss.str(std::string().assign(buff, n));
 		ss.seekg(0);
 		ss >> key;
-		if (*--key.end() == ':')
+
+		size_t pos = key.find_first_of(':');
+		if (pos == std::string::npos)
+			return 0;
+
+		if (pos == key.size() - 1)
+		{
 			key.erase(--key.end());
+			val += ss.str().substr(key.size() + 1, n - key.size() - 1);
+		}
 		else
 		{
-			error(400);
-			return -1;
+			val = key.substr(pos + 1);
+			key.erase(key.begin() + pos, key.end());
 		}
-		val = ss.str().substr(key.size() + 1, n - key.size() - 1);
 		owsTrimmer(val);
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		if (key.empty() || val.empty())
+
+		if (val.empty() && key == "host")
 		{
-			error(400);
+			error(400, true);
 			return -1;
 		}
-		req.setField(key, val);
-		std::cout << key << " " << val << std::endl;
+		else if (key.empty())
+			return 0;
+
+		if (req.getField(key))
+			*req.getField(key) += ',' + val;
+		else
+			req.setField(key, val);
+		//std::cout << key << " " << val << std::endl;
 		return 0;
 	}
 
@@ -113,10 +155,15 @@ namespace HTTP
 	{
 		if (req.body.size() == 0)
 		{
-			if (!req.getField("host"))
+			if (req.getField("host") == 0)
 			{
-				error(400);
+				error(400, true);
 				return -1;
+			}
+			if (req.method[0] == "GET")
+			{
+				state = OK;
+				return 0;
 			}
 			if (req.getField("content-length"))
 			{
@@ -132,7 +179,7 @@ namespace HTTP
 					max_body_size = 1048576;
 				if (max_body_size < content_length)
 				{
-					error(413);
+					error(413, false);
 					return -1;
 				}
 				req.content_length = content_length;
@@ -149,7 +196,6 @@ namespace HTTP
 		else
 		{
 			req.body.append(buff, req.content_length - req.body.size());
-			std::cout << '[' << req.body.size() << ']' << std::endl;
 			state = OK;
 			return readval;
 		}
@@ -184,7 +230,7 @@ namespace HTTP
 
 		if (state == CONNECTED)
 			state = STATUS_LINE;
-		while ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
+		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
 		{
 			ssize_t i = 0;
 			char * j = 0;
@@ -222,40 +268,67 @@ namespace HTTP
 				}
 				else
 				{
-					error(400);
+					error(400, true);
 					return -1;
 				}
 				i += j - (buff + i);
 			}
 		}
-		if (state == STATUS_LINE) // empty request
+		if (readval == 0 && state == STATUS_LINE) // empty request
 		{
-			error(400);
+			error(400, true);
 			return -1;
 		}
 		return 0;
 	}
 
-	void Client::error(int code)
+	void Client::print_message( Message const& m, std::string const& s  )
 	{
-		std::string err;
-		
-		err = ftItos(code) + ' '+ Server::error[code];
-		res.createMethodVec("HTTP/1.1 " + err);
-		res.setField("content-type", "text/html");
-		res.setField("server", "webserv/0.4");
-		res.setField("connection", "close");
+		DEBUG(
+			std::cerr << std::endl << s << std::endl;
+			unsigned int port = htonl(ai.sin_addr.s_addr);
+			std::cerr << "[FROM " \
+				<< ((port & 0xff000000) >> 24) << '.' \
+				<< ((port & 0x00ff0000) >> 16) << '.' \
+				<< ((port & 0x0000ff00) >> 8) << '.' \
+				<< (port & 0x000000ff) << ':' << \
+				htons(ai.sin_port) << ']'<< std::endl;
+			for (std::vector<std::string>::const_iterator it = m.method.begin();
+				it != m.method.end(); it++)
+			{ std::cerr << *it << " "; }
+			std::cerr << std::endl;
+			for (std::map<std::string, std::string>::const_iterator it = m.headers.begin();
+				it != m.headers.end(); it++)
+			{ std::cerr << it->first << ": " << it->second << std::endl; }
+			std::cerr << '[' << m.body.size() << ']' << std::endl;
+		);
+	}
+
+	void Client::error(int code, bool close_connection)
+	{
+		std::string s;
+
+		(void) close_connection;
+		s = ftItos(code) + ' '+ Server::error[code];
+		res.clear();
+		res.createMethodVec("HTTP/1.1 " + s);
+
+		if (close_connection || (req.getField("connection") &&
+			*req.getField("connection") == "close"))
+			res.setField("connection", "close");
+		else
+		res.setField("connection", "keep-alive");
 		res.body = \
 "<html>\n\
-<head><title>"+ err + "</title></head>\n\
+<head><title>"+ s + "</title></head>\n\
 <body bgcolor=\"white\">\n\
-<center><h1>" + err + "</h1></center>\n\
+<center><h1>" + s + "</h1></center>\n\
 <hr><center>webserv/0.4</center>\n\
 </body>\n\
 </html>\n";
 		res.setField("content-length", ftItos(res.body.size()));
-		err = res.toString();
-		send(fd, err.c_str(), err.size(), 0);
+		s = res.toString();
+		send(fd, s.c_str(), s.size(), 0);
 		return ;
 	}
 
