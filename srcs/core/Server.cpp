@@ -253,7 +253,7 @@ namespace HTTP
 			cl->fd = socket;
 			cl->ai.sin_addr.s_addr = si.addr.sin_addr.s_addr;
 			cl->ai.sin_port = si.addr.sin_port;
-			cl->config = 0;
+			cl->server = 0;
 			cl->timestamp = time(NULL);
 		}
 		catch ( std::exception const& e )
@@ -276,8 +276,8 @@ namespace HTTP
 				_handle(*cl);
 			else 
 			{
-				if (!cl->config)
-					cl->config = matchCon(socks, *cl);
+				if (!cl->server)
+					cl->server = matchCon(socks, *cl);
 				if (cl->update() == -1)
 				{
 					if (epoll.erase(cl->fd) == -1)
@@ -372,7 +372,7 @@ namespace HTTP
 		else if (str == "DELETE")
 			Delete().response(client);
 		else
-			client.error(501);
+			client.error(501, false);
 	};
 
 	void  Server::_init( void )

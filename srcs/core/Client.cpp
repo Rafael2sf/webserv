@@ -134,7 +134,6 @@ namespace HTTP
 		}
 		_owsTrimmer(val);
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-
 		if (val.empty() && key == "host")
 		{
 			error(400, true);
@@ -151,47 +150,111 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::_updateBody( char const* buff, size_t readval )
+	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
 	{
-		if (req.body.size() == 0)
-		{
-			if (req.getField("host") == 0)
-			{
-				error(400, true);
-				return -1;
-			}
-			if (req.method[0] == "GET")
-			{
-				state = OK;
-				return 0;
-			}
-			if (req.getField("content-length"))
-			{
-				size_t content_length = stoi(*req.getField("content-length"), std::dec);
-				size_t			max_body_size;
-				JSON::Node * 	max_body = 0;
+		JSON::Object *tmp;
+		size_t last_len = 0;
+		JSON::Node *last_match = 0;
+		size_t i = 0;
 
-				if (config)
-					max_body = config->search(1, "client_max_body_size");
-				if (max_body)
-					max_body_size = max_body->as<int>();
-				else
-					max_body_size = 1048576;
-				if (max_body_size < content_length)
-				{
-					error(413, false);
-					return -1;
-				}
-				req.content_length = content_length;
-			}
+		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
+		if (!tmp)
+		{
+			DEBUG2("no location");
+			return 0;
+		}
+		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc.skip())
+		{
+			DEBUG2("LOOP");
+			if (path.size() == 1)
+				i = path.find_first_of(*path.c_str());
 			else
+				i = path.find(loc->getProperty());
+			if (i != std::string::npos && i == 0)
 			{
-				state = OK;
-				return 0;
+				i = loc->getProperty().size();
+				if (path.size() == i)
+					return &*loc;
+				if (i > last_len)
+				{
+					last_len = i;
+					last_match = &*loc;
+				}
 			}
 		}
+		DEBUG2("END");
+		return last_match;
+	}
 
-		if (req.body.size() + readval < req.content_length)
+	static bool isMethodAllowed( std::string const& method, JSON::Node const*nptr )
+	{
+		JSON::Node *p;
+
+		p = nptr->search(1, "limit_except");
+		if (!p)
+			return true;
+		for (JSON::Node::iterator it = p->begin(); it != p->end(); it.skip())
+		{
+			if (it->type() == JSON::string
+				&& method == it->as<std::string const&>())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int Client::_peekHeaderFields( void )
+	{
+		int				size;
+		JSON::Node * 	nptr = 0;
+	
+		if (server)
+		{
+			location = matchLocation(this->server, req.getMethod()[1]);
+			if (!location)
+				DEBUG2("HOW");
+			DEBUG2("LOCATION = " << location);
+		}
+		else
+			DEBUG2("WTF");
+		if (req.getField("host") == 0)
+		{
+			error(400, true);
+			return -1;
+		}
+		if (!isMethodAllowed(req.method[0], location))
+		{
+			error(405, true);
+			return -1;
+		}
+		if (req.method[0] != "GET" && req.getField("content-length"))
+		{
+
+			if (server)
+				nptr = server->search(1, "client_max_body_size");
+			if (nptr)
+				size = nptr->as<int>();
+			else
+				size = 1048576;
+			req.content_length = stoi(*req.getField("content-length"), std::dec);
+			if (size < 0 || size < req.content_length)
+			{
+				error(413, true);
+				return -1;
+			}
+			req.content_length = req.content_length;
+		}
+		else
+			state = OK;
+		return 0;
+	}
+
+	int Client::_updateBody( char const* buff, size_t readval )
+	{
+		if (req.body.size() == 0 && _peekHeaderFields() < 0) // run once
+			return -1;
+		if (req.body.size() + readval < (size_t)req.content_length)
 			req.body.append(buff, readval);
 		else
 		{
@@ -240,11 +303,7 @@ namespace HTTP
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
-				{
-					if (_updateBody(buff + i, readval - i) < 0)
-						return -1;
-					break ;
-				}
+					return _updateBody(buff + i, readval - i);
 				j = std::find(buff + i, buff + readval, '\n');
 				if (j != (buff + readval))
 				{
@@ -253,17 +312,13 @@ namespace HTTP
 					n = j - (buff + i);
 					if (n > 0)
 					{
-						if (state == STATUS_LINE)
-						{
-							if (_updateStatusLine(buff + i, n) < 0)
-								return -1;
-						}
-						else if (_updateHeaders(buff + i, n) < 0)
-						{
+						if (state == STATUS_LINE
+							&& _updateStatusLine(buff + i, n) < 0)
 							return -1;
-						}
+						else if (_updateHeaders(buff + i, n) < 0)
+							return -1;
 					}
-					else
+					else if (state == HEADER_FIELDS)
 						state = BODY_CONTENT;
 					nextField(&state, &j);
 				}
@@ -327,6 +382,7 @@ namespace HTTP
 <hr><center>webserv/0.4</center>\n\
 </body>\n\
 </html>\n";
+		res.setField("content-type", "text/html");
 		res.setField("content-length", itos(res.body.size(), std::dec));
 		s = res.toString();
 		send(fd, s.c_str(), s.size(), 0);
@@ -358,6 +414,6 @@ namespace HTTP
 		req.clear();
 		res.clear();
 		state = CONNECTED;
-		config = 0;
+		server = 0;
 	}
 }

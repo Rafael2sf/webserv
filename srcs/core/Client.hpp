@@ -35,7 +35,8 @@ namespace HTTP
 		struct \
 		sockaddr_in	ai;
 		double		timestamp;
-		JSON::Node *config;
+		JSON::Node *server;
+		JSON::Node *location;
 
 		/**
 		 * @brief Updates the request message of the client
@@ -95,6 +96,7 @@ namespace HTTP
 		 * will be removed.
 		*/
 		void _owsTrimmer(std::string& str);
+		int _peekHeaderFields( void );
 		int _updateHeaders( char const* buff, size_t n );
 		int _updateStatusLine( char const* buff, size_t n );
 		int _updateBody( char const * buff, size_t n );

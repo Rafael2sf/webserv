@@ -16,7 +16,7 @@ namespace HTTP
 		return *this;
 	};
 
-	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
+	JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
 	{
 		JSON::Object *tmp;
 		size_t last_len = 0;
@@ -25,9 +25,13 @@ namespace HTTP
 
 		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
 		if (!tmp)
-			return 0;
-		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc++)
 		{
+			DEBUG2("no location");
+			return 0;
+		}
+		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc.skip())
+		{
+			DEBUG2("LOOP");
 			if (path.size() == 1)
 				i = path.find_first_of(*path.c_str());
 			else
@@ -44,6 +48,7 @@ namespace HTTP
 				}
 			}
 		}
+		DEBUG2("END");
 		return last_match;
 	}
 
@@ -58,8 +63,9 @@ namespace HTTP
 
 		if (client.req.getMethod()[1].find(".py") != std::string::npos)
 			return cgi(client);
-		if (client.config)
-			location = matchLocation(client.config, client.req.getMethod()[1]);
+		// if (client.server)
+		// 	location = matchLocation(client.server, client.req.getMethod()[1]);
+		location = client.location;
 		if (!location)
 			return dirIndex(client, path, location);
 		if (!(var = location->search(1, "root")))
@@ -85,9 +91,6 @@ namespace HTTP
 			else
 				client.res.setField("content-type", "text/html");
 		}
-		// set all standart headers
-		// client.res.setField("server", "Webserv/0.4");
-		// client.res.setField("date", getDate(time(0)));
 		if (client.req.getField("connection")
 			&& *client.req.getField("connection") == "close")
 			client.res.setField("connection", "close");
@@ -162,7 +165,7 @@ namespace HTTP
 			client.res.body.assign(buf, read_nbr);
 			str = client.res.toString();
 			if (send(client.fd, str.c_str(), str.size(), 0) == -1)
-				client.error(500);
+				client.error(500, true);
 		}
 		else
 		{
@@ -176,14 +179,14 @@ namespace HTTP
 				client.res.body.assign(buf, read_nbr);
 				str += client.res.body + "\r\n";
 				if (send(client.fd, str.c_str(), str.size(), 0) == -1) {
-					client.error(500);
+					client.error(500, true);
 					client.setOk();
 				}
 				client.res.body.clear();
 			}
 			else {
 				if (send(client.fd, "0\r\n\r\n", 5, 0) == -1)
-					client.error(500);
+					client.error(500, true);
 				fclose(client.fp);
 				client.setOk();
 			}
