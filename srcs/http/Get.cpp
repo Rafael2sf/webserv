@@ -162,7 +162,8 @@ namespace HTTP
 			client.res.setField("content-length", str);
 			client.res.body.assign(buf, read_nbr);
 			str = client.res.toString();
-			send(client.fd, str.c_str(), str.size(), 0);
+			if (send(client.fd, str.c_str(), str.size(), 0) == -1)
+				client.error(500);
 		}
 		else
 		{
@@ -180,14 +181,15 @@ namespace HTTP
 				str += "\r\n";
 				client.res.body.assign(buf, read_nbr);
 				str += client.res.body + "\r\n";
-				DEBUG2("size: " << str.size());
-				DEBUG2(send(client.fd, str.c_str(), str.size(), 0));
+				if (send(client.fd, str.c_str(), str.size(), 0) == -1) {
+					client.error(500);
+					client.setOk();
+				}
 				client.res.body.clear();
-				DEBUG2("Next entry");
-				// read_nbr = fread(buf, 1, S_BUFFER_SIZE, client.fp);
 			}
 			else {
-				send(client.fd, "0\r\n\r\n", 5, 0);
+				if (send(client.fd, "0\r\n\r\n", 5, 0) == -1)
+					client.error(500);
 				fclose(client.fp);
 				client.setOk();
 			}

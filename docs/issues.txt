@@ -15,3 +15,5 @@ Send buffer size: SO_SNDBUF
 -Error code sending in every possible request error;
 -Check memory leaks;
 -Can CGI object construction throw an exception?
+
+-SEND: What code should be sent when a file exists but is empty???
