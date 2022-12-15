@@ -42,7 +42,7 @@ namespace HTTP
 			vec.push_back("HTTP_USER_AGENT=" + *req.getField("user-agent"));
 		else
 			vec.push_back("HTTP_USER_AGENT=");
-		vec.push_back("SCRIPT_FILENAME=/nfs/homes/daalmeid/Desktop/webserv" + req.getMethod()[1]);
+		vec.push_back("SCRIPT_FILENAME=/nfs/homes/rafernan/Desktop/webserv" + req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.getMethod()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
 		vec.push_back("QUERY_STRING=" + req.getMethod()[3]);

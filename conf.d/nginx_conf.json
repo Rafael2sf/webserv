@@ -5,10 +5,10 @@
 		"location" : {
 			"/" : {
 				"index" : "index.html",
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/"
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
 				"autoindex" : true
 			}
 		}

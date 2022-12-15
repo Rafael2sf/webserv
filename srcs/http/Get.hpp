@@ -18,8 +18,5 @@ namespace HTTP
 			 * @param Client http client class
 			*/
 			void response(Client & client);
-
-		private:
-
 	};
 }
