@@ -22,7 +22,7 @@ namespace HTTP
 	{
 		*this = other;
 	}
-	
+
 	CGI::CGI(Message const& req)
 	{
 		env = new char*[9];
