@@ -21,7 +21,7 @@ namespace HTTP
 		AMethod(AMethod const& cpy);
 		AMethod&	operator=(AMethod const& rhs);
 
-		virtual void	operator()(Client & client) = 0;
+		virtual void	response(Client & client) = 0;
 
 		protected:
 

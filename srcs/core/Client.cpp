@@ -236,6 +236,7 @@ namespace HTTP
 			char * j = 0;
 			size_t n = 0;
 			buff[readval] = 0;
+			timestamp = time(NULL);
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
@@ -274,12 +275,12 @@ namespace HTTP
 				i += j - (buff + i);
 			}
 		}
-		if (readval == 0 && state == STATUS_LINE) // empty request
+		if (readval == 0 && state == STATUS_LINE) // empty request 
 		{
 			error(400, true);
 			return -1;
 		}
-		return 0;
+		return 0; // If EPOLLOUT event, it will be ignored!
 	}
 
 	void Client::print_message( Message const& m, std::string const& s  )
@@ -337,6 +338,21 @@ namespace HTTP
 		return state == OK;
 	}
 
+	void Client::setOk( void )
+	{
+		state = OK;
+	}
+
+	bool Client::sending( void ) 
+	{
+		return state == SENDING;
+	}
+
+	void Client::setSending( void )
+	{
+		state = SENDING;
+	}
+	
 	void Client::reset( void )
 	{
 		req.clear();

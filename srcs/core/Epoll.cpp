@@ -47,19 +47,21 @@ namespace HTTP {
 		for (std::list<t_sock_info>::const_iterator it = socks.list.begin();
 			it != socks.list.end(); it++)
 		{
-			if (it->fd != -1 && insert(it->fd) == -1)
+			if (it->fd != -1 && insert(it->fd, LISTEN_SOCKET) == -1)
 				return err(-1, "error in insert()");
 		}
 		return 0;
 	};
 
-	int	Epoll::insert(int sofd)
+	int	Epoll::insert(int sofd, int flag)
 	{
 		int				flags;
 		epoll_event		ev;
 
 		memset(&ev, 0, sizeof(ev));
-		ev.events = EPOLLIN;
+		ev.events = EPOLLIN | EPOLLOUT;
+		if (flag == LISTEN_SOCKET)
+			ev.events = EPOLLIN;
 		ev.data.fd = sofd;
 		flags = fcntl(sofd, F_GETFL, 0);
 		if (flags == -1)

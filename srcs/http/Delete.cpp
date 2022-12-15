@@ -21,7 +21,7 @@ namespace HTTP {
 		return *this;
 	};
 
-	void Delete::operator()(Client & client)
+	void Delete::response(Client & client)
 	{
 		cgi(client);
 	};

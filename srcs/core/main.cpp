@@ -23,10 +23,6 @@ int		main( int argc, char **argv )
 	if (server.init(argv[1]) == -1)
 		return (EXIT_FAILURE);
 
-	server.add_handler("GET", new HTTP::Get());
-	server.add_handler("POST", new HTTP::Post());
-	server.add_handler("DELETE", new HTTP::Delete());
-
 	server.loop();
 	return (EXIT_SUCCESS);
 }

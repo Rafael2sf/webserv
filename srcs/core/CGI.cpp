@@ -28,7 +28,7 @@ namespace HTTP
 		env = new char*[9];
 		std::vector<std::string>	vec;
 
-		vec.reserve(8);
+		vec.reserve(10);
 		vec.push_back("PATH_INFO=/usr/bin/python3");
 		if (req.getField("content-type"))
 			vec.push_back("CONTENT_TYPE=" + *req.getField("content-type"));
@@ -42,19 +42,33 @@ namespace HTTP
 			vec.push_back("HTTP_USER_AGENT=" + *req.getField("user-agent"));
 		else
 			vec.push_back("HTTP_USER_AGENT=");
-		vec.push_back("SCRIPT_FILENAME=/nfs/homes/rafernan/Desktop/webserv" + req.getMethod()[1]);
+		vec.push_back("SCRIPT_FILENAME=/nfs/homes/daalmeid/Desktop/webserv" + req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + req.getMethod()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
 		vec.push_back("QUERY_STRING=" + req.getMethod()[3]);
-
-		for (int i = 0; i < 8; i++) {
+		if (req.getField("accept"))
+			vec.push_back("HTTP_ACCEPT=" + *req.getField("accept"));
+		else
+			vec.push_back("HTTP_ACCEPT=");
+		if (req.getField("connection"))
+		vec.push_back("HTTP_CONNECTION=" + *req.getField("connection"));
+		else
+			vec.push_back("HTTP_CONNECTION=");
+		
+		int	vec_size = vec.size();
+		env = new char*[vec_size + 1];
+		for (int i = 0; i < vec_size; i++) {
 			env[i] = new char[vec[i].size() + 1];
 			memcpy(env[i], vec[i].c_str(), vec[i].size());
 			env[i][vec[i].size()] = '\0';
 		}
-		env[8] = NULL;
-		
-		std::string temp = vec[4].substr(vec[4].find_first_of('/'));
+		env[vec_size] = NULL;
+		std::string temp("");
+
+		for (std::vector<std::string>::iterator it = vec.begin(); it != vec.end(); it++) {
+			if (it->find("SCRIPT_FILENAME=") != std::string::npos)
+				temp = it->substr(it->find_first_of('/'));
+		}
 		args = new char*[3];
 		args[0] = new char[strlen("/usr/bin/python3") + 1];
 		memcpy(args[0], "/usr/bin/python3", strlen("/usr/bin/python3"));

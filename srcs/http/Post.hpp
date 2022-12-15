@@ -16,7 +16,7 @@ namespace HTTP {
 		 * @brief Handler of POST requests.
 		 * @param client http client class
 		*/
-		void operator()(Client & client);
+		void response(Client & client);
 		
 		private:
 	};

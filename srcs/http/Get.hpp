@@ -20,7 +20,7 @@ namespace HTTP
 			 * @brief Handler of DELETE requests.
 			 * @param Client http client class
 			*/
-			void operator()(Client & client);
+			void response(Client & client);
 
 		private:
 
@@ -44,7 +44,7 @@ namespace HTTP
 			 * @param clien http client class
 			 * @param fp file to read from
 			*/
-			void	contentEncoding(Client & client, FILE * fp);
+			void	contentEncoding(Client & client);
 
 			/**
 			 * @brief Attempts to create a http response with the files indexed relative

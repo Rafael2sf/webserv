@@ -15,7 +15,7 @@ namespace HTTP {
 		 * @brief Handler of DELETE requests.
 		 * @param Client http client class
 		*/
-		virtual void operator()(Client & client);
+		virtual void response(Client & client);
 		
 		private:
 	};

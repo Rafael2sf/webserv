@@ -77,12 +77,12 @@ namespace HTTP
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
 		{
-			DEBUG(std::cerr << "[socket] " \
+			port = ntohl((*it).addr.sin_addr.s_addr);
+			DEBUG(std::cout << "[socket] " \
 				<< ((port & 0xff000000) >> 24) << '.' \
 				<< ((port & 0x00ff0000) >> 16) << '.' \
 				<< ((port & 0x0000ff00) >> 8) << '.' \
 				<< (port & 0x000000ff) << ':' << htons((*it).addr.sin_port));
-			port = ntohl((*it).addr.sin_addr.s_addr);
 			if (std::find(ports_used.begin(), ports_used.end(),
 				(*it).addr.sin_port) != ports_used.end())
 			{

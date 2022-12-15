@@ -243,7 +243,7 @@ namespace HTTP
 				err(-1);
 				return ;
 			}
-			if (epoll.insert(socket) == -1)
+			if (epoll.insert(socket, CLIENT_CONNECT) == -1)
 			{
 				err(-1);
 				return ;
@@ -272,17 +272,19 @@ namespace HTTP
 		try
 		{
 			cl = &clients.at(socket);
-			cl->timestamp = time(NULL);
-			if (!cl->config)
-				cl->config = matchCon(socks, *cl);
-			if (cl->update() == -1)
-			{
-				if (epoll.erase(cl->fd) == -1)
-					DEBUG2("epoll.erase() failed");
-				clients.erase(cl->fd);
-			}
-			if (cl->ok())
+			if (cl->ok() || cl->sending())
 				_handle(*cl);
+			else 
+			{
+				if (!cl->config)
+					cl->config = matchCon(socks, *cl);
+				if (cl->update() == -1)
+				{
+					if (epoll.erase(cl->fd) == -1)
+						DEBUG2("epoll.erase() failed");
+					clients.erase(cl->fd);
+				}
+			}
 		}
 		catch (const std::exception &e)
 		{
@@ -306,6 +308,7 @@ namespace HTTP
 				break ;
 			_timeout();
 			events = epoll.wait();
+			// DEBUG2("Finished sleeping");
 			for (int i = 0; i < events; i++)
 			{
 				socket = epoll[i].data.fd;
@@ -319,28 +322,23 @@ namespace HTTP
 	}
 
 	void Server::_handle(Client & client)
-	{
-		std::map<std::string, AMethod *>::const_iterator it =
-			methods.find(client.req.getMethod()[0]);
+	{	
+		_methodChoice(client);
 
-		client.print_message(client.req, "-->");
-
-		if (it != methods.end())
-			it->second->operator()(client);
-		else
-			client.error(501, false);
-
-		if (client.req.getField("connection") &&
-			*client.req.getField("connection") == "close")
+		if (client.ok())
 		{
-			if (epoll.erase(client.fd) == -1)
-				DEBUG2("epoll.erase() failed");
-			clients.erase(client.fd);
-		}
-		else
-		{
-			client.print_message(client.res, "<--");
-			client.reset();
+			client.print_message(client.req, "-->");
+      client.print_message(client.res, "<--");
+      
+      if (client.req.getField("connection") &&
+					*client.req.getField("connection") == "close")
+			{
+				if (epoll.erase(client.fd) == -1)
+					DEBUG2("epoll.erase() failed");
+				clients.erase(client.fd);
+			}
+			else
+				client.reset();
 		}
 	}
 
@@ -364,10 +362,18 @@ namespace HTTP
 		}
 	}
 
-	void Server::add_handler(std::string const& s, AMethod * h)
-	{
-		methods.insert(std::make_pair(s, h));
-	}
+	void Server::_methodChoice(Client & client) {
+
+		std::string str = client.req.getMethod()[0];
+		if (str =="POST")
+			Post().response(client);
+		else if (str == "GET") 
+			Get().response(client);
+		else if (str == "DELETE")
+			Delete().response(client);
+		else
+			client.error(501);
+	};
 
 	void  Server::_init( void )
 	{

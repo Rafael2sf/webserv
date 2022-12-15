@@ -1,5 +1,7 @@
 5XX
 
+500 Internal Server Error - recv/send errors?
+
 501 Not Implemented - For non-exitent request handling?
 
 
