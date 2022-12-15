@@ -35,9 +35,9 @@ namespace HTTP
 			
 			close(p[1]);
 			CGI	test(client.req);
-			while (client.config->getParent() != NULL)
-				client.config = client.config->getParent();
-			delete client.config;
+			while (client.server->getParent() != NULL)
+				client.server = client.server->getParent();
+			delete client.server;
 			if (dup2(p[0], STDIN_FILENO) == -1)
 			{
 				write(2, "error: fatal\n", 13);
