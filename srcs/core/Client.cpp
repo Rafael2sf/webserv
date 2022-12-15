@@ -416,4 +416,145 @@ namespace HTTP
 		state = CONNECTED;
 		server = 0;
 	}
+
+	bool Client::getFile(std::string & path)
+	{
+		struct stat		stat;
+		std::string		path_index;
+		JSON::Node *	var = 0;
+		this->fp = fopen(path.c_str(), "r");
+
+		if (fp == NULL && errno == ENOENT) {
+			error(404, false);
+			return false;
+		}
+		else if (fp == NULL && errno == EACCES) {
+			error(403, false);
+			return false;
+		}
+		if (lstat(path.c_str(), &stat) == -1) {
+			fclose(fp);
+			error(404, false); // temporary ?
+			return false;
+		}
+		if (S_ISDIR(stat.st_mode))
+		{
+			var = location->search(1, "index");
+			if (var)
+			{
+				path_index = path + var->as<std::string const&>();
+				fclose(fp);
+				if ((fp = fopen(path_index.c_str(), "r")) == NULL) {
+					if (errno == ENOENT) {
+						dirIndex(path);
+						return false;
+					}
+					else if (errno == EACCES) {
+						error(403, false);
+						return false;
+					}
+				}
+				path = path_index;
+			}
+			else
+			{
+				dirIndex(path);
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void Client::contentEncoding(void) 
+	{
+		char				buf[S_BUFFER_SIZE];
+		std::string			str;
+		int					read_nbr;
+
+		memset(buf, 0, S_BUFFER_SIZE);
+
+		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
+		if (read_nbr != S_BUFFER_SIZE && state == OK) {
+			res.setField("content-length", itos(read_nbr, std::dec));
+			res.body.assign(buf, read_nbr);
+			str = res.toString();
+			if (send(fd, str.c_str(), str.size(), 0) == -1)
+				error(500, true);
+		}
+		else
+		{
+			if (state == OK) {
+				res.setField("transfer-encoding", "chunked");
+				str = res.toString();
+				state = SENDING;
+			}
+			if (read_nbr != 0) {
+				str += itos(read_nbr, std::hex) + "\r\n";
+				res.body.assign(buf, read_nbr);
+				str += res.body + "\r\n";
+				if (send(fd, str.c_str(), str.size(), 0) == -1) {
+					error(500, true);
+					state = OK;
+				}
+				res.body.clear();
+			}
+			else {
+				if (send(fd, "0\r\n\r\n", 5, 0) == -1)
+					error(500, true);
+				fclose(fp);
+				state = OK;
+			}
+		}
+	};
+
+	void Client::dirIndex(std::string const& path)
+	{
+		JSON::Node * autoindex;
+		std::string	 str;
+
+		if (!location)
+			return error(404, false);
+		res.createMethodVec("HTTP/1.1 200 OK");
+		res.setField("content-type", "text/html");
+		// client.res.setField("date", getDate(time(0)));
+
+		autoindex = location->search(1, "autoindex");
+		if (!autoindex || !autoindex->as<bool>())
+			return error(404, false);
+
+		DIR * dirp = opendir(path.c_str());
+		if (!dirp)
+			return error(403, false);
+		res.body = "<html>\n<headfile explorer</head>\n<body>\n<hr><pre><a href=\"../\"/>../</a>\n";
+		dirent * dp;
+		while ((dp = readdir(dirp)) != NULL)
+		{
+			struct stat stat;
+			if (dp->d_name[0] != '.')
+			{
+				if (lstat(std::string(path.c_str() + std::string(dp->d_name)).c_str(), &stat) != -1
+					&& S_ISDIR(stat.st_mode))
+				{
+					res.body += "<a href=\"" + std::string(dp->d_name) \
+					+ "/\"/>" + std::string(dp->d_name) + "/</a>\n";
+				}
+				else
+				{
+					res.body += "<a href=\"" + std::string(dp->d_name) \
+					+ "\"/>" + std::string(dp->d_name) + "</a>\n";
+				}
+			}
+		}
+		closedir(dirp);
+		res.body += "</hr></pre>\n</body>\n</html>\n";
+		res.setField("content-length", itos(res.body.length(), std::dec));
+		if (req.getField("connection")
+			&& *req.getField("connection") == "close")
+			res.setField("connection", "close");
+		else
+			res.setField("connection", "keep-alive");
+		str = res.toString();
+		send(fd, str.c_str(), str.size(), 0);
+		return ;
+	};
 }
