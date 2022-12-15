@@ -54,6 +54,5 @@ namespace HTTP
 			 * @param location location config block 
 			*/
 			void	dirIndex(Client & client, std::string const& path, JSON::Node * location);
-			
 	};
 }

@@ -3,6 +3,7 @@
 #include <iomanip>
 #include "Node.hpp"
 #include "Server.hpp"
+#include <algorithm>
 
 namespace HTTP
 {
@@ -10,13 +11,16 @@ namespace HTTP
 	{}
 
 	Client::Client( void )
-	: state(CONNECTED)
-	{}
+	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED)
+	{
+		memset(&ai, 0, sizeof(ai));
+	}
 
 	Client::Client( Client const& other )
-	: state(CONNECTED)
+	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED)
 	{
 		(void) other;
+		memset(&ai, 0, sizeof(ai));
 	}
 
 	Client & Client::operator=( Client const& rhs )
@@ -44,33 +48,46 @@ namespace HTTP
 	{
 		int v[2];
 
-		if (req.method[0] != "GET"
-			&& req.method[0] != "POST"
-			&& req.method[0] != "DELETE")
-		{
-			error(405, true);
-			return -1;
-		}
-
 		if (req.method[1][0] != '/')
 		{
 			error(400, true);
 			return -1;
 		}
 
-		if (req.method[2].size() != 8
-			|| sscanf(req.method[2].c_str(), "HTTP/%d.%d", &v[0], &v[1]) != 2
-			|| v[0] == 0)
+		if (req.method[2] != "")
 		{
-			error(400, true);
-			return -1;
-		}
+			if (req.method[2].size() != 8 || sscanf(req.method[2].c_str(),
+				"HTTP/%d.%d", &v[0], &v[1]) != 2 || v[0] == 0)
+			{
+				error(400, true);
+				return -1;
+			}
 
-		if (v[0] > 1 || v[1] > 1)
-		{
-			error(505, true);
-			return -1;
+			if (v[0] > 1 || v[1] > 1)
+			{
+				error(505, true);
+				return -1;
+			}
 		}
+		return 0;
+	}
+
+	int Client::_getHostFromUrl( void )
+	{
+		if (req.method.size() != 2)
+			return -1;
+		size_t x = req.method[1].find_first_of("http://") + 7;
+		if (x != 0 || x == std::string::npos)
+			x = req.method[1].find_first_of("https://") + 8;
+		if (x == std::string::npos)
+			return -1;
+		std::string::iterator y = std::find(
+			req.method[1].begin() + x, req.method[1].end(), '/');
+		std::string host = req.method[1].substr(x, std::distance(req.method[1].begin() + x, y));
+		req.setField("host", req.method[1].substr(x, std::distance(req.method[1].begin() + x, y)));
+		req.method[1].erase(req.method[1].begin(), y);
+		DEBUG2("uri: " << req.method[1]);
+		req.method.push_back("");
 		return 0;
 	}
 
@@ -80,8 +97,9 @@ namespace HTTP
 		size_t		start;
 
 		req.createMethodVec(std::string().assign(buff, n));
-		if (req.method.size() != 3)
+		if (req.method.size() != 3 && _getHostFromUrl() < 0)
 		{
+			DEBUG2("DANG");
 			error(400, true);
 			return -1;
 		}
@@ -159,13 +177,9 @@ namespace HTTP
 
 		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
 		if (!tmp)
-		{
-			DEBUG2("no location");
 			return 0;
-		}
 		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc.skip())
 		{
-			DEBUG2("LOOP");
 			if (path.size() == 1)
 				i = path.find_first_of(*path.c_str());
 			else
@@ -182,7 +196,6 @@ namespace HTTP
 				}
 			}
 		}
-		DEBUG2("END");
 		return last_match;
 	}
 
@@ -204,20 +217,34 @@ namespace HTTP
 		return false;
 	}
 
+	void Client::redirect( void )
+	{
+		JSON::Node * loc = location->search(1, "redirect");
+		int code = loc->begin()->as<int>();
+		std::string const& page = (++loc->begin())->as<std::string const&>();
+
+		res.createMethodVec("HTTP/1.1 " + itos(code, std::dec) + ' ' + Server::error[code]);
+		res.setField("location", page);
+		state = OK;
+	}
+
 	int Client::_peekHeaderFields( void )
 	{
 		int				size;
 		JSON::Node * 	nptr = 0;
-	
+
 		if (server)
+			location = matchLocation(this->server, req.method[1]);
+		if (!location)
 		{
-			location = matchLocation(this->server, req.getMethod()[1]);
-			if (!location)
-				DEBUG2("HOW");
-			DEBUG2("LOCATION = " << location);
+			error(404, false);
+			return -1;
 		}
-		else
-			DEBUG2("WTF");
+		if (location->search(1, "redirect"))
+		{
+			redirect();
+			return -1;
+		}
 		if (req.getField("host") == 0)
 		{
 			error(400, true);

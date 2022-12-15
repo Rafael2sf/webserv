@@ -86,6 +86,8 @@ namespace HTTP
 		void error(int code, bool close_connection);
 		void print_message( Message const& m, std::string const& s );
 
+		void redirect( void );
+
 		FILE *			fp;
 
 	private:
@@ -96,6 +98,7 @@ namespace HTTP
 		 * will be removed.
 		*/
 		void _owsTrimmer(std::string& str);
+		int _getHostFromUrl( void );
 		int _peekHeaderFields( void );
 		int _updateHeaders( char const* buff, size_t n );
 		int _updateStatusLine( char const* buff, size_t n );
