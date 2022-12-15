@@ -95,6 +95,6 @@ namespace HTTP
 	 * @return If successful, return the correct int. Undefined behaviour if the
 	 * string is poorly formatted.
 	*/
-	int	ftStoi(std::string const& str);
-	std::string	ftItos(int const& n);
+	// int	ftStoi(std::string const& str);
+	// std::string	ftItos(int const& n);
 }

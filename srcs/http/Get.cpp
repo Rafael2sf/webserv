@@ -1,5 +1,6 @@
 #include "Get.hpp"
 #include "Server.hpp"
+#include "webserv.hpp"
 
 namespace HTTP
 {
@@ -148,16 +149,13 @@ namespace HTTP
 	void Get::contentEncoding(Client & client, FILE * fp) 
 	{
 		char				buf[S_BUFFER_SIZE];
-		std::stringstream	ss;
 		std::string			str;
 		int					read_nbr;
 
 		memset(buf, 0, S_BUFFER_SIZE);
 		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
 		if (read_nbr != S_BUFFER_SIZE) {
-			ss << read_nbr;
-			ss >> str;
-			client.res.setField("content-length", str);
+			client.res.setField("content-length", itos(read_nbr, std::dec));
 			client.res.body.assign(buf, read_nbr);
 			str = client.res.toString();
 			send(client.fd, str.c_str(), str.size(), 0);
@@ -170,10 +168,7 @@ namespace HTTP
 			send(client.fd, str.c_str(), str.size(), 0);
 			str.clear();
 			while (read_nbr != 0) {
-				ss << std::hex << read_nbr;
-				ss >> str;
-				ss.clear();
-				str += "\r\n";
+				str += itos(read_nbr, std::hex) + "\r\n";
 				client.res.body.assign(buf, read_nbr);
 				str += client.res.body + "\r\n";
 				send(client.fd, str.c_str(), str.size(), 0);
@@ -227,7 +222,7 @@ namespace HTTP
 		}
 		closedir(dirp);
 		client.res.body += "</hr></pre>\n</body>\n</html>\n";
-		client.res.setField("content-length", ftItos(client.res.body.length()));
+		client.res.setField("content-length", itos(client.res.body.length(), std::dec));
 		if (client.req.getField("connection")
 			&& *client.req.getField("connection") == "close")
 			client.res.setField("connection", "close");

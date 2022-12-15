@@ -41,6 +41,9 @@ namespace HTTP
 	int	err( int ret, char const*str );
 	int	err( int ret, char const*err, char const*str );
 	std::string getDate(time_t const& tm_info);
+
+	int	stoi(std::string const& str, std::ios_base & (&f)(std::ios_base &__base));
+	std::string	itos(int const& n, std::ios_base & (&f)(std::ios_base &__base));
 }
 
 namespace JSON

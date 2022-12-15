@@ -120,24 +120,4 @@ namespace HTTP
 		headers.clear();
 		content_length = 0;
 	}
-
-	int	ftStoi(std::string const& str)
-	{
-		std::stringstream	ss;
-		int					ret = 0;
-		
-		ss << str;
-		ss >> ret;
-		return ret;
-	}
-
-	std::string	ftItos(int const& n)
-	{
-		std::stringstream	ss;
-		std::string			ret;
-
-		ss << n;
-		ss >> ret;
-		return ret;
-	}
 }

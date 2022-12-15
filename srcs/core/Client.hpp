@@ -67,13 +67,13 @@ namespace HTTP
 		void error(int code, bool close_connection);
 		void print_message( Message const& m, std::string const& s );
 	private:
+		int state;
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.
 		 * @param str Reference to the string to remove from which whitespaces 
 		 * will be removed.
 		*/
-		void	owsTrimmer(std::string& str);
-		int state;
+		void _owsTrimmer(std::string& str);
 		int _updateHeaders( char const* buff, size_t n );
 		int _updateStatusLine( char const* buff, size_t n );
 		int _updateBody( char const * buff, size_t n );

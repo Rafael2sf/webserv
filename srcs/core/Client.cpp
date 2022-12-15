@@ -26,7 +26,7 @@ namespace HTTP
 		return *this;
 	}
 
-	void Client::owsTrimmer(std::string& str)
+	void Client::_owsTrimmer(std::string& str)
 	{
 		if (str.empty())
 			return ;
@@ -132,7 +132,7 @@ namespace HTTP
 			val = key.substr(pos + 1);
 			key.erase(key.begin() + pos, key.end());
 		}
-		owsTrimmer(val);
+		_owsTrimmer(val);
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 
 		if (val.empty() && key == "host")
@@ -167,7 +167,7 @@ namespace HTTP
 			}
 			if (req.getField("content-length"))
 			{
-				size_t content_length = ftStoi(*req.getField("content-length"));
+				size_t content_length = stoi(*req.getField("content-length"), std::dec);
 				size_t			max_body_size;
 				JSON::Node * 	max_body = 0;
 
@@ -309,7 +309,7 @@ namespace HTTP
 		std::string s;
 
 		(void) close_connection;
-		s = ftItos(code) + ' '+ Server::error[code];
+		s = itos(code, std::dec) + ' ' + Server::error[code];
 		res.clear();
 		res.createMethodVec("HTTP/1.1 " + s);
 
@@ -326,7 +326,7 @@ namespace HTTP
 <hr><center>webserv/0.4</center>\n\
 </body>\n\
 </html>\n";
-		res.setField("content-length", ftItos(res.body.size()));
+		res.setField("content-length", itos(res.body.size(), std::dec));
 		s = res.toString();
 		send(fd, s.c_str(), s.size(), 0);
 		return ;
