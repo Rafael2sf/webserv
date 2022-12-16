@@ -264,26 +264,42 @@ namespace HTTP
 		}
 	}
 
+	void Server::_updateConnection( Client & client )
+	{
+		client.print_message(client.req, "-->");
+		client.print_message(client.res, "<--");
+		if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
+			|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
+		{
+			if (epoll.erase(client.fd) == -1)
+				DEBUG2("epoll.erase() failed");
+			clients.erase(client.fd);
+		}
+		else
+			client.reset();
+	}
+
 	void
 	Server::_update( int socket )
 	{
-		Client * cl;
+		Client * client;
 
 		try
 		{
-			cl = &clients.at(socket);
-			if (cl->ok() || cl->sending())
-				_handle(*cl);
+			client = &clients.at(socket);
+			if (client->ok())
+				_handle(*client);
+			else if (client->sending())
+			{
+				if (client->contentEncoding() <= 0)
+					_updateConnection(*client);
+			}
 			else 
 			{
-				if (!cl->server)
-					cl->server = matchCon(socks, *cl);
-				if (cl->update() == -1)
-				{
-					if (epoll.erase(cl->fd) == -1)
-						DEBUG2("epoll.erase() failed");
-					clients.erase(cl->fd);
-				}
+				if (!client->server)
+					client->server = matchCon(socks, *client);
+				if (client->update() < 0)
+					_updateConnection(*client);
 			}
 		}
 		catch (const std::exception &e)
@@ -322,24 +338,10 @@ namespace HTTP
 	}
 
 	void Server::_handle(Client & client)
-	{	
+	{
 		_methodChoice(client);
-
-		if (client.ok())
-		{
-			client.print_message(client.req, "-->");
-      client.print_message(client.res, "<--");
-      
-      if (client.req.getField("connection") &&
-					*client.req.getField("connection") == "close")
-			{
-				if (epoll.erase(client.fd) == -1)
-					DEBUG2("epoll.erase() failed");
-				clients.erase(client.fd);
-			}
-			else
-				client.reset();
-		}
+		if (!client.sending())
+			_updateConnection(client);
 	}
 
 	void	Server::_timeout(void)
@@ -492,6 +494,12 @@ namespace HTTP
 		mime["avi"]		=	"video/x-msvideo";
 
 		//Creation of default error pages map
+		error[301] = "Moved Permanently";
+		error[302] = "Found";
+		error[303] = "See Other";
+		error[307] = "Temporary Redirect";
+		error[308] = "Permanent Redirect";
+
 		error[400] = "Bad Request";
 		error[403] = "Forbidden";
 		error[404] = "Not Found";

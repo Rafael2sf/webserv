@@ -45,12 +45,12 @@ namespace HTTP
 		return this->method;
 	}
 
-	std::string & Message::getMethodAt( size_t i )
-	{
-		if (i >= method.size())
-			DEBUG2(" BAD INDEX ");
-		return this->method[i];
-	}
+	// std::string & Message::getMethodAt( size_t i )
+	// {
+	// 	if (i >= method.size())
+	// 		DEBUG2(" BAD INDEX ");
+	// 	return this->method[i];
+	// }
 
 	std::string * Message::getField(std::string const& key)
 	{
