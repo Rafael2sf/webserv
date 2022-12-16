@@ -1,7 +1,8 @@
 #pragma once
 
 #include "webserv.hpp"
-#include "Message.hpp"
+#include "Client.hpp"
+#include "Json.hpp"
 #include <vector>
 
 namespace HTTP
@@ -18,7 +19,7 @@ namespace HTTP
 			 * independently of the CGI method used.
 			 * @param req HTTP request which will be responded to by the CGI.
 			*/
-			CGI(Message const& req);
+			CGI(Client const& req);
 
 			/**
 			 * @brief Getter for the CGI environment variables.

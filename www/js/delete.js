@@ -8,7 +8,7 @@ function handleDelete() {
 		let fileSelected = select.options[select.selectedIndex].value;
 		$.ajax({
 			type: "DELETE",
-			url: "/cgi-bin/delete.py",
+			url: "/delete.py",
 			data: {file: fileSelected},
 			success: function(msg){
 				$(document).html(msg);

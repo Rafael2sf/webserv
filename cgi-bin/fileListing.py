@@ -14,7 +14,7 @@ stamp = mktime(now.timetuple())
 # Create instance of FieldStorage 
 form = cgi.FieldStorage()
 
-fileList = os.listdir('uploads/')
+fileList = os.listdir(os.getenv('DOCUMENT_ROOT'))
 fileString = ""
 
 if len(fileList) == 0:

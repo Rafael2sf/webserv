@@ -2,7 +2,7 @@ $(document).ready(function() {
 	
 	$.ajax({
 		type: "GET",
-		url: "/cgi-bin/fileListing.py",
+		url: "/fileListing.py",
 		success: function(msg){
 			for (let i = 0; i < msg.length; i++) {
 				

@@ -23,35 +23,47 @@ namespace HTTP
 		*this = other;
 	}
 
-	CGI::CGI(Message const& req)
+	CGI::CGI(Client const& client)
 	{
 		env = new char*[9];
 		std::vector<std::string>	vec;
+		JSON::Node *	 			var = client.location->search(1, "cgi");
+		std::string 				path = var->as<std::string const&>();
 
 		vec.reserve(10);
-		vec.push_back("PATH_INFO=/usr/bin/python3");
-		if (req.getField("content-type"))
-			vec.push_back("CONTENT_TYPE=" + *req.getField("content-type"));
+		vec.push_back("PATH_INFO=" + path);
+		
+		if (*--path.end() == '/')
+			path.erase(--path.end());
+		std::string					filePath = path + client.req.getMethod()[1];
+		
+		if (client.req.getField("content-type"))
+			vec.push_back("CONTENT_TYPE=" + *client.req.getField("content-type"));
 		else
 			vec.push_back("CONTENT_TYPE=");
-		if (req.getField("content-length"))
-			vec.push_back("CONTENT_LENGTH=" + *req.getField("content-length"));
+		if (client.req.getField("content-length"))
+			vec.push_back("CONTENT_LENGTH=" + *client.req.getField("content-length"));
 		else
 			vec.push_back("CONTENT_LENGTH=");
-		if (req.getField("user-agent"))
-			vec.push_back("HTTP_USER_AGENT=" + *req.getField("user-agent"));
+		if (client.req.getField("user-agent"))
+			vec.push_back("HTTP_USER_AGENT=" + *client.req.getField("user-agent"));
 		else
 			vec.push_back("HTTP_USER_AGENT=");
-		vec.push_back("SCRIPT_FILENAME=/nfs/homes/rafernan/Desktop/webserv" + req.getMethod()[1]);
-		vec.push_back("REQUEST_METHOD=" + req.getMethod()[0]);
+		
+		var = client.location->search(1, "upload_store");
+		path = var->as<std::string const&>();
+		vec.push_back("DOCUMENT_ROOT=" + path);
+		
+		vec.push_back("SCRIPT_FILENAME=" + client.req.getMethod()[1]);
+		vec.push_back("REQUEST_METHOD=" + client.req.getMethod()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
-		vec.push_back("QUERY_STRING=" + req.getMethod()[3]);
-		if (req.getField("accept"))
-			vec.push_back("HTTP_ACCEPT=" + *req.getField("accept"));
+		vec.push_back("QUERY_STRING=" + client.req.getMethod()[3]);
+		if (client.req.getField("accept"))
+			vec.push_back("HTTP_ACCEPT=" + *client.req.getField("accept"));
 		else
 			vec.push_back("HTTP_ACCEPT=");
-		if (req.getField("connection"))
-		vec.push_back("HTTP_CONNECTION=" + *req.getField("connection"));
+		if (client.req.getField("connection"))
+		vec.push_back("HTTP_CONNECTION=" + *client.req.getField("connection"));
 		else
 			vec.push_back("HTTP_CONNECTION=");
 		
@@ -63,19 +75,13 @@ namespace HTTP
 			env[i][vec[i].size()] = '\0';
 		}
 		env[vec_size] = NULL;
-		std::string temp("");
-
-		for (std::vector<std::string>::iterator it = vec.begin(); it != vec.end(); it++) {
-			if (it->find("SCRIPT_FILENAME=") != std::string::npos)
-				temp = it->substr(it->find_first_of('/'));
-		}
 		args = new char*[3];
 		args[0] = new char[strlen("/usr/bin/python3") + 1];
 		memcpy(args[0], "/usr/bin/python3", strlen("/usr/bin/python3"));
 		args[0][strlen("/usr/bin/python3")] = '\0';
-		args[1] = new char[temp.size() + 1];
-		memcpy(args[1], temp.c_str(), temp.size());
-		args[1][temp.size()] = '\0';
+		args[1] = new char[filePath.size() + 1];
+		memcpy(args[1], filePath.c_str(), filePath.size());
+		args[1][filePath.size()] = '\0';
 		args[2] = NULL;
 	}
 

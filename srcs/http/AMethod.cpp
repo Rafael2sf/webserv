@@ -34,7 +34,7 @@ namespace HTTP
 		if (pid == 0) {
 			
 			close(p[1]);
-			CGI	test(client.req);
+			CGI	test(client);
 			while (client.server->getParent() != NULL)
 				client.server = client.server->getParent();
 			delete client.server;
