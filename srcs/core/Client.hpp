@@ -90,7 +90,6 @@ namespace HTTP
 		void error(int code, bool close_connection);
 		void print_message( Message const& m, std::string const& s );
 
-		void redirect( void );
 
 		/**
 		 * @brief Helper function to request handling (GET files). It first
@@ -133,6 +132,8 @@ namespace HTTP
 		int _updateStatusLine( char const* buff, size_t n );
 		int _updateBody( char const * buff, size_t n );
 		int _validateStatusLine( void );
-		bool _errorPage( int code );
+		std::string const*  _errorPage( int code );
+		void _redirect( void );
+		void _defaultPage( int code, bool close_connection );
 	};
 }

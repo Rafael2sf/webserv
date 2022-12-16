@@ -76,13 +76,15 @@ namespace HTTP
 	{
 		if (req.method.size() != 2)
 			return -1;
-		size_t x = req.method[1].find_first_of("http://") + 7;
+		size_t x = req.method[1].find("http://") + 7;
 		if (x != 0 || x == std::string::npos)
-			x = req.method[1].find_first_of("https://") + 8;
+			x = req.method[1].find("https://") + 8;
 		if (x == std::string::npos)
 			return -1;
 		std::string::iterator y = std::find(
 			req.method[1].begin() + x, req.method[1].end(), '/');
+		if (y == req.method[1].end())
+			return -1;
 		std::string host = req.method[1].substr(x, std::distance(req.method[1].begin() + x, y));
 		req.setField("host", req.method[1].substr(x, std::distance(req.method[1].begin() + x, y)));
 		req.method[1].erase(req.method[1].begin(), y);
@@ -215,16 +217,39 @@ namespace HTTP
 		return false;
 	}
 
-	void Client::redirect( void )
+	void Client::_defaultPage( int code, bool close_connection )
+	{
+		std::string s;
+
+		s = itos(code, std::dec) + ' ' + Server::error[code];
+		res.clear();
+		res.createMethodVec("HTTP/1.1 " + s);
+
+		if (close_connection || (req.getField("connection") &&
+			*req.getField("connection") == "close"))
+			res.setField("connection", "close");
+		else
+			res.setField("connection", "keep-alive");
+		res.body = \
+"<html>\n\
+<head><title>"+ s + "</title></head>\n\
+<body bgcolor=\"white\">\n\
+<center><h1>" + s + "</h1></center>\n\
+<hr><center>webserv/0.4</center>\n\
+</body>\n\
+</html>\n";
+		res.setField("content-type", "text/html");
+		res.setField("content-length", itos(res.body.size(), std::dec));
+	}
+
+	void Client::_redirect( void )
 	{
 		JSON::Node * loc = location->search(1, "redirect");
 		int code = loc->begin()->as<int>();
 		std::string const& page = (++loc->begin())->as<std::string const&>();
 
-		res.createMethodVec("HTTP/1.1 " + itos(code, std::dec) + ' ' + Server::error[code]);
+		_defaultPage(code, false);
 		res.setField("location", page);
-		res.setField("content-length", "0");
-		//res.setField("connection", "close");
 		res.toString();
 		state = REDIRECT;
 	}
@@ -243,8 +268,7 @@ namespace HTTP
 		}
 		if (location->search(1, "redirect"))
 		{
-			DEBUG2("REDIRECT");
-			redirect();
+			_redirect();
 			return -1;
 		}
 		if (req.getField("host") == 0)
@@ -393,63 +417,40 @@ namespace HTTP
 		);
 	}
 
-	bool Client::_errorPage( int code )
+	std::string const* Client::_errorPage( int code )
 	{
 		JSON::Node * nptr = server->search(1, "error_page");
 
 		if (!nptr)
-			return false;
-		for (JSON::Node::iterator it = nptr->begin();
+			return 0;
+		for (JSON::Node::const_iterator it = nptr->begin();
 			it != nptr->end(); it.skip())
 		{
-			for (JSON::Node::iterator err = it->begin();
+			for (JSON::Node::const_iterator err = it->begin();
 				err != it->end(); err++)
 			{
 				if (err->type() == JSON::integer && 
 					err->as<int>() == code)
 				{
-					std::string s = it->getProperty();
-					return getFile(s);
+					return &it->getProperty();
 				}
 			}
 		}
-		return false;
+		return 0;
 	}
 
 	void Client::error(int code, bool close_connection)
 	{
 		std::string s;
+		std::string const * ep =  _errorPage(code);
 
-		(void) close_connection;
-		s = itos(code, std::dec) + ' ' + Server::error[code];
-		res.clear();
-		res.createMethodVec("HTTP/1.1 " + s);
-
-		if (close_connection || (req.getField("connection") &&
-			*req.getField("connection") == "close"))
-			res.setField("connection", "close");
-		else
-			res.setField("connection", "keep-alive");
-		if (!_errorPage(code))
-		{
-			res.body = \
-"<html>\n\
-<head><title>"+ s + "</title></head>\n\
-<body bgcolor=\"white\">\n\
-<center><h1>" + s + "</h1></center>\n\
-<hr><center>webserv/0.4</center>\n\
-</body>\n\
-</html>\n";
-			res.setField("content-type", "text/html");
-			res.setField("content-length", itos(res.body.size(), std::dec));
-			s = res.toString();
-			send(fd, s.c_str(), s.size(), 0);
-		}
-		else
-		{
-			state = OK;
-			contentEncoding();
-		}
+		if (ep)
+			code = 301;
+		_defaultPage(code, close_connection);
+		if (ep)
+			res.setField("location", *ep);
+		s = res.toString();
+		send(fd, s.c_str(), s.size(), 0);
 		return ;
 	}
 

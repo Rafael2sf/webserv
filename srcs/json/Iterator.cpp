@@ -124,24 +124,11 @@ namespace JSON
 		return node;
 	}
 
-	// TO DO
 	void Iterator::skip( void )
 	{
 		if (!node->getParent())
 			return ;
 		_findNextFromParent(node->getParent());
-		// if (node->type() == array)
-		// {
-		// 	if (dynamic_cast<Array *>(node)->impl.empty())
-		// 		return ;
-		// 	node = *--dynamic_cast<Array *>(node)->impl.end();
-		// }
-		// else if (node->type() == object)
-		// {
-		// 	if (dynamic_cast<Object *>(node)->impl.empty())
-		// 		return ;
-		// 	node = *--dynamic_cast<Object *>(node)->impl.end();
-		// }
 	}
 
 	bool Iterator::operator==( Iterator const&  rhs ) const
@@ -282,23 +269,11 @@ namespace JSON
 		return node;
 	}
 
-	// TO DO
 	void ConstIterator::skip( void )
 	{
 		if (!node->getParent())
 			return ;
-		if (node->type() == array)
-		{
-			if (dynamic_cast<Array *>(node)->impl.empty())
-				return ;
-			node = *--dynamic_cast<Array *>(node)->impl.end();
-		}
-		else if (node->type() == object)
-		{
-			if (dynamic_cast<Object *>(node)->impl.empty())
-				return ;
-			node = *--dynamic_cast<Object *>(node)->impl.end();
-		}
+		_findNextFromParent(node->getParent());
 	}
 
 	bool ConstIterator::operator==( ConstIterator const&  rhs ) const

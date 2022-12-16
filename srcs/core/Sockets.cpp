@@ -78,7 +78,7 @@ namespace HTTP
 			it != list.end(); it++)
 		{
 			port = ntohl((*it).addr.sin_addr.s_addr);
-			DEBUG(std::cout << "[socket] " \
+			DEBUG(std::cerr << "[socket] " \
 				<< ((port & 0xff000000) >> 24) << '.' \
 				<< ((port & 0x00ff0000) >> 16) << '.' \
 				<< ((port & 0x0000ff00) >> 8) << '.' \

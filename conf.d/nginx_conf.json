@@ -3,20 +3,22 @@
 		"listen" : "8000",
 		"client_max_body_size" : 2147483647,
 		"error_page" : {
-			"./www/html/404.html" : 404,
-			"./www/html/403.html" : 403
+			"/html/403.html" : 403,
+			"/favicon.ico" : 404
 		},
 		"location" : {
 			"/" : {
 				"index" : "index.html",
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
 				"cgi" : "./cgi-bin/",
-				"upload_store" : "./uploads/",
-				"limit_except" : "POST"
+				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
 				"autoindex" : true
+			},
+			"/301/" : {
+				"redirect" : [301, "/"]
 			}
 		}
 	}
