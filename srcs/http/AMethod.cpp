@@ -59,12 +59,13 @@ namespace HTTP
 			{
 				write(p[1], body.c_str() + bytes, S_PIPE_LIMIT);
 				bytes += S_PIPE_LIMIT;
+				DEBUG2("BYTES SENT TO CGI " << bytes);
 			}
 			else
 			{
 				write(p[1], body.c_str() + bytes, body.size() - bytes);
 				bytes += body.size() - bytes;
-				//DEBUG2("BYTES SENT TO CGI " << bytes);
+				DEBUG2("BYTES SENT TO CGI " << bytes);
 				break ;
 			}
 		}

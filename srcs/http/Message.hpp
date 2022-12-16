@@ -36,7 +36,7 @@ namespace HTTP
 			*/
 			std::vector<std::string> const&	getMethod(void) const;
 
-			std::string & getMethodAt( size_t i );
+			// std::string & getMethodAt( size_t i );
 
 			/**
 			 * @brief Getter for a mapped value in the headers map.

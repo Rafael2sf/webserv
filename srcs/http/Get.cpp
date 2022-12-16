@@ -54,9 +54,6 @@ namespace HTTP
 
 	void Get::response(Client & client)
 	{
-		if (client.sending())
-			return client.contentEncoding();
-		
 		std::string		path;
 		JSON::Node *	 var = 0;
 
@@ -94,5 +91,4 @@ namespace HTTP
 		client.res.setField("last-modified", getDate(f_info.st_mtime));
 		client.contentEncoding();
 	};
-
 }

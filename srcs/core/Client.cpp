@@ -99,7 +99,6 @@ namespace HTTP
 		req.createMethodVec(std::string().assign(buff, n));
 		if (req.method.size() != 3 && _getHostFromUrl() < 0)
 		{
-			DEBUG2("DANG");
 			error(400, true);
 			return -1;
 		}
@@ -225,7 +224,10 @@ namespace HTTP
 
 		res.createMethodVec("HTTP/1.1 " + itos(code, std::dec) + ' ' + Server::error[code]);
 		res.setField("location", page);
-		state = OK;
+		res.setField("content-length", "0");
+		//res.setField("connection", "close");
+		res.toString();
+		state = REDIRECT;
 	}
 
 	int Client::_peekHeaderFields( void )
@@ -242,6 +244,7 @@ namespace HTTP
 		}
 		if (location->search(1, "redirect"))
 		{
+			DEBUG2("REDIRECT");
 			redirect();
 			return -1;
 		}
@@ -279,8 +282,12 @@ namespace HTTP
 
 	int Client::_updateBody( char const* buff, size_t readval )
 	{
-		if (req.body.size() == 0 && _peekHeaderFields() < 0) // run once
+		if (req.body.size() == 0 && _peekHeaderFields() < 0)
+		{
+			if (state == REDIRECT)
+				return 0;
 			return -1;
+		}
 		if (req.body.size() + readval < (size_t)req.content_length)
 			req.body.append(buff, readval);
 		else
@@ -400,7 +407,7 @@ namespace HTTP
 			*req.getField("connection") == "close"))
 			res.setField("connection", "close");
 		else
-		res.setField("connection", "keep-alive");
+			res.setField("connection", "keep-alive");
 		res.body = \
 "<html>\n\
 <head><title>"+ s + "</title></head>\n\
@@ -428,7 +435,7 @@ namespace HTTP
 
 	bool Client::sending( void ) 
 	{
-		return state == SENDING;
+		return state == SENDING || state == REDIRECT;
 	}
 
 	void Client::setSending( void )
@@ -492,46 +499,64 @@ namespace HTTP
 		return true;
 	}
 
-	void Client::contentEncoding(void) 
+	int Client::contentEncoding(void) 
 	{
-		char				buf[S_BUFFER_SIZE];
+		static char			buf[S_BUFFER_SIZE + 1];
 		std::string			str;
-		int					read_nbr;
 
-		memset(buf, 0, S_BUFFER_SIZE);
+		int					read_nbr = 0;
 
+		//memset(buf, 0, S_BUFFER_SIZE);
+		if (state == REDIRECT)
+		{
+			str = res.toString();
+			DEBUG2("SENT " << send(fd, str.c_str(), str.size(), 0));
+			// {
+			// 	error(500, true);
+			// 	return -1;
+			// }
+			return 0;
+		}
 		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
+		buf[read_nbr] = 0;
 		if (read_nbr != S_BUFFER_SIZE && state == OK) {
 			res.setField("content-length", itos(read_nbr, std::dec));
 			res.body.assign(buf, read_nbr);
 			str = res.toString();
 			if (send(fd, str.c_str(), str.size(), 0) == -1)
+			{
 				error(500, true);
+				return -1;
+			}
+			return 0;
+		}
+		if (state == OK)
+		{
+			res.setField("transfer-encoding", "chunked");
+			str = res.toString();
+			state = SENDING;
+		}
+		if (read_nbr != 0) {
+			str += itos(read_nbr, std::hex) + "\r\n";
+			res.body.assign(buf, read_nbr);
+			str += res.body + "\r\n";
+			if (send(fd, str.c_str(), str.size(), 0) == -1)
+			{
+				error(500, true);
+				return -1;
+			}
+			res.body.clear();
 		}
 		else
 		{
-			if (state == OK) {
-				res.setField("transfer-encoding", "chunked");
-				str = res.toString();
-				state = SENDING;
+			if (send(fd, "0\r\n\r\n", 5, 0) == -1)
+			{
+				error(500, true);
+				return -1;
 			}
-			if (read_nbr != 0) {
-				str += itos(read_nbr, std::hex) + "\r\n";
-				res.body.assign(buf, read_nbr);
-				str += res.body + "\r\n";
-				if (send(fd, str.c_str(), str.size(), 0) == -1) {
-					error(500, true);
-					state = OK;
-				}
-				res.body.clear();
-			}
-			else {
-				if (send(fd, "0\r\n\r\n", 5, 0) == -1)
-					error(500, true);
-				fclose(fp);
-				state = OK;
-			}
+			fclose(fp);
 		}
+		return read_nbr;
 	};
 
 	void Client::dirIndex(std::string const& path)

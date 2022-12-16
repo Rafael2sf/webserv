@@ -101,5 +101,7 @@ namespace HTTP
 		 * @param client http client class
 		*/
 		void _methodChoice( Client & client );
+
+		void _updateConnection( Client & client );
 	};
 }

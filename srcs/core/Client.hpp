@@ -21,6 +21,7 @@ namespace HTTP
 		HEADER_FIELDS,
 		BODY_CONTENT,
 		OK,
+		REDIRECT,
 		SENDING,
 	};
 
@@ -108,7 +109,7 @@ namespace HTTP
 		 * buffer read, "transfer-encoding" is set with the value "chunked".
 		 * Finally the request (or sequence of requests) is sent to the client.
 		*/
-		void	contentEncoding(void);
+		int		contentEncoding(void);
 
 		/**
 		 * @brief Attempts to create a http response with the files indexed relative
