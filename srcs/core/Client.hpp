@@ -133,5 +133,6 @@ namespace HTTP
 		int _updateStatusLine( char const* buff, size_t n );
 		int _updateBody( char const * buff, size_t n );
 		int _validateStatusLine( void );
+		bool _errorPage( int code );
 	};
 }

@@ -11,13 +11,13 @@ namespace HTTP
 	{}
 
 	Client::Client( void )
-	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED)
+	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED), fp(0)
 	{
 		memset(&ai, 0, sizeof(ai));
 	}
 
 	Client::Client( Client const& other )
-	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED)
+	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED), fp(0)
 	{
 		(void) other;
 		memset(&ai, 0, sizeof(ai));
@@ -86,7 +86,6 @@ namespace HTTP
 		std::string host = req.method[1].substr(x, std::distance(req.method[1].begin() + x, y));
 		req.setField("host", req.method[1].substr(x, std::distance(req.method[1].begin() + x, y)));
 		req.method[1].erase(req.method[1].begin(), y);
-		DEBUG2("uri: " << req.method[1]);
 		req.method.push_back("");
 		return 0;
 	}
@@ -394,6 +393,29 @@ namespace HTTP
 		);
 	}
 
+	bool Client::_errorPage( int code )
+	{
+		JSON::Node * nptr = server->search(1, "error_page");
+
+		if (!nptr)
+			return false;
+		for (JSON::Node::iterator it = nptr->begin();
+			it != nptr->end(); it.skip())
+		{
+			for (JSON::Node::iterator err = it->begin();
+				err != it->end(); err++)
+			{
+				if (err->type() == JSON::integer && 
+					err->as<int>() == code)
+				{
+					std::string s = it->getProperty();
+					return getFile(s);
+				}
+			}
+		}
+		return false;
+	}
+
 	void Client::error(int code, bool close_connection)
 	{
 		std::string s;
@@ -408,7 +430,9 @@ namespace HTTP
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
-		res.body = \
+		if (!_errorPage(code))
+		{
+			res.body = \
 "<html>\n\
 <head><title>"+ s + "</title></head>\n\
 <body bgcolor=\"white\">\n\
@@ -416,10 +440,16 @@ namespace HTTP
 <hr><center>webserv/0.4</center>\n\
 </body>\n\
 </html>\n";
-		res.setField("content-type", "text/html");
-		res.setField("content-length", itos(res.body.size(), std::dec));
-		s = res.toString();
-		send(fd, s.c_str(), s.size(), 0);
+			res.setField("content-type", "text/html");
+			res.setField("content-length", itos(res.body.size(), std::dec));
+			s = res.toString();
+			send(fd, s.c_str(), s.size(), 0);
+		}
+		else
+		{
+			state = OK;
+			contentEncoding();
+		}
 		return ;
 	}
 
@@ -510,11 +540,11 @@ namespace HTTP
 		if (state == REDIRECT)
 		{
 			str = res.toString();
-			DEBUG2("SENT " << send(fd, str.c_str(), str.size(), 0));
-			// {
-			// 	error(500, true);
-			// 	return -1;
-			// }
+			if (send(fd, str.c_str(), str.size(), 0) == -1)
+			{
+				error(500, true);
+				return -1;
+			}
 			return 0;
 		}
 		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);

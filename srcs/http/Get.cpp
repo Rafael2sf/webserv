@@ -25,13 +25,9 @@ namespace HTTP
 
 		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
 		if (!tmp)
-		{
-			DEBUG2("no location");
 			return 0;
-		}
 		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc.skip())
 		{
-			DEBUG2("LOOP");
 			if (path.size() == 1)
 				i = path.find_first_of(*path.c_str());
 			else
@@ -48,7 +44,6 @@ namespace HTTP
 				}
 			}
 		}
-		DEBUG2("END");
 		return last_match;
 	}
 

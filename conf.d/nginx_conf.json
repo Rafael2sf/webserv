@@ -2,12 +2,17 @@
 	"server" : {
 		"listen" : "8000",
 		"client_max_body_size" : 2147483647,
+		"error_page" : {
+			"./www/html/404.html" : 404,
+			"./www/html/403.html" : 403
+		},
 		"location" : {
 			"/" : {
 				"index" : "index.html",
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
 				"cgi" : "./cgi-bin/",
-				"upload_store" : "./uploads/"
+				"upload_store" : "./uploads/",
+				"limit_except" : "POST"
 			},
 			"/uploads/" : {
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
