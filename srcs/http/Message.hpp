@@ -76,8 +76,9 @@ namespace HTTP
 			std::string toString(void);
 			std::string	body;
 			friend class Client;
-		private:
 			int		content_length;
+
+		private:
 			size_t	header_bytes;
 			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 			std::vector<std::string>			method; //Max size: 8k

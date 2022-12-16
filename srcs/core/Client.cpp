@@ -11,13 +11,13 @@ namespace HTTP
 	{}
 
 	Client::Client( void )
-	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED)
+	: fd(-1), timestamp(0), server(0), location(0), cgiSentBytes(0), state(CONNECTED)
 	{
 		memset(&ai, 0, sizeof(ai));
 	}
 
 	Client::Client( Client const& other )
-	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED)
+	: fd(-1), timestamp(0), server(0), location(0), cgiSentBytes(0), state(CONNECTED)
 	{
 		(void) other;
 		memset(&ai, 0, sizeof(ai));
@@ -282,6 +282,7 @@ namespace HTTP
 
 	int Client::_updateBody( char const* buff, size_t readval )
 	{
+
 		if (req.body.size() == 0 && _peekHeaderFields() < 0)
 		{
 			if (state == REDIRECT)
@@ -289,7 +290,11 @@ namespace HTTP
 			return -1;
 		}
 		if (req.body.size() + readval < (size_t)req.content_length)
+		{
+			if (req.getField("content-type")->find("multipart/form-data") != std::string::npos)
+				state = OK;
 			req.body.append(buff, readval);
+		}
 		else
 		{
 			req.body.append(buff, req.content_length - req.body.size());
@@ -334,6 +339,12 @@ namespace HTTP
 			size_t n = 0;
 			buff[readval] = 0;
 			timestamp = time(NULL);
+			if (cgiSentBytes != 0)
+			{
+				req.body.append(buff, readval);
+				state = OK;
+				return 0;
+			}
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
@@ -423,32 +434,15 @@ namespace HTTP
 		return ;
 	}
 
-	bool Client::ok( void )
-	{
-		return state == OK;
-	}
-
-	void Client::setOk( void )
-	{
-		state = OK;
-	}
-
-	bool Client::sending( void ) 
-	{
-		return state == SENDING || state == REDIRECT;
-	}
-
-	void Client::setSending( void )
-	{
-		state = SENDING;
-	}
-	
 	void Client::reset( void )
 	{
 		req.clear();
 		res.clear();
 		state = CONNECTED;
 		server = 0;
+		cgiSentBytes = 0;
+		clientPipe[0] = 0;
+		clientPipe[1] = 0;
 	}
 
 	bool Client::getFile(std::string & path)
@@ -510,11 +504,11 @@ namespace HTTP
 		if (state == REDIRECT)
 		{
 			str = res.toString();
-			DEBUG2("SENT " << send(fd, str.c_str(), str.size(), 0));
-			// {
-			// 	error(500, true);
-			// 	return -1;
-			// }
+			send(fd, str.c_str(), str.size(), 0);
+			{
+				error(500, true);
+				return -1;
+			}
 			return 0;
 		}
 		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);

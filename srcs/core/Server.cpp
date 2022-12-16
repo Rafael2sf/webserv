@@ -266,8 +266,8 @@ namespace HTTP
 
 	void Server::_updateConnection( Client & client )
 	{
-		client.print_message(client.req, "-->");
-		client.print_message(client.res, "<--");
+		// client.print_message(client.req, "-->");
+		// client.print_message(client.res, "<--");
 		if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
 			|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
 		{
@@ -275,8 +275,9 @@ namespace HTTP
 				DEBUG2("epoll.erase() failed");
 			clients.erase(client.fd);
 		}
-		else
+		else{
 			client.reset();
+		}
 	}
 
 	void
@@ -287,11 +288,11 @@ namespace HTTP
 		try
 		{
 			client = &clients.at(socket);
-			if (client->ok())
+			if (client->state == OK)
 				_handle(*client);
-			else if (client->sending())
+			else if (client->state == SENDING)
 			{
-				if (client->contentEncoding() <= 0)
+				if (client->cgiSentBytes != 0 || client->contentEncoding() <= 0)
 					_updateConnection(*client);
 			}
 			else 
@@ -340,7 +341,7 @@ namespace HTTP
 	void Server::_handle(Client & client)
 	{
 		_methodChoice(client);
-		if (!client.sending())
+		if (client.state != SENDING && client.state != CGI_PIPING)
 			_updateConnection(client);
 	}
 

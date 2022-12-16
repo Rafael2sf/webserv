@@ -25,51 +25,61 @@ namespace HTTP
 	{
 		size_t	bytes = 0;
 		int		pid;
-		int		p[2];
 		std::string const& body = client.req.body;
 
-		pipe(p);
-		pid = fork();
-
-		if (pid == 0) {
-			
-			close(p[1]);
-			CGI	test(client);
-			while (client.server->getParent() != NULL)
-				client.server = client.server->getParent();
-			delete client.server;
-			if (dup2(p[0], STDIN_FILENO) == -1)
-			{
-				write(2, "error: fatal\n", 13);
-				exit(EXIT_FAILURE);
-			}
-			close (p[0]);
-			if (dup2(client.fd, STDOUT_FILENO) == -1)
-			{
-				write(2, "error: fatal\n", 13);
-				exit(EXIT_FAILURE);
-			}
-			execve("/usr/bin/python3", test.getArgs(), test.getEnv());
-			exit (1);
-		}
-		close(p[0]);
-		while (1)
+		if (client.cgiSentBytes == 0)
 		{
-			if (body.size() - bytes > S_PIPE_LIMIT)
+			pipe(client.clientPipe);
+			pid = fork();
+
+			if (pid == 0) {
+				
+				close(client.clientPipe[1]);
+				CGI	test(client);
+				while (client.server->getParent() != NULL)
+					client.server = client.server->getParent();
+				delete client.server;
+				if (dup2(client.clientPipe[0], STDIN_FILENO) == -1)
+				{
+					write(2, "error: fatal\n", 13);
+					exit(EXIT_FAILURE);
+				}
+				close (client.clientPipe[0]);
+				if (dup2(client.fd, STDOUT_FILENO) == -1)
+				{
+					write(2, "error: fatal\n", 13);
+					exit(EXIT_FAILURE);
+				}
+				execve("/usr/bin/python3", test.getArgs(), test.getEnv());
+				exit (1);
+			}
+			close(client.clientPipe[0]);
+			bytes = write(client.clientPipe[1], body.c_str(), body.size());
+			client.cgiSentBytes += bytes;
+			client.req.body.clear();
+			client.state = CGI_PIPING;
+			if (client.cgiSentBytes == client.req.content_length)
 			{
-				write(p[1], body.c_str() + bytes, S_PIPE_LIMIT);
-				bytes += S_PIPE_LIMIT;
-				DEBUG2("BYTES SENT TO CGI " << bytes);
+				if (client.cgiSentBytes == 0)	//Scripts can be sent without a body, putting this var as 1 is just for a check in server::_update()
+					client.cgiSentBytes = 1;
+				close(client.clientPipe[1]);
+				client.state = SENDING;
+			}
+		}
+		else
+		{
+			if (client.cgiSentBytes < client.req.content_length)
+			{
+				bytes = write(client.clientPipe[1], body.c_str(), body.size());
+				client.cgiSentBytes += bytes;
+				client.req.body.clear();
+				client.state = CGI_PIPING;
 			}
 			else
 			{
-				write(p[1], body.c_str() + bytes, body.size() - bytes);
-				bytes += body.size() - bytes;
-				DEBUG2("BYTES SENT TO CGI " << bytes);
-				break ;
+				close(client.clientPipe[1]);
+				client.state = SENDING;
 			}
 		}
-		close(p[1]);
-		wait(0);
 	};
 }

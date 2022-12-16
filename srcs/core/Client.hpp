@@ -23,6 +23,7 @@ namespace HTTP
 		OK,
 		REDIRECT,
 		SENDING,
+		CGI_PIPING,
 	};
 
 	class Client
@@ -48,29 +49,6 @@ namespace HTTP
 		 * method ok() will return true.
 		*/
 		int update( void );
-
-		/**
-		 * @brief return true if the request message has
-		 * been fully parsed and the http client is
-		 * waiting for a response.
-		*/
-		bool ok( void );
-
-		/**
-		 * @brief set the state to OK.
-		*/
-		void setOk( void );
-		
-		/**
-		 * @brief returns true if the server finished responding to
-		 * a request(used for chunked request sending).
-		*/
-		bool sending( void );
-
-		/**
-		 * @brief set the state to SEND.
-		*/
-		void setSending( void );
 
 		/**
 		 * @brief Clears all the internal memory used,
@@ -118,8 +96,11 @@ namespace HTTP
 		*/
 		void	dirIndex(std::string const& path);
 
-	private:
+		int		clientPipe[2];
+		int		cgiSentBytes;
 		int 	state;
+
+	private:
 		FILE *	fp;
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.
