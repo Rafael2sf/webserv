@@ -275,7 +275,7 @@ namespace HTTP
 				DEBUG2("epoll.erase() failed");
 			clients.erase(client.fd);
 		}
-		else{
+		else {
 			client.reset();
 		}
 	}
@@ -355,6 +355,7 @@ namespace HTTP
 			if (seconds - it->second.timestamp >= S_CONN_TIMEOUT)
 			{
 				//DEBUG2('[' << it->first << "] timed out");
+				it->second.error(408, true);
 				if (epoll.erase(it->first) == -1)
 					DEBUG2("epoll.erase() failed");
 				clients.erase(it->first);
@@ -368,10 +369,10 @@ namespace HTTP
 	void Server::_methodChoice(Client & client) {
 
 		std::string str = client.req.getMethod()[0];
-		if (str =="POST")
+		if (str == "GET") 
+			Get().response(client);		
+		else if (str =="POST")
 			Post().response(client);
-		else if (str == "GET") 
-			Get().response(client);
 		else if (str == "DELETE")
 			Delete().response(client);
 		else
