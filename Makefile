@@ -44,6 +44,7 @@ SRCS		=	$(addsuffix .cpp, \
 					Client \
 					date \
 					conversion \
+					validate \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
 INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))

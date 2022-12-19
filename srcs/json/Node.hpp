@@ -10,13 +10,13 @@ namespace JSON
 {
 	typedef enum e_node
 	{
-		none,
-		object,
-		string,
-		integer,
-		boolean,
-		null,
-		array,
+		none	=	0x00,
+		object	=	0x01,
+		string	=	0x02,
+		integer	=	0x04,
+		boolean	=	0x08,
+		null	=	0x10,
+		array	=	0x20,
 	} t_node;
 
 	class Node

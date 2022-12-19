@@ -104,4 +104,6 @@ namespace HTTP
 
 		void _updateConnection( Client & client );
 	};
+
+	int	validateConfig( JSON::Json const& json );
 }

@@ -1,20 +1,19 @@
 {
 	"server" : {
 		"listen" : "8000",
-		"client_max_body_size" : 2147483647,
+		"server_name" : "xxx",
+		"client_max_body_size" : 0,
 		"error_page" : {
-			"/html/403.html" : 403,
-			"/favicon.ico" : 404
+			"/favicon.ico" : [404, 405]
 		},
 		"location" : {
 			"/" : {
-				"index" : "index.html",
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"index" : ["index.html", "index.php"],
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"root" : "",
 				"autoindex" : true
 			},
 			"/301/" : {

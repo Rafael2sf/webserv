@@ -38,7 +38,7 @@ namespace JSON
 			obj = dynamic_cast<Object const*>(root);
 			if (!obj)
 				return 0;
-			for (std::multiset<Node *>::const_iterator it = obj->impl.begin();
+			for (std::set<Node *>::const_iterator it = obj->impl.begin();
 				it != obj->impl.end(); it++)
 			{
 				x = find_recursive(*it, key, max_depth - 1);
@@ -61,7 +61,7 @@ namespace JSON
 			obj = dynamic_cast<Object const*>(this);
 			if (!obj)
 				return 0;
-			for (std::multiset<Node*>::const_iterator it = obj->impl.begin();
+			for (std::set<Node*>::const_iterator it = obj->impl.begin();
 				it != obj->impl.end(); it++)
 			{
 				x = find_recursive(*it, key, max_depth - 1);
@@ -230,7 +230,7 @@ namespace JSON
 
 	Object::~Object()
 	{
-		for (std::multiset<Node *>::iterator it = impl.begin();
+		for (std::set<Node *>::iterator it = impl.begin();
 			it != impl.end(); it++)
 			delete *it;
 		impl.clear();

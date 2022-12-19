@@ -179,6 +179,8 @@ namespace HTTP
 				<< filepath << ":" << config.err() << std::endl;
 			return -1;
 		}
+		else if (validateConfig(config) < 0)
+			return -1;
 		DEBUG(std::cerr << "| JSON |\n"; config.cout());
 		if (listenMap(config, socks) == -1)
 			return -1;
@@ -510,6 +512,7 @@ namespace HTTP
 		error[413] = "Content Too Large";
 		error[414] = "URI Too Long";
 		error[415] = "Unsuported Media Type";
+
 		error[500] = "Internal Server Error";
 		error[501] = "Not Implemented";
 		error[505] = "HTTP Version not supported";
