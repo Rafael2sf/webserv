@@ -2,18 +2,19 @@
 	"server" : {
 		"listen" : "8000",
 		"server_name" : "xxx",
-		"client_max_body_size" : 0,
+		"client_max_body_size" : 10485760,
 		"error_page" : {
-			"/favicon.ico" : [404, 405]
+			"/html/404.html" : [404, 405]
 		},
 		"location" : {
 			"/" : {
+				"root" : "/home/rafernan/Projects/webserv/www/",
 				"index" : ["index.html", "index.php"],
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "",
+				"root" : "/home/rafernan/Projects/webserv/",
 				"autoindex" : true
 			},
 			"/301/" : {

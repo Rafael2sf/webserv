@@ -23,6 +23,7 @@ namespace HTTP
 		JSON::Node *last_match = 0;
 		size_t i = 0;
 
+		DEBUG2("GET HANDLER");
 		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
 		if (!tmp)
 			return 0;

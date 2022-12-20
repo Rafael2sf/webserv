@@ -110,6 +110,7 @@ namespace HTTP
 		{
 			if (!strncmp(s, "localhost", 9))
 			{
+				*port = 8000;
 				tmp[0] = 127;
 				tmp[3] = 1;
 				if (s[9] == ':' && sscanf(s + 10, "%d", port) != 1)
@@ -154,7 +155,7 @@ namespace HTTP
 					 i != t->end(); i++)
 				{
 					if (stohp(i->as<std::string const &>().c_str(), &host, &port) == -1)
-						return err(-1, "invalid listen field");
+						return configError("invalid host/port", i->as<std::string const&>().c_str());
 					if (std::find(used.begin(), used.end(), std::make_pair(host, port)) != used.end())
 						return err(-1, "duplicate listen field");
 					si = so.insert(host, port);

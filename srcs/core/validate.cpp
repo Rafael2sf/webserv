@@ -30,7 +30,7 @@ namespace HTTP
 			if ((unique && count > 0)
 				|| ((it->type() & types) == 0))
 			{
-				return err(-1, "invalid argument type",
+				return configError("invalid value type",
 					 nref.getProperty().c_str());
 			}
 		}
@@ -42,27 +42,29 @@ namespace HTTP
 		int rcode;
 		if (nref.type() != JSON::array)
 		{
-			return err(-1, "config: invalid type",
+			return configError("invalid value type",
 				nref.getProperty().c_str());
 		}
 
 		if (dynamic_cast<JSON::Array const&>(nref).impl.size() != 2)
 		{
-			return err(-1, "config: invalid argument type",
+			return configError("config: invalid value count",
 				 nref.getProperty().c_str());
 		}
 
 		if (nref.begin()->type() != JSON::integer
 			|| (++nref.begin())->type() != JSON::string)
 		{
-			return err(-1, "config: invalid argument type",
-				 nref.getProperty().c_str());
+			return configError("invalid value type",
+				nref.getProperty().c_str());
 		}
 
 		rcode = nref.begin()->as<int>();
 		if ((rcode >= 301 && rcode <= 303) || rcode == 307 || rcode == 308)
 			return 0;
-		return err(-1, "config: invalid redirect code", "-");
+
+		return configError("invalid redirect code",
+			itos(rcode, std::dec).c_str());
 	}
 
 	static int vPath( JSON::Node const& nref )
@@ -72,7 +74,7 @@ namespace HTTP
 
 		if (nref.type() != JSON::object)
 		{
-			return err(-1, "config: invalid type",
+			return configError("invalid value type",
 				nref.getProperty().c_str());
 		}
 
@@ -81,10 +83,10 @@ namespace HTTP
 		{
 			if (countEq(nref, it->getProperty()) > 1)
 			{
-				return err(-1, "config: duplicate directive",
+				return configError("duplicated directive",
 					it->getProperty().c_str());
 			}
-			char const** s = std::find(arr, arr + 5, it->getProperty());
+			char const** s = std::find(arr, arr + 6, it->getProperty());
 			switch (s - arr)
 			{
 				case 0:
@@ -106,7 +108,7 @@ namespace HTTP
 					RETURN_EQ(vOf(*it, false, JSON::boolean), -1);
 					continue ;
 				default:
-					return err(-1, "config: unknown directive",
+					return configError("unknown directive",
 						it->getProperty().c_str());
 			}
 		}
@@ -117,7 +119,7 @@ namespace HTTP
 	{
 		if (nref.type() != JSON::object)
 		{
-			return err(-1, "config: invalid type",
+			return configError("invalid value type",
 				nref.getProperty().c_str());
 		}
 
@@ -126,7 +128,7 @@ namespace HTTP
 		{
 			if (countEq(nref, it->getProperty()) > 1)
 			{
-				return err(-1, "config: duplicate directive",
+				return configError("duplicated directive",
 					it->getProperty().c_str());
 			}
 			if (vPath(*it) == -1)
@@ -142,7 +144,7 @@ namespace HTTP
 
 		if (nref.type() != JSON::object)
 		{
-			return err(-1, "config: invalid type",
+			return configError("invalid value type",
 				nref.getProperty().c_str());
 		}
 
@@ -151,8 +153,8 @@ namespace HTTP
 		{
 			if (it->type() != JSON::integer && it->type() != JSON::array)
 			{
-				return err(-1, "config: invalid type",
-					nref.getProperty().c_str());
+				return configError("invalid value type",
+					it->getProperty().c_str());
 			}
 
 			for (JSON::Node::const_iterator it2 = it->begin();
@@ -160,8 +162,8 @@ namespace HTTP
 			{
 				if (it2->type() != JSON::integer)
 				{
-					return err(-1, "config: invalid type",
-						it2->getProperty().c_str());
+					return configError("invalid value type",
+						it->getProperty().c_str());
 				}
 				error = it2->as<int>();
 				if (error != 400
@@ -178,13 +180,13 @@ namespace HTTP
 					&& error != 501
 					&& error != 505)
 				{
-					return err(-1, "config: invalid error code",
-						nref.getProperty().c_str());
+					return configError("invalid error code",
+						it->getProperty().c_str());
 				}
 				if (std::find(used_errors.begin(), used_errors.end(),
 					 error) != used_errors.end())
 				{
-					return err(-1, "config: duplicate error code",
+					return configError("duplicated error code",
 						nref.getProperty().c_str());
 				}
 				used_errors.push_back(error);
@@ -200,7 +202,7 @@ namespace HTTP
 
 		if (nref.type() != JSON::object)
 		{
-			return err(-1, "config: invalid type",
+			return configError("invalid value type",
 				nref.getProperty().c_str());
 		}
 
@@ -209,10 +211,10 @@ namespace HTTP
 		{
 			if (countEq(nref, it->getProperty()) > 1)
 			{
-				return err(-1, "config: duplicate directive",
+				return configError("duplicated directive",
 					it->getProperty().c_str());
 			}
-			char const** s = std::find(arr, arr + 4, it->getProperty());
+			char const** s = std::find(arr, arr + 5, it->getProperty());
 			switch (s - arr)
 			{
 				case 0:
@@ -231,7 +233,7 @@ namespace HTTP
 					RETURN_EQ(vOf(*it, false, JSON::string), -1);
 					continue ;
 				default:
-					return err(-1, "config: unknown directive",
+					return configError("unknown directive",
 						it->getProperty().c_str());
 			}
 		}
@@ -245,7 +247,7 @@ namespace HTTP
 		{
 			if (it->getProperty() != "server")
 			{
-				return err(-1, "config: unknown directive",
+				return configError("unknown directive",
 					 it->getProperty().c_str());
 			}
 			else

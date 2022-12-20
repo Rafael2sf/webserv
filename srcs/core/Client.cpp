@@ -44,11 +44,47 @@ namespace HTTP
 		str = str.substr(start, finish - start + 1);
 	};
 
+	static int validUrl(std::string & s)
+	{
+		int depth = 0;
+		size_t i = 0;
+
+		if (s[0] != '/')
+			return -1;
+		while (i < s.size())
+		{
+			i = s.find_first_of('/', i);
+			if ((i + 1) == s.size() || i == std::string::npos)
+				break ;
+			if (s[++i] == '/')
+			{
+				s.erase(i--, 1);
+				continue ;
+			}
+
+			if (!s.compare(i, 3, ".."))
+			{
+				s.push_back('/');
+				depth--;
+			}
+			else if (!s.compare(i, 3, "../"))
+				depth--;
+			else if (!s.compare(i, 2, "."))
+				s.erase(i--, 1);
+			else if (s.compare(i, 2, "./") != 0)
+				depth++;
+
+			if (depth < 0)
+				return -1;
+		}
+		return 0;
+	}
+
 	int Client::_validateStatusLine( void )
 	{
 		int v[2];
 
-		if (req.method[1][0] != '/')
+		if (validUrl(req.method[1]) < 0)
 		{
 			error(400, true);
 			return -1;
@@ -152,7 +188,7 @@ namespace HTTP
 		}
 		_owsTrimmer(val);
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		if (val.empty() && key == "host")
+		if (key == "host" && (val.empty() || req.getField("host")))
 		{
 			error(400, true);
 			return -1;
@@ -164,7 +200,6 @@ namespace HTTP
 			*req.getField(key) += ',' + val;
 		else
 			req.setField(key, val);
-		//std::cout << key << " " << val << std::endl;
 		return 0;
 	}
 
@@ -283,7 +318,6 @@ namespace HTTP
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
 		{
-
 			if (server)
 				nptr = server->search(1, "client_max_body_size");
 			if (nptr)
@@ -377,6 +411,11 @@ namespace HTTP
 					}
 					else if (state == HEADER_FIELDS)
 						state = BODY_CONTENT;
+					else if (state != STATUS_LINE)
+					{
+						error(400, true);
+						return -1;
+					}
 					nextField(&state, &j);
 				}
 				else
@@ -507,25 +546,20 @@ namespace HTTP
 			var = location->search(1, "index");
 			if (var)
 			{
-				path_index = path + var->as<std::string const&>();
 				fclose(fp);
-				if ((fp = fopen(path_index.c_str(), "r")) == NULL) {
-					if (errno == ENOENT) {
-						dirIndex(path);
-						return false;
+				for (JSON::Node::const_iterator it = var->begin();
+					it != var->end(); it++)
+				{
+					path_index = path + it->as<std::string const&>();
+					if ((fp = fopen(path_index.c_str(), "r")) != NULL)
+					{
+						path = path_index;
+						return true;
 					}
-					else if (errno == EACCES) {
-						error(403, false);
-						return false;
-					}
-				}
-				path = path_index;
+				}	
 			}
-			else
-			{
-				dirIndex(path);
-				return false;
-			}
+			dirIndex(path);
+			return false;
 		}
 		return true;
 	}
