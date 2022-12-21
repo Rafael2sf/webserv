@@ -203,37 +203,6 @@ namespace HTTP
 		return 0;
 	}
 
-	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
-	{
-		JSON::Object *tmp;
-		size_t last_len = 0;
-		JSON::Node *last_match = 0;
-		size_t i = 0;
-
-		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
-		if (!tmp)
-			return 0;
-		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc.skip())
-		{
-			if (path.size() == 1)
-				i = path.find_first_of(*path.c_str());
-			else
-				i = path.find(loc->getProperty());
-			if (i != std::string::npos && i == 0)
-			{
-				i = loc->getProperty().size();
-				if (path.size() == i)
-					return &*loc;
-				if (i > last_len)
-				{
-					last_len = i;
-					last_match = &*loc;
-				}
-			}
-		}
-		return last_match;
-	}
-
 	static bool isMethodAllowed( std::string const& method, JSON::Node const*nptr )
 	{
 		JSON::Node *p;
@@ -289,31 +258,31 @@ namespace HTTP
 		state = REDIRECT;
 	}
 
-	int Client::_peekHeaderFields( void )
+	int Client::_peekHeaderFields( Sockets const& sockets )
 	{
 		int				size;
 		JSON::Node * 	nptr = 0;
 
-		if (server)
+		if (req.getField("host") == 0)
+		{
+			error(400, true);
+			return -1;
+		}
+		if ((server = matchServer(sockets, *this)))
 			location = matchLocation(this->server, req.method[1]);
 		if (!location)
 		{
 			error(404, false);
 			return -1;
 		}
-		if (location->search(1, "redirect"))
-		{
-			_redirect();
-			return -1;
-		}
-		if (req.getField("host") == 0)
-		{
-			error(400, true);
-			return -1;
-		}
 		if (!isMethodAllowed(req.method[0], location))
 		{
 			error(405, true);
+			return -1;
+		}
+		if (location->search(1, "redirect"))
+		{
+			_redirect();
 			return -1;
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
@@ -337,9 +306,9 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::_updateBody( char const* buff, size_t readval )
+	int Client::_updateBody( char const* buff, size_t readval, Sockets const& sockets )
 	{
-		if (req.body.size() == 0 && _peekHeaderFields() < 0)
+		if (req.body.size() == 0 && _peekHeaderFields(sockets) < 0)
 		{
 			if (state == REDIRECT)
 				return 0;
@@ -376,7 +345,7 @@ namespace HTTP
 			*j += 1;
 	}
 
-	int Client::update( void )
+	int Client::update( Sockets const& sockets )
 	{
 		std::stringstream	ss;
 		ssize_t				readval;
@@ -394,7 +363,7 @@ namespace HTTP
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
-					return _updateBody(buff + i, readval - i);
+					return _updateBody(buff + i, readval - i, sockets);
 				j = std::find(buff + i, buff + readval, '\n');
 				if (j != (buff + readval))
 				{

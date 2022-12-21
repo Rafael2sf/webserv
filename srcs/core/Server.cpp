@@ -192,56 +192,18 @@ namespace HTTP
 		return (0);
 	}
 
-	static JSON::Node *matchCon(Sockets &so, Client const &cli)
-	{
-		std::list<t_sock_info *> interest;
-		bool perfect_match = 0;
-
-		for (std::list<t_sock_info>::iterator it = so.list.begin();
-			 it != so.list.end(); it++)
-		{
-			if ((*it).addr.sin_port == cli.ai.sin_port
-				&& (((*it).addr.sin_addr.s_addr == cli.ai.sin_addr.s_addr)
-					|| (*it).addr.sin_addr.s_addr == 0))
-			{
-				if (((*it).addr.sin_addr.s_addr) != 0)
-					perfect_match = true;
-				interest.push_back(&(*it));
-			}
-		}
-
-		// if full match remove 0.0.0.0
-		std::list<t_sock_info *>::iterator tmp;
-		if (perfect_match && cli.ai.sin_addr.s_addr != 0)
-		{
-			for (std::list<t_sock_info *>::iterator it = interest.begin();
-				 it != interest.end(); it++)
-			{
-				if (((*it)->addr.sin_addr.s_addr) == 0)
-				{
-					tmp = it++;
-					interest.erase(tmp);
-					it--;
-				}
-			}
-		}
-		if (interest.size() == 0)
-			return 0;
-		else if (interest.size() == 1)
-			return (*interest.begin())->config;
-		// TODO -- look at server_name
-		return (*interest.begin())->config;
-	}
-
 	void
 	Server::_accept( t_sock_info const& si )
 	{
 		int					socket;
 		Client * 			cl;
+		sockaddr_in			addr;
+		socklen_t			len = sizeof(addr);
 
 		try
 		{
-			if ((socket = accept(si.fd, 0, 0)) == -1)
+			memset(&addr, 0, len);
+			if ((socket = accept(si.fd, (sockaddr *)&addr, &len)) == -1)
 			{
 				err(-1);
 				return ;
@@ -254,7 +216,7 @@ namespace HTTP
 			cl = &clients.insert(clients.end(), 
 				std::make_pair(socket, Client()))->second;
 			cl->fd = socket;
-			cl->ai.sin_addr.s_addr = si.addr.sin_addr.s_addr;
+			cl->ai.sin_addr.s_addr = addr.sin_addr.s_addr;
 			cl->ai.sin_port = si.addr.sin_port;
 			cl->server = 0;
 			cl->timestamp = time(NULL);
@@ -297,13 +259,8 @@ namespace HTTP
 				if (client->contentEncoding() <= 0)
 					_updateConnection(*client);
 			}
-			else 
-			{
-				if (!client->server)
-					client->server = matchCon(socks, *client);
-				if (client->update() < 0)
-					_updateConnection(*client);
-			}
+			else if (client->update(socks) < 0)
+				_updateConnection(*client);
 		}
 		catch (const std::exception &e)
 		{

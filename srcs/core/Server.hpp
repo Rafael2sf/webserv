@@ -105,5 +105,7 @@ namespace HTTP
 		void _updateConnection( Client & client );
 	};
 
+	JSON::Node *matchServer(Sockets const& so, Client const &cli);
+	JSON::Node *matchLocation(JSON::Node *serv, std::string const &path);
 	int	validateConfig( JSON::Json const& json );
 }

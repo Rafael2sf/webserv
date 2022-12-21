@@ -68,9 +68,47 @@ namespace HTTP
 		return &(*list.insert(list.end(), si));
 	}
 
+	static t_sock_info const* usedHostPort(
+	 std::vector<t_sock_info*>::const_iterator begin,
+	 std::vector<t_sock_info*>::const_iterator end,
+	 uint32_t host, uint16_t port)
+	{
+		while (begin != end)
+		{
+			if (((*begin)->addr.sin_addr.s_addr == host
+				|| (*begin)->addr.sin_addr.s_addr == 0)
+				&& (*begin)->addr.sin_port == port)
+			{
+				return *begin;
+			}
+			begin++;
+		}
+		return 0;
+	}
+
+	bool hasAnyHost(
+	 std::list<t_sock_info>::const_iterator begin,
+	 std::list<t_sock_info>::const_iterator end,
+	 uint16_t port)
+	{
+		while (begin != end)
+		{
+			if (begin->addr.sin_addr.s_addr == 0
+				&& begin->addr.sin_port == port)
+			{
+				return true;
+			}
+			begin++;
+		}
+		return false;
+	}
+
+	// -> search for used port
+	// -> if not used search for any -> if foound 
+
 	int Sockets::listen( void )
 	{
-		std::vector<int> ports_used;
+		std::vector<t_sock_info*> used;
 		unsigned int port;
 
 		DEBUG(std::cerr << "\n| Sockets |\n");
@@ -83,8 +121,14 @@ namespace HTTP
 				<< ((port & 0x00ff0000) >> 16) << '.' \
 				<< ((port & 0x0000ff00) >> 8) << '.' \
 				<< (port & 0x000000ff) << ':' << htons((*it).addr.sin_port));
-			if (std::find(ports_used.begin(), ports_used.end(),
-				(*it).addr.sin_port) != ports_used.end())
+			if (usedHostPort(used.begin(), used.end(),
+				it->addr.sin_addr.s_addr, it->addr.sin_port))
+			{
+				DEBUG(std::cerr << " [inactive]" << std::endl;);
+				continue ;
+			}
+			if (it->addr.sin_addr.s_addr != 0
+			&& hasAnyHost(list.begin(), list.end(), it->addr.sin_port))
 			{
 				DEBUG(std::cerr << " [inactive]" << std::endl;);
 				continue ;
@@ -100,7 +144,8 @@ namespace HTTP
 				std::perror("");
 				while (it != list.begin())
 				{
-					close((*it).fd);
+					if ((*it).fd != 1)
+						close((*it).fd);
 					it--;
 				}
 				if ((*it).fd != -1)
@@ -108,7 +153,7 @@ namespace HTTP
 				return -1;
 			}
 			DEBUG(std::cerr << " [active]" << std::endl;);
-			ports_used.push_back((*it).addr.sin_port);
+			used.push_back(&*it);
 		}
 		return 0;
 	}

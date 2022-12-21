@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sockets.hpp"
 #include "webserv.hpp"
 #include "Message.hpp"
 #include <cstdlib>
@@ -47,7 +48,7 @@ namespace HTTP
 		 * by reading from the %fd, if the request is complete.
 		 * method ok() will return true.
 		*/
-		int update( void );
+		int update( Sockets const& sockets );
 
 		/**
 		 * @brief return true if the request message has
@@ -127,10 +128,10 @@ namespace HTTP
 		*/
 		void _owsTrimmer(std::string& str);
 		int _getHostFromUrl( void );
-		int _peekHeaderFields( void );
+		int _peekHeaderFields( Sockets const& sockts );
 		int _updateHeaders( char const* buff, size_t n );
 		int _updateStatusLine( char const* buff, size_t n );
-		int _updateBody( char const * buff, size_t n );
+		int _updateBody( char const * buff, size_t n, Sockets const& sockets );
 		int _validateStatusLine( void );
 		std::string const*  _errorPage( int code );
 		void _redirect( void );
