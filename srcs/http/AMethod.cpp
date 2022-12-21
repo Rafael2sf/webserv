@@ -24,16 +24,16 @@ namespace HTTP
 	void AMethod::cgi(Client & client)
 	{
 		size_t	bytes = 0;
-		int		pid;
 		std::string const& body = client.req.body;
 
-		
 		if (client.cgiSentBytes == 0)
 		{
-			pipe(client.clientPipe);
-			pid = fork();
-
-			if (pid == 0) {
+			if (pipe(client.clientPipe) == -1)
+				return client.error(500, true);
+			client.childPid = fork();
+			if (client.childPid == -1)
+				return client.error(500, true);
+			else if (client.childPid == 0) {
 				
 				close(client.clientPipe[1]);
 				CGI	test(client);
@@ -53,7 +53,7 @@ namespace HTTP
 				}
 				execve("/usr/bin/python3", test.getArgs(), test.getEnv());
 				DEBUG2("Error in execve!");
-				exit (1);
+				exit (EXIT_FAILURE);
 			}
 			else 
 			{
@@ -64,30 +64,26 @@ namespace HTTP
 				client.state = CGI_PIPING;
 				if (client.cgiSentBytes == client.req.content_length)
 				{
-					if (client.cgiSentBytes == 0)	//Scripts can be sent without a body, putting this var as 1 is just for a check in server::_update()
-						client.cgiSentBytes = 1;
 					close(client.clientPipe[1]);
-					client.state = SENDING;
+					client.state = CGI_FINISHED;
+					_wait(client);
 				}
 			}
 		}
 		else
 		{
+			bytes = write(client.clientPipe[1], body.c_str(), body.size());
+			client.cgiSentBytes += bytes;
+			client.req.body.clear();
 			if (client.cgiSentBytes < client.req.content_length)
-			{
-				bytes = write(client.clientPipe[1], body.c_str(), body.size());
-				
-				client.cgiSentBytes += bytes;
-				client.req.body.clear();
 				client.state = CGI_PIPING;
-			}
 			else
 			{
 				close(client.clientPipe[1]);
-				client.state = SENDING;
+				client.state = CGI_FINISHED;
+				_wait(client);
 			}
 		}
-	
 	};
 	
 	int	AMethod::_confCheck(Client & client) {
@@ -106,4 +102,28 @@ namespace HTTP
 		return 0;
 	};
 
+	void	AMethod::_wait(Client & client) {
+	
+		int	retVal;
+
+		waitpid(client.childPid, &retVal, 0);
+		switch (WEXITSTATUS(retVal))
+		{
+		case C_SERVER_ERROR:
+			client.error(500, true);
+			break;
+		case C_FORBIDDEN:
+			client.error(403, false);
+			break;
+		case C_FILE_NOT_FOUND:
+			client.error(404, false);
+			break;
+		case C_BAD_REQUEST:
+			client.error(400, false);
+			break;
+		default:
+			return;
+		}
+		
+	}
 }

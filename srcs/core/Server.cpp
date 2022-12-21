@@ -292,7 +292,7 @@ namespace HTTP
 				_handle(*client);
 			else if (client->state == SENDING)
 			{
-				if (client->cgiSentBytes != 0 || client->contentEncoding() <= 0)
+				if (client->contentEncoding() <= 0)
 					_updateConnection(*client);
 			}
 			else 

@@ -11,13 +11,13 @@ namespace HTTP
 	{}
 
 	Client::Client( void )
-	: fd(-1), timestamp(0), server(0), location(0), cgiSentBytes(0), state(CONNECTED)
+	: fd(-1), timestamp(0), server(0), location(0), cgiSentBytes(0), childPid(0), state(CONNECTED)
 	{
 		memset(&ai, 0, sizeof(ai));
 	}
 
 	Client::Client( Client const& other )
-	: fd(-1), timestamp(0), server(0), location(0), cgiSentBytes(0), state(CONNECTED)
+	: fd(-1), timestamp(0), server(0), location(0), cgiSentBytes(0), childPid(0), state(CONNECTED)
 	{
 		(void) other;
 		memset(&ai, 0, sizeof(ai));
@@ -339,7 +339,7 @@ namespace HTTP
 			size_t n = 0;
 			buff[readval] = 0;
 			timestamp = time(NULL);
-			if (cgiSentBytes != 0)
+			if (state == CGI_PIPING)
 			{
 				req.body.append(buff, readval);
 				state = OK;
@@ -409,7 +409,7 @@ namespace HTTP
 	{
 		std::string s;
 
-		(void) close_connection;
+		(void) close_connection; //?????
 		s = itos(code, std::dec) + ' ' + Server::error[code];
 		res.clear();
 		res.createMethodVec("HTTP/1.1 " + s);
@@ -430,7 +430,8 @@ namespace HTTP
 		res.setField("content-type", "text/html");
 		res.setField("content-length", itos(res.body.size(), std::dec));
 		s = res.toString();
-		send(fd, s.c_str(), s.size(), 0);
+		if (send(fd, s.c_str(), s.size(), 0) == -1)
+			res.setField("connection", "close");		//??????????
 		return ;
 	}
 
@@ -441,6 +442,7 @@ namespace HTTP
 		state = CONNECTED;
 		server = 0;
 		cgiSentBytes = 0;
+		childPid = 0;
 		clientPipe[0] = 0;
 		clientPipe[1] = 0;
 	}
@@ -504,16 +506,16 @@ namespace HTTP
 		if (state == REDIRECT)
 		{
 			str = res.toString();
-			send(fd, str.c_str(), str.size(), 0);
+			if (send(fd, str.c_str(), str.size(), 0) == -1)
 			{
 				error(500, true);
 				return -1;
 			}
 			return 0;
 		}
-		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
+		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);		//Protect????
 		buf[read_nbr] = 0;
-		if (read_nbr != S_BUFFER_SIZE && state == OK) {
+		if (read_nbr != S_BUFFER_SIZE && state == OK) {		//What if buffer_size exactly the same as file???
 			res.setField("content-length", itos(read_nbr, std::dec));
 			res.body.assign(buf, read_nbr);
 			str = res.toString();
@@ -536,6 +538,7 @@ namespace HTTP
 			str += res.body + "\r\n";
 			if (send(fd, str.c_str(), str.size(), 0) == -1)
 			{
+				state = OK;
 				error(500, true);
 				return -1;
 			}

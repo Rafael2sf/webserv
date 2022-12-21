@@ -20,3 +20,7 @@ Send buffer size: SO_SNDBUF
 
 
 CGI -> Deal with non existant directives in config!
+
+test nginx -> response to bad scripts!
+
+confirmar -> error in index html -> bad request???

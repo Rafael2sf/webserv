@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Import modules for CGI handling 
-import cgi, os
+import cgi, os, sys, errno
 
 # Date header creation
 from wsgiref.handlers import format_date_time
@@ -18,17 +18,23 @@ try:
 	fileString = ""
 
 	if len(fileList) == 0:
-		fileString = "404 - File not found"
-		response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n"
+		sys.exit(2)
 	else:
 		for file in fileList:
-			fileString += file
-			fileString += '\n'
+			if os.path.isfile(os.getenv('DOCUMENT_ROOT') + file):
+				fileString += file
+				fileString += '\n'
+		if fileString == "":
+			raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT))
 		fileString = fileString[:-1]
-		response = "HTTP/1.1 200 OK\r\nContent-Length: " + str(len(fileString) + 1) + "\r\nContent-type:text/plain\r\n"
-except:
-	fileString = "404 - File not found"
-	response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n"	
+		response = "HTTP/1.1 200 OK\r\nContent-Length: " + str(len(fileString) + 1) + "\r\nContent-type:text/plain\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
+except IOError as e:
+		if e.errno == 2:
+			sys.exit(2)
+		elif e.errno == 13:
+			sys.exit(3)
+		elif e.errno == 21:
+			sys.exit(3)
 response += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
 response += fileString
 print (response)

@@ -24,6 +24,7 @@ namespace HTTP
 		REDIRECT,
 		SENDING,
 		CGI_PIPING,
+		CGI_FINISHED,
 	};
 
 	class Client
@@ -98,6 +99,7 @@ namespace HTTP
 
 		int		clientPipe[2];
 		int		cgiSentBytes;
+		int		childPid;
 		int 	state;
 
 	private:

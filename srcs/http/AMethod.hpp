@@ -34,5 +34,16 @@ namespace HTTP
 		
 		int		_confCheck(Client & client);
 
+		void	_wait(Client & client);
+
+		enum
+		{
+			C_OK = 0,
+			C_SERVER_ERROR = 1,
+			C_FILE_NOT_FOUND = 2,
+			C_FORBIDDEN = 3,
+			C_BAD_REQUEST = 4,
+		};
+
 	};
 }

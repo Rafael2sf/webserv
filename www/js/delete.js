@@ -10,10 +10,12 @@ function handleDelete() {
 			type: "DELETE",
 			url: "/delete.py",
 			data: {file: fileSelected},
-			success: function(msg){
-				$(document).html(msg);
+			success: function(){
 				alert("File " + fileSelected + " erased!");
 				location.reload();
+			},
+			error: function( jqXHR, textStatus, errorThrown) {
+				alert("ERROR: " + errorThrown);
 			}
 		});
 	} 
