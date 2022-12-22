@@ -5,12 +5,12 @@
 		"location" : {
 			"/" : {
 				"index" : "index.html",
-				"root" : "/mnt/c/Users/dario/Desktop/Projects/42/webserv/www/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/mnt/c/Users/dario/Desktop/Projects/42/webserv",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv",
 				"autoindex" : true
 			}
 		}

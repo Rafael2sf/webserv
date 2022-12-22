@@ -15,7 +15,7 @@
 #define	RECEIVE_BUF_SIZE 30000
 
 namespace HTTP
-{
+{	
 	/*
 		A wrapper class to all the functionality of the weberver,
 		meant to be used by the final user.
@@ -29,6 +29,7 @@ namespace HTTP
 		static int state;
 		static std::map<std::string, std::string> mime;
 		static std::map<int, std::string> error;
+		static std::map<pid_t, int>	childProcInfo;
 
 		/**
 		 * @brief Initiates the server with default configurations.

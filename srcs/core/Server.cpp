@@ -10,6 +10,9 @@ namespace HTTP
 		Server::mime = std::map<std::string, std::string>();
 	std::map<int, std::string>
 		Server::error = std::map<int, std::string>();
+	std::map<pid_t, int>
+		Server::childProcInfo = std::map<pid_t, int>();
+	
 
 	Server::~Server(void)
 	{
@@ -268,15 +271,22 @@ namespace HTTP
 	{
 		// client.print_message(client.req, "-->");
 		// client.print_message(client.res, "<--");
-		if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
-			|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
+		
+		if (client.childPid == 0)
 		{
-			if (epoll.erase(client.fd) == -1)
-				DEBUG2("epoll.erase() failed");
-			clients.erase(client.fd);
-		}
-		else {
-			client.reset();
+			if (client.fp != NULL)
+				fclose(client.fp);
+			if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
+				|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
+			{
+				if (epoll.erase(client.fd) == -1)
+					DEBUG2("epoll.erase() failed");
+				clients.erase(client.fd);
+			}
+			else
+			{
+				client.reset();
+			}
 		}
 	}
 
@@ -288,6 +298,8 @@ namespace HTTP
 		try
 		{
 			client = &clients.at(socket);
+			if (client->state == CGI_FINISHED) //Child process is still working!!
+				return;
 			if (client->state == OK)
 				_handle(*client);
 			else if (client->state == SENDING)
@@ -295,7 +307,7 @@ namespace HTTP
 				if (client->contentEncoding() <= 0)
 					_updateConnection(*client);
 			}
-			else 
+			else
 			{
 				if (!client->server)
 					client->server = matchCon(socks, *client);
@@ -350,19 +362,42 @@ namespace HTTP
 		double seconds = time(NULL);
 
 		for (std::map<int, Client>::iterator it = clients.begin();
-			 it != clients.end(); it++)
+			 it != clients.end();)
 		{
+			for (std::map<pid_t, int>::iterator childIt = childProcInfo.begin();
+			 childIt != childProcInfo.end();)
+			{
+				if (it->second.childPid == childIt->first)
+				{
+					if (childIt->second == 500)
+						it->second.error(500, true);
+					else if (childIt->second != 0)
+						it->second.error(childIt->second, false);
+					it->second.childPid = 0;
+					_updateConnection(it->second);
+					childProcInfo.erase(childIt->first);
+					childIt = childProcInfo.begin();
+					continue;
+				}
+				childIt++;
+			}
+
 			if (seconds - it->second.timestamp >= S_CONN_TIMEOUT)
 			{
-				//DEBUG2('[' << it->first << "] timed out");
+				// DEBUG2('[' << it->first << "] timed out");
+				if (it->second.childPid != 0) 
+				{
+					kill(it->second.childPid, SIGKILL);
+					childProcInfo.erase(it->second.childPid);
+				}
 				it->second.error(408, true);
 				if (epoll.erase(it->first) == -1)
 					DEBUG2("epoll.erase() failed");
 				clients.erase(it->first);
 				it = clients.begin();
-				if (it == clients.end())
-					break;
+				continue;
 			}
+			it++;
 		}
 	}
 

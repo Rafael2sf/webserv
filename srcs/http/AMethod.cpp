@@ -66,7 +66,6 @@ namespace HTTP
 				{
 					close(client.clientPipe[1]);
 					client.state = CGI_FINISHED;
-					_wait(client);
 				}
 			}
 		}
@@ -81,7 +80,6 @@ namespace HTTP
 			{
 				close(client.clientPipe[1]);
 				client.state = CGI_FINISHED;
-				_wait(client);
 			}
 		}
 	};
@@ -102,28 +100,4 @@ namespace HTTP
 		return 0;
 	};
 
-	void	AMethod::_wait(Client & client) {
-	
-		int	retVal;
-
-		waitpid(client.childPid, &retVal, 0);
-		switch (WEXITSTATUS(retVal))
-		{
-		case C_SERVER_ERROR:
-			client.error(500, true);
-			break;
-		case C_FORBIDDEN:
-			client.error(403, false);
-			break;
-		case C_FILE_NOT_FOUND:
-			client.error(404, false);
-			break;
-		case C_BAD_REQUEST:
-			client.error(400, false);
-			break;
-		default:
-			return;
-		}
-		
-	}
 }

@@ -101,9 +101,9 @@ namespace HTTP
 		int		cgiSentBytes;
 		int		childPid;
 		int 	state;
+		FILE *	fp;
 
 	private:
-		FILE *	fp;
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.
 		 * @param str Reference to the string to remove from which whitespaces 
