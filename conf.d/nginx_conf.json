@@ -1,24 +1,102 @@
 {
 	"server" : {
 		"listen" : "8000",
-		"server_name" : "xxx",
-		"client_max_body_size" : 10485760,
-		"error_page" : {
-			"/html/404.html" : [404, 405]
-		},
+		"server_name" : "localhost",
+		"location" : {
+			"/uploads/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"autoindex" : true
+			},
+			"/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"index" : "hello_0.html",
+				"cgi" : "./cgi-bin/",
+				"upload_store" : "./uploads/"
+			}
+		}
+	},
+	"server" : {
+		"listen" : "8000",
+		"server_name" : "localhost.localhost",
 		"location" : {
 			"/" : {
-				"root" : "/home/rafernan/Projects/webserv/www/",
-				"index" : ["index.html", "index.php"],
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"index" : "hello_1.html",
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/home/rafernan/Projects/webserv/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"autoindex" : true
+			}
+		}
+	},
+	"server" : {
+		"listen" : "8000",
+		"server_name" : "*.www.localhost",
+		"location" : {
+			"/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"index" : "hello_2.html",
+				"cgi" : "./cgi-bin/",
+				"upload_store" : "./uploads/"
+			},
+			"/uploads/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"autoindex" : true
+			}
+		}
+	},
+	"server" : {
+		"listen" : "8000",
+		"server_name" : "dev.*",
+		"location" : {
+			"/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"index" : "hello_3.html",
+				"cgi" : "./cgi-bin/",
+				"upload_store" : "./uploads/"
+			},
+			"/uploads/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"autoindex" : true
+			}
+		}
+	},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	"server" : {
+		"listen" : "9000",
+		"server_name" : "dev.*",
+		"location" : {
+			"/index.html/" : {
+				"index" : "index.html",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"cgi" : "./cgi-bin/",
+				"upload_store" : "./uploads/",
 				"autoindex" : true
 			},
-			"/301/" : {
-				"redirect" : [301, "/"]
+			"/h/" : {
+				"autoindex" : true,
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/html/"
+			},
+			"=/grass2.jpeg" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/html/"
+			},
+			"*.jpeg" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/images/"
 			}
 		}
 	}

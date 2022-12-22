@@ -268,8 +268,11 @@ namespace HTTP
 			error(400, true);
 			return -1;
 		}
-		if ((server = matchServer(sockets, *this)))
-			location = matchLocation(this->server, req.method[1]);
+		server = matchServer(sockets, *this);
+		if (server)
+			location = matchLocation(server, req.method[1]);
+		if (location)
+			DEBUG2("l = " << location->getProperty());
 		if (!location)
 		{
 			error(404, false);
@@ -450,8 +453,10 @@ namespace HTTP
 	void Client::error(int code, bool close_connection)
 	{
 		std::string s;
-		std::string const * ep =  _errorPage(code);
+		std::string const * ep = 0;
 
+		if (server)
+			ep = _errorPage(code);
 		if (ep)
 			code = 301;
 		_defaultPage(code, close_connection);
@@ -490,28 +495,46 @@ namespace HTTP
 		server = 0;
 	}
 
-	bool Client::getFile(std::string & path)
+	// open  file or return http error code (403/404)
+	// if return == 1 file is dir
+	// on sucess 0
+	static int fopenr(FILE **fp, std::string const& path)
 	{
 		struct stat		stat;
+
+		*fp = fopen(path.c_str(), "r");
+		if (*fp == NULL)
+		{
+			if (errno == ENOENT)
+				return 404;
+			return 403;
+		}
+		if (lstat(path.c_str(), &stat) == -1) 
+		{
+			fclose(*fp);
+			return 404;
+		}
+		DEBUG2("DIR!!");
+		if (S_ISDIR(stat.st_mode))
+			return 1;
+		return 0;
+	}
+
+	bool Client::getFile(std::string & path)
+	{
+		int				code;
 		std::string		path_index;
 		JSON::Node *	var = 0;
-		this->fp = fopen(path.c_str(), "r");
 
-		if (fp == NULL && errno == ENOENT) {
-			error(404, false);
-			return false;
-		}
-		else if (fp == NULL && errno == EACCES) {
-			error(403, false);
-			return false;
-		}
-		if (lstat(path.c_str(), &stat) == -1) {
-			fclose(fp);
-			error(404, false); // temporary ?
-			return false;
-		}
-		if (S_ISDIR(stat.st_mode))
+		DEBUG2("path: " << path);
+		code = fopenr(&fp, path);
+		if (code == 1)// dir
 		{
+			if (*--path.end() != '/')
+			{
+				error(403, false);
+				return false;
+			}
 			var = location->search(1, "index");
 			if (var)
 			{
@@ -520,14 +543,27 @@ namespace HTTP
 					it != var->end(); it++)
 				{
 					path_index = path + it->as<std::string const&>();
-					if ((fp = fopen(path_index.c_str(), "r")) != NULL)
+					code = fopenr(&fp, path_index);
+					if (code == 1)
 					{
-						path = path_index;
+						fclose(fp);
+						code = 403;
+					}
+					else if (code == 0)
+					{
+						path.swap(path_index);
 						return true;
 					}
 				}	
 			}
-			dirIndex(path);
+			if (code == 404)
+				dirIndex(path);
+			error(403, false);
+			return false;
+		}
+		else if (code != 0)
+		{
+			error(code, false);
 			return false;
 		}
 		return true;
