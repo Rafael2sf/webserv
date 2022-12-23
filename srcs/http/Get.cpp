@@ -21,9 +21,12 @@ namespace HTTP
 		std::string		path;
 		JSON::Node *	 var = 0;
 
-		if (client.req.getMethod()[1].find(".py") != std::string::npos)
+		if (!client.location)
+			return client.error(404, false);
+		if (client.req.getMethod()[1].find(".py") != std::string::npos
+				&& client.location->search(1, "cgi"))
 			return cgi(client);
-		if (!client.location || !(var = client.location->search(1, "root")))
+		if (!(var = client.location->search(1, "root")))
 			return client.error(404, false);
 		path = var->as<std::string const&>();
 		if (*--path.end() == '/')

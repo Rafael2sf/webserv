@@ -10,6 +10,9 @@ namespace HTTP
 		Server::mime = std::map<std::string, std::string>();
 	std::map<int, std::string>
 		Server::error = std::map<int, std::string>();
+	std::map<pid_t, int>
+		Server::childProcInfo = std::map<pid_t, int>();
+	
 
 	Server::~Server(void)
 	{
@@ -244,17 +247,23 @@ namespace HTTP
 
 	void Server::_updateConnection( Client & client )
 	{
-		client.print_message(client.req, "-->");
-		client.print_message(client.res, "<--");
-		if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
-			|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
+		// client.print_message(client.req, "-->");
+		// client.print_message(client.res, "<--");
+		
+		if (client.childPid == 0)
 		{
-			if (epoll.erase(client.fd) == -1)
-				DEBUG2("epoll.erase() failed");
-			clients.erase(client.fd);
+			if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
+				|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
+			{
+				if (epoll.erase(client.fd) == -1)
+					DEBUG2("epoll.erase() failed");
+				clients.erase(client.fd);
+			}
+			else
+			{
+				client.reset();
+			}
 		}
-		else
-			client.reset();
 	}
 
 	void
@@ -265,9 +274,11 @@ namespace HTTP
 		try
 		{
 			client = &clients.at(socket);
-			if (client->ok())
+			if (client->state == CGI_FINISHED) //Child process is still working!!
+				return;
+			if (client->state == OK)
 				_handle(*client);
-			else if (client->sending())
+			else if (client->state == SENDING)
 			{
 				if (client->contentEncoding() <= 0)
 					_updateConnection(*client);
@@ -293,7 +304,7 @@ namespace HTTP
 		{
 			if (state)
 				break ;
-			_timeout();
+			_timeoutChildPrune();
 			events = epoll.wait();
 			for (int i = 0; i < events; i++)
 			{
@@ -310,37 +321,69 @@ namespace HTTP
 	void Server::_handle(Client & client)
 	{
 		_methodChoice(client);
-		if (!client.sending())
+		if (client.state != SENDING && client.state != CGI_PIPING)
 			_updateConnection(client);
 	}
 
-	void	Server::_timeout(void)
+	void	Server::_timeoutChildPrune(void)
 	{
 		double seconds = time(NULL);
 
 		for (std::map<int, Client>::iterator it = clients.begin();
-			 it != clients.end(); it++)
+			 it != clients.end();)
 		{
+			for (std::map<pid_t, int>::iterator childIt = childProcInfo.begin();
+			 childIt != childProcInfo.end();)
+			{
+				if (it->second.childPid == childIt->first)
+				{
+					bool resetIt = false;
+					if (childIt->second == 500)
+						it->second.error(500, true);
+					else if (childIt->second != 0)
+						it->second.error(childIt->second, false);
+					it->second.childPid = 0;
+					if ((it->second.req.getField("connection") && *it->second.req.getField("connection") == "close")
+							|| (it->second.res.getField("connection") && *it->second.res.getField("connection") == "close"))
+						resetIt = true;
+					_updateConnection(it->second);
+					childProcInfo.erase(childIt->first);
+					childIt = childProcInfo.begin();
+					if (resetIt == true)
+					{
+						it = clients.begin();
+						if (it == clients.end())
+							return;
+					}
+					continue;
+				}
+				childIt++;
+			}
 			if (seconds - it->second.timestamp >= S_CONN_TIMEOUT)
 			{
-				//DEBUG2('[' << it->first << "] timed out");
-				if (epoll.erase(it->first) == -1)
-					DEBUG2("epoll.erase() failed");
-				clients.erase(it->first);
+				// DEBUG2('[' << it->first << "] timed out");
+				if (it->second.childPid != 0) 
+				{
+					kill(it->second.childPid, SIGKILL);
+					childProcInfo.erase(it->second.childPid);
+					it->second.childPid = 0;
+				}
+				it->second.error(408, true);
+				_updateConnection(it->second);
 				it = clients.begin();
-				if (it == clients.end())
-					break;
+				continue;
 			}
+			it++;
 		}
 	}
 
 	void Server::_methodChoice(Client & client) {
 
 		std::string str = client.req.getMethod()[0];
-		if (str == "POST")
+		if (str == "GET") 
+			Get().response(client);		
+		else if (str == "POST")
 			Post().response(client);
-		else if (str == "GET") 
-			Get().response(client);
 		else if (str == "DELETE")
 			Delete().response(client);
 		else

@@ -8,18 +8,26 @@
 namespace HTTP
 {
 	Client::~Client( void )
-	{}
+	{
+		reset();
+	}
 
 	Client::Client( void )
-	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED), fp(0)
+	: fd(-1), timestamp(0), server(0), location(0), 
+	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
 	{
+		clientPipe[0] = 0;
+		clientPipe[1] = 0;
 		memset(&ai, 0, sizeof(ai));
 	}
 
 	Client::Client( Client const& other )
-	: fd(-1), timestamp(0), server(0), location(0), state(CONNECTED), fp(0)
+	: fd(-1), timestamp(0), server(0), location(0),
+	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
 	{
 		(void) other;
+		clientPipe[0] = 0;
+		clientPipe[1] = 0;
 		memset(&ai, 0, sizeof(ai));
 	}
 
@@ -316,7 +324,11 @@ namespace HTTP
 			return -1;
 		}
 		if (req.body.size() + readval < (size_t)req.content_length)
+		{
+			if (req.getField("content-type")->find("multipart/form-data") != std::string::npos)
+				state = OK;
 			req.body.append(buff, readval);
+		}
 		else
 		{
 			req.body.append(buff, req.content_length - req.body.size());
@@ -361,6 +373,13 @@ namespace HTTP
 			size_t n = 0;
 			buff[readval] = 0;
 			timestamp = time(NULL);
+			if (state == CGI_PIPING)
+			{
+				if (req.body.empty())
+					req.body.append(buff, readval);
+				state = OK;
+				return 0;
+			}
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
@@ -461,30 +480,11 @@ namespace HTTP
 		if (ep)
 			res.setField("location", *ep);
 		s = res.toString();
-		send(fd, s.c_str(), s.size(), 0);
+		if (send(fd, s.c_str(), s.size(), 0) == -1)
+			res.setField("connection", "close");
 		return ;
 	}
 
-	bool Client::ok( void )
-	{
-		return state == OK;
-	}
-
-	void Client::setOk( void )
-	{
-		state = OK;
-	}
-
-	bool Client::sending( void ) 
-	{
-		return state == SENDING || state == REDIRECT;
-	}
-
-	void Client::setSending( void )
-	{
-		state = SENDING;
-	}
-	
 	void Client::reset( void )
 	{
 		req.clear();
@@ -492,6 +492,17 @@ namespace HTTP
 		state = CONNECTED;
 		server = 0;
 		location = 0;
+		cgiSentBytes = 0;
+		childPid = 0;
+		if (fp != NULL)
+			fclose(fp);
+		fp = NULL;
+		if (clientPipe[0] != 0)
+			close(clientPipe[0]);
+		clientPipe[0] = 0;
+		if (clientPipe[1] != 0)
+			close(clientPipe[1]);
+		clientPipe[1] = 0;
 	}
 
 	// open  file or return http error code (403/404)
@@ -511,6 +522,7 @@ namespace HTTP
 		if (lstat(path.c_str(), &stat) == -1) 
 		{
 			fclose(*fp);
+      *fp = NULL;
 			return 404;
 		}
 		if (S_ISDIR(stat.st_mode))
@@ -536,6 +548,7 @@ namespace HTTP
 			if (var)
 			{
 				fclose(fp);
+        fp = NULL;
 				for (JSON::Node::const_iterator it = var->begin();
 					it != var->end(); it++)
 				{
@@ -544,6 +557,7 @@ namespace HTTP
 					if (code == 1)
 					{
 						fclose(fp);
+            fp = NULL;
 						code = 403;
 					}
 					else if (code == 0)
@@ -585,20 +599,26 @@ namespace HTTP
 			return 0;
 		}
 		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
-		buf[read_nbr] = 0;
-		if (read_nbr != S_BUFFER_SIZE && state == OK) {
-			res.setField("content-length", itos(read_nbr, std::dec));
-			res.body.assign(buf, read_nbr);
-			str = res.toString();
-			if (send(fd, str.c_str(), str.size(), 0) == -1)
-			{
-				error(500, true);
-				return -1;
-			}
-			return 0;
-		}
-		if (state == OK)
+		if (read_nbr == -1)
 		{
+			error(500, true);
+			return -1;
+		}
+		buf[read_nbr] = 0;
+		if (state == OK) 
+		{
+			if (read_nbr < S_BUFFER_SIZE) //Good also for read of 0
+			{
+				res.setField("content-length", itos(read_nbr, std::dec));
+				res.body.assign(buf, read_nbr);
+				str = res.toString();
+				if (send(fd, str.c_str(), str.size(), 0) == -1)
+				{
+					error(500, true);
+					return -1;
+				}
+				return 0;
+			}
 			res.setField("transfer-encoding", "chunked");
 			str = res.toString();
 			state = SENDING;
@@ -609,6 +629,7 @@ namespace HTTP
 			str += res.body + "\r\n";
 			if (send(fd, str.c_str(), str.size(), 0) == -1)
 			{
+				state = OK;
 				error(500, true);
 				return -1;
 			}
@@ -622,6 +643,7 @@ namespace HTTP
 				return -1;
 			}
 			fclose(fp);
+			fp = NULL;
 		}
 		return read_nbr;
 	};
@@ -672,7 +694,8 @@ namespace HTTP
 		else
 			res.setField("connection", "keep-alive");
 		str = res.toString();
-		send(fd, str.c_str(), str.size(), 0);
+		if (send(fd, str.c_str(), str.size(), 0) == -1)
+			return error(500, true);			//??????????
 		return ;
 	};
 }

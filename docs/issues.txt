@@ -17,3 +17,13 @@ Send buffer size: SO_SNDBUF
 -Can CGI object construction throw an exception?
 
 -SEND: What code should be sent when a file exists but is empty???
+
+
+CGI -> Deal with non existant directives in config!
+
+test nginx -> response to bad scripts!
+
+confirmar -> error in index html -> bad request???
+
+
+IMPORTANT: send() errors will call send() inside error() -> Shouldn't?

@@ -1,33 +1,35 @@
 #!/usr/bin/python3
 
 # Import modules for CGI handling 
-import cgi, cgitb, os
+import cgi, cgitb, os, sys
 
 # Create instance of FieldStorage 
 form = cgi.FieldStorage() 
 
 # Get data from fields
-filedir = form.getvalue('file')
-if filedir != 0:
+filedir = form.getvalue('file', 'error')
+if filedir != 'error':
 	filedir = os.path.basename(filedir)
 	try:
 		os.remove(os.getenv('DOCUMENT_ROOT') + filedir)
+		s = "HTTP/1.1 200 OK\r\n"
+		body = "<html>\n<head>\n<title>Delete script</title>\n</head>\n<body>\n"
 
-	except:
-		filedir = 'File ' + filedir + ' not found!'
+	except IOError as e:
+		
+		if e.errno == 2:
+			sys.exit(2)			#404 File not found
+		elif e.errno == 13:
+			sys.exit(3)			#403 Forbidden
+		elif e.errno == 21:
+			sys.exit(3)			#403 Forbidden
 
-	length = 108
-	if filedir != None:
-		length += len(filedir)
+	body += "<h2>File" + filedir + "was deleted</h2>\n"
+	body += "</body>\n</html>"
 
-	str = "HTTP/1.1 200 OK\r\n" + "Content-Length: " + str(length) + "\r\n" + "Content-type:text/html\r\n\r\n"
-	str += "<html>\r\n<head>\r\n<title>Hello - Second CGI Program</title>\r\n</head>\r\n<body>\r\n"
-	if filedir != None:
-		str += "<h2>" + filedir + " " + "</h2>\r\n"
-	else:
-		str += "<h2>Hello  </h2>\r\n"
-	str += "</body>\r\n</html>\r\n\r"
+	s += "Content-Length: " + str(len(body)) + "\r\n" + "Content-type:text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n\r\n"
+	s += body
 
-	print(str)
+	print(s)
 else:
-	print (response = "HTTP/1.1 404 Not Found\r\n\r")
+	sys.exit(2)			#404 File not found

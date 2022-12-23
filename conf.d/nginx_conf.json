@@ -26,7 +26,7 @@
 				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv",
 				"autoindex" : true
 			}
 		}

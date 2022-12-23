@@ -76,6 +76,7 @@ namespace HTTP
 			std::string toString(void);
 			std::string	body;
 			friend class Client;
+      
 		private:
 			size_t	content_length;
 			size_t	header_bytes;

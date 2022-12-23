@@ -23,6 +23,8 @@ namespace HTTP {
 
 	void Delete::response(Client & client)
 	{
+		if (_confCheck(client) == -1)
+			return;
 		cgi(client);
 	};
 }

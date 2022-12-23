@@ -31,5 +31,8 @@ namespace HTTP
 		 * @param client http client class
 		*/
 		void	cgi(Client & client);
+		
+		int		_confCheck(Client & client);
+
 	};
 }

@@ -23,6 +23,8 @@ namespace HTTP {
 
 	void		Post::response(Client & client)
 	{
+		if (_confCheck(client) == -1)
+			return;
 		cgi(client);
 	};
 }

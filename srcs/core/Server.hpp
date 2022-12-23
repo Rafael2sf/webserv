@@ -15,7 +15,7 @@
 #define	RECEIVE_BUF_SIZE 30000
 
 namespace HTTP
-{
+{	
 	/*
 		A wrapper class to all the functionality of the weberver,
 		meant to be used by the final user.
@@ -29,6 +29,7 @@ namespace HTTP
 		static int state;
 		static std::map<std::string, std::string> mime;
 		static std::map<int, std::string> error;
+		static std::map<pid_t, int>	childProcInfo;
 
 		/**
 		 * @brief Initiates the server with default configurations.
@@ -79,9 +80,12 @@ namespace HTTP
 		 * @brief Everytime a loop occurs, this
 		 *  functions is called to check for clients
 		 * that exceeded S_CONN_TIMEOUT since their last
-		 * event proceeded by removing them.
+		 * event proceeded by removing them. It also checks
+		 * for existing child processes and their deaths to
+		 * update related clients and deal with possible connection
+		 * changes.
 		*/
-		void _timeout(void);
+		void _timeoutChildPrune(void);
 
 		/**
 		 * @brief Accepts a client connection on
