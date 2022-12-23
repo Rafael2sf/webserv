@@ -1,7 +1,7 @@
 {
 	"server" : {
 		"listen" : "8000",
-		"server_name" : "localhost",
+		"server_name" : ["localhost", "localhost.localhost"],
 		"location" : {
 			"/uploads/" : {
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
@@ -17,7 +17,7 @@
 	},
 	"server" : {
 		"listen" : "8000",
-		"server_name" : "localhost.localhost",
+		"server_name" : ["", "localhost.localhost"],
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
@@ -33,10 +33,10 @@
 	},
 	"server" : {
 		"listen" : "8000",
-		"server_name" : "*.www.localhost",
+		"server_name" : "*.www.localhost:8000",
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"root" : "./www/",
 				"index" : "hello_2.html",
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
@@ -57,7 +57,7 @@
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
 			},
-			"/uploads/" : {
+			"/uploads" : {
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
 				"autoindex" : true
 			}

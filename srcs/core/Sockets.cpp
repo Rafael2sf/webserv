@@ -24,7 +24,7 @@ namespace HTTP
 		return *this;
 	}
 
-	static int isock( t_sock_info & sock_info )
+	static int prep_sock( t_sock_info & sock_info )
 	{
 		int			addrlen = sizeof(sock_info.addr);
 		int			enable = 1;
@@ -32,9 +32,6 @@ namespace HTTP
 		sock_info.fd = socket(AF_INET, SOCK_STREAM, 0);
 		if (sock_info.fd == -1)
 			return (-1);
-		// sock_info.addr.sin_family = AF_INET;
-		// sock_info.addr.sin_port = htons(sock_info.port);
-		// sock_info.addr.sin_addr.s_addr = htonl(sock_info.host);
 		if (setsockopt(sock_info.fd, SOL_SOCKET, SO_REUSEADDR, 
 			&enable, sizeof(int)) == -1)
 		{
@@ -133,7 +130,7 @@ namespace HTTP
 				DEBUG(std::cerr << " [inactive]" << std::endl;);
 				continue ;
 			}
-			if (isock(*it) == -1)
+			if (prep_sock(*it) == -1)
 			{
 				std::cerr << "webserv: " \
 					<< ((port & 0xff000000) >> 24) << '.' \
@@ -142,14 +139,6 @@ namespace HTTP
 					<< (port & 0x000000ff) << ':'
 					<< htons((*it).addr.sin_port) << ": ";
 				std::perror("");
-				while (it != list.begin())
-				{
-					if ((*it).fd != 1)
-						close((*it).fd);
-					it--;
-				}
-				if ((*it).fd != -1)
-					close((*it).fd);
 				return -1;
 			}
 			DEBUG(std::cerr << " [active]" << std::endl;);
@@ -164,7 +153,7 @@ namespace HTTP
 		for (std::list<t_sock_info>::iterator it = list.begin();
 			it != list.end(); it++)
 		{
-			if (it->fd == sock_fd && it->fd != -1)// || it->clients.count(sock_fd))
+			if (it->fd == sock_fd && it->fd != -1)
 				return &(*it);
 		}
 		return NULL;

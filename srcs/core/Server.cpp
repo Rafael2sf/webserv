@@ -13,6 +13,7 @@ namespace HTTP
 
 	Server::~Server(void)
 	{
+		clear();
 	}
 
 	Server::Server(void)
@@ -174,21 +175,33 @@ namespace HTTP
 	int
 	Server::init(char const *filepath)
 	{
-		if (config.from(filepath) < 0)
+		try
 		{
-			std::cerr << "webserv: error: " \
-				<< filepath << ":" << config.err() << std::endl;
+			if (config.from(filepath) < 0)
+			{
+				std::cerr << "webserv: error: " \
+					<< filepath << ":" << config.err() << std::endl;
+				return -1;
+			}
+			else if (validateConfig(config) < 0)
+				return -1;
+			DEBUG(std::cerr << "| JSON |\n"; config.cout());
+			if (listenMap(config, socks) < 0
+				|| socks.listen() < 0
+				|| epoll.init(socks) < 0)
+			{
+				clear();
+				return -1;
+			}
+			_init_mimes();
+			_init_errors();
+		}
+		catch (std::exception const& e)
+		{
+			err(-1, e.what());
+			clear();
 			return -1;
 		}
-		else if (validateConfig(config) < 0)
-			return -1;
-		DEBUG(std::cerr << "| JSON |\n"; config.cout());
-		if (listenMap(config, socks) == -1)
-			return -1;
-		if (socks.listen() == -1)
-			return -1;
-		epoll.init(socks);
-		_init();
 		return (0);
 	}
 
@@ -276,15 +289,12 @@ namespace HTTP
 		int				socket;
 		int				events;
 
-		if (socks.list.empty())
-			exit(err(1, "logic error", "no sockets available"));
 		while (1)
 		{
 			if (state)
 				break ;
 			_timeout();
 			events = epoll.wait();
-			// DEBUG2("Finished sleeping");
 			for (int i = 0; i < events; i++)
 			{
 				socket = epoll[i].data.fd;
@@ -327,7 +337,7 @@ namespace HTTP
 	void Server::_methodChoice(Client & client) {
 
 		std::string str = client.req.getMethod()[0];
-		if (str =="POST")
+		if (str == "POST")
 			Post().response(client);
 		else if (str == "GET") 
 			Get().response(client);
@@ -337,8 +347,34 @@ namespace HTTP
 			client.error(501, false);
 	};
 
-	void  Server::_init( void )
+	void Server::clear( void )
 	{
+		epoll.stop();
+		for (std::map<int, Client>::iterator it = clients.begin();
+			it != clients.end(); it++)
+		{
+			epoll.erase(it->first);
+			close(it->first);
+			it->second.reset();
+		}
+		clients.clear();
+		for (std::list<t_sock_info>::iterator it = socks.list.begin();
+			it != socks.list.end(); it++)
+		{
+			if (it->fd != -1)
+			{
+				epoll.erase(it->fd);
+				close(it->fd);
+			}
+		}
+		socks.list.clear();
+		config.clear();
+	}
+
+	void  Server::_init_mimes( void )
+	{
+		if (!mime.empty())
+			return ;
 		mime["html"]	=	"text/html";
 		mime["htm"]		=	"text/html";
 		mime["shtml"]	=	"text/html";
@@ -452,8 +488,12 @@ namespace HTTP
 		mime["asf"]		=	"video/x-ms-asf";
 		mime["wmv"]		=	"video/x-ms-wmv";
 		mime["avi"]		=	"video/x-msvideo";
+	}
 
-		//Creation of default error pages map
+	void  Server::_init_errors( void )
+	{
+		if (!error.empty())
+			return ;
 		error[301] = "Moved Permanently";
 		error[302] = "Found";
 		error[303] = "See Other";
@@ -470,6 +510,7 @@ namespace HTTP
 		error[413] = "Content Too Large";
 		error[414] = "URI Too Long";
 		error[415] = "Unsuported Media Type";
+		error[431] = "Request Header Fields Too Large";
 
 		error[500] = "Internal Server Error";
 		error[501] = "Not Implemented";

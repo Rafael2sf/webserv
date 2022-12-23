@@ -193,5 +193,7 @@ namespace JSON
 	{
 		if (tokens)
 			delete tokens;
+		tokens = 0;
+		_err.clear();
 	}
 }

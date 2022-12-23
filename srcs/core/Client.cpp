@@ -271,8 +271,6 @@ namespace HTTP
 		server = matchServer(sockets, *this);
 		if (server)
 			location = matchLocation(server, req.method[1]);
-		if (location)
-			DEBUG2("l = " << location->getProperty());
 		if (!location)
 		{
 			error(404, false);
@@ -297,7 +295,7 @@ namespace HTTP
 			else
 				size = 1048576;
 			req.content_length = stoi(*req.getField("content-length"), std::dec);
-			if (size < 0 || size < req.content_length)
+			if (size < 0 || (size_t)size < req.content_length)
 			{
 				error(413, true);
 				return -1;
@@ -493,6 +491,7 @@ namespace HTTP
 		res.clear();
 		state = CONNECTED;
 		server = 0;
+		location = 0;
 	}
 
 	// open  file or return http error code (403/404)
@@ -514,7 +513,6 @@ namespace HTTP
 			fclose(*fp);
 			return 404;
 		}
-		DEBUG2("DIR!!");
 		if (S_ISDIR(stat.st_mode))
 			return 1;
 		return 0;
@@ -526,7 +524,6 @@ namespace HTTP
 		std::string		path_index;
 		JSON::Node *	var = 0;
 
-		DEBUG2("path: " << path);
 		code = fopenr(&fp, path);
 		if (code == 1)// dir
 		{
@@ -556,7 +553,7 @@ namespace HTTP
 					}
 				}	
 			}
-			if (code == 404)
+			if (code == 1 || code == 404)
 				dirIndex(path);
 			error(403, false);
 			return false;
@@ -638,7 +635,6 @@ namespace HTTP
 			return error(404, false);
 		res.createMethodVec("HTTP/1.1 200 OK");
 		res.setField("content-type", "text/html");
-		// client.res.setField("date", getDate(time(0)));
 
 		autoindex = location->search(1, "autoindex");
 		if (!autoindex || !autoindex->as<bool>())
@@ -647,7 +643,7 @@ namespace HTTP
 		DIR * dirp = opendir(path.c_str());
 		if (!dirp)
 			return error(403, false);
-		res.body = "<html>\n<headfile explorer</head>\n<body>\n<hr><pre><a href=\"../\"/>../</a>\n";
+		res.body = "<html>\n<head>file explorer</head>\n<body>\n<hr><pre><a href=\"../\"/>../</a>\n";
 		dirent * dp;
 		while ((dp = readdir(dirp)) != NULL)
 		{

@@ -162,7 +162,7 @@ namespace HTTP
 	JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
 	{
 		JSON::Object *	tmp;
-		size_t 			last_len =	-1;
+		size_t 			last_len =	0;
 		JSON::Node *	last_match = 0;
 		size_t 			i = 0;
 
@@ -189,12 +189,11 @@ namespace HTTP
 			if (loc->getProperty()[0] == '*'
 				|| loc->getProperty()[0] == '=')
 				continue ; // wrong / match =/
-			if (loc->getProperty()[0])
 			i = path.find(loc->getProperty(), 0);
 			if (i != std::string::npos && i == 0)
 			{
 					i = loc->getProperty().size();
-					if (i > last_len || last_len != path.size())
+					if (i > last_len && last_len != path.size())
 					{
 						last_len = i;
 						last_match = &*loc;
