@@ -31,8 +31,8 @@ void child_handler( int signum )
 
 		switch (WEXITSTATUS(stat))
 		{
-		case C_SERVER_ERROR:
-			exitVal = 500;
+		case C_OK:
+			exitVal = 0;
 			break;
 		case C_FORBIDDEN:
 			exitVal = 403;
@@ -44,7 +44,7 @@ void child_handler( int signum )
 			exitVal = 400;
 			break;
 		default:
-			exitVal = 0;
+			exitVal = 500;
 		}
 		HTTP::Server::childProcInfo[pid] = exitVal;
     }

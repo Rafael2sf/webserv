@@ -8,12 +8,16 @@
 namespace HTTP
 {
 	Client::~Client( void )
-	{}
+	{
+		reset();
+	}
 
 	Client::Client( void )
 	: fd(-1), timestamp(0), server(0), location(0), 
 	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
 	{
+		clientPipe[0] = 0;
+		clientPipe[1] = 0;
 		memset(&ai, 0, sizeof(ai));
 	}
 
@@ -22,6 +26,8 @@ namespace HTTP
 	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
 	{
 		(void) other;
+		clientPipe[0] = 0;
+		clientPipe[1] = 0;
 		memset(&ai, 0, sizeof(ai));
 	}
 
@@ -343,7 +349,8 @@ namespace HTTP
 			timestamp = time(NULL);
 			if (state == CGI_PIPING)
 			{
-				req.body.append(buff, readval);
+				if (req.body.empty())
+					req.body.append(buff, readval);
 				state = OK;
 				return 0;
 			}
@@ -432,7 +439,7 @@ namespace HTTP
 		res.setField("content-length", itos(res.body.size(), std::dec));
 		s = res.toString();
 		if (send(fd, s.c_str(), s.size(), 0) == -1)
-			res.setField("connection", "close");		//??????????
+			res.setField("connection", "close");
 		return ;
 	}
 
@@ -444,9 +451,15 @@ namespace HTTP
 		server = 0;
 		cgiSentBytes = 0;
 		childPid = 0;
-		clientPipe[0] = 0;
-		clientPipe[1] = 0;
+		if (fp != NULL)
+			fclose(fp);
 		fp = NULL;
+		if (clientPipe[0] != 0)
+			close(clientPipe[0]);
+		clientPipe[0] = 0;
+		if (clientPipe[1] != 0)
+			close(clientPipe[1]);
+		clientPipe[1] = 0;
 	}
 
 	bool Client::getFile(std::string & path)
@@ -517,7 +530,7 @@ namespace HTTP
 			}
 			return 0;
 		}
-		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);	//Protect????
+		read_nbr = fread(buf, 1, S_BUFFER_SIZE, fp);
 		if (read_nbr == -1)
 		{
 			error(500, true);
@@ -614,7 +627,8 @@ namespace HTTP
 		else
 			res.setField("connection", "keep-alive");
 		str = res.toString();
-		send(fd, str.c_str(), str.size(), 0);
+		if (send(fd, str.c_str(), str.size(), 0) == -1)
+			return error(500, true);			//??????????
 		return ;
 	};
 }

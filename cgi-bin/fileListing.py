@@ -18,7 +18,7 @@ try:
 	fileString = ""
 
 	if len(fileList) == 0:
-		sys.exit(2)
+		sys.exit(2)			#404 File not found
 	else:
 		for file in fileList:
 			if os.path.isfile(os.getenv('DOCUMENT_ROOT') + file):
@@ -30,11 +30,11 @@ try:
 		response = "HTTP/1.1 200 OK\r\nContent-Length: " + str(len(fileString) + 1) + "\r\nContent-type:text/plain\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
 except IOError as e:
 		if e.errno == 2:
-			sys.exit(2)
+			sys.exit(2)			#404 File not found
 		elif e.errno == 13:
-			sys.exit(3)
+			sys.exit(3)			#403 Forbidden
 		elif e.errno == 21:
-			sys.exit(3)
+			sys.exit(3)			#403 Forbidden
 response += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
 response += fileString
 print (response)

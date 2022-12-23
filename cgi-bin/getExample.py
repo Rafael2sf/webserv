@@ -29,6 +29,6 @@ try:
 
 		print(s)
 	else:
-		sys.exit(4)
+		sys.exit(4)			#400 Bad Request
 except KeyError:
 	sys.exit(4)				#If fname or lname does not exist in form, the form was not well written and client receives 400

@@ -23,18 +23,22 @@ namespace HTTP
 
 	void AMethod::cgi(Client & client)
 	{
-		size_t	bytes = 0;
+		int	bytes = 0;
 		std::string const& body = client.req.body;
 
 		if (client.cgiSentBytes == 0)
 		{
 			if (pipe(client.clientPipe) == -1)
 				return client.error(500, true);
+			if (fcntl(client.clientPipe[0], F_SETFL, O_NONBLOCK )  == -1)
+				return client.error(500, true);
+			if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1)
+				return client.error(500, true);
 			client.childPid = fork();
 			if (client.childPid == -1)
 				return client.error(500, true);
-			else if (client.childPid == 0) {
-				
+			else if (client.childPid == 0)
+			{	
 				close(client.clientPipe[1]);
 				CGI	test(client);
 				while (client.server->getParent() != NULL)
@@ -58,13 +62,20 @@ namespace HTTP
 			else 
 			{
 				close(client.clientPipe[0]);
+				client.clientPipe[0] = 0;
 				bytes = write(client.clientPipe[1], body.c_str(), body.size());
-				client.cgiSentBytes += bytes;
-				client.req.body.clear();
+				if (bytes != -1)
+				{
+					client.cgiSentBytes += bytes;
+					client.req.body.clear();
+				}
+				else
+					client.cgiSentBytes = -1;
 				client.state = CGI_PIPING;
 				if (client.cgiSentBytes == client.req.content_length)
 				{
 					close(client.clientPipe[1]);
+					client.clientPipe[1] = 0;
 					client.state = CGI_FINISHED;
 				}
 			}
@@ -72,13 +83,19 @@ namespace HTTP
 		else
 		{
 			bytes = write(client.clientPipe[1], body.c_str(), body.size());
-			client.cgiSentBytes += bytes;
-			client.req.body.clear();
+			if (bytes != -1)
+			{
+				if (client.cgiSentBytes == -1)
+					client.cgiSentBytes = 0;
+				client.cgiSentBytes += bytes;
+				client.req.body.clear();
+			}
 			if (client.cgiSentBytes < client.req.content_length)
 				client.state = CGI_PIPING;
 			else
 			{
 				close(client.clientPipe[1]);
+				client.clientPipe[1] = 0;
 				client.state = CGI_FINISHED;
 			}
 		}

@@ -75,9 +75,12 @@ namespace HTTP
 		 * @brief Everytime a loop occurs, this
 		 *  functions is called to check for clients
 		 * that exceeded S_CONN_TIMEOUT since their last
-		 * event proceeded by removing them.
+		 * event proceeded by removing them. It also checks
+		 * for existing child processes and their deaths to
+		 * update related clients and deal with possible connection
+		 * changes.
 		*/
-		void _timeout(void);
+		void _timeoutChildPrune(void);
 
 		/**
 		 * @brief Accepts a client connection on

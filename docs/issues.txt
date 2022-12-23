@@ -24,3 +24,6 @@ CGI -> Deal with non existant directives in config!
 test nginx -> response to bad scripts!
 
 confirmar -> error in index html -> bad request???
+
+
+IMPORTANT: send() errors will call send() inside error() -> Shouldn't?

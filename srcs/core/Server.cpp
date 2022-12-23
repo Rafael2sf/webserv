@@ -274,8 +274,6 @@ namespace HTTP
 		
 		if (client.childPid == 0)
 		{
-			if (client.fp != NULL)
-				fclose(client.fp);
 			if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
 				|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
 			{
@@ -335,7 +333,7 @@ namespace HTTP
 		{
 			if (state)
 				break ;
-			_timeout();
+			_timeoutChildPrune();
 			events = epoll.wait();
 			// DEBUG2("Finished sleeping");
 			for (int i = 0; i < events; i++)
@@ -357,7 +355,7 @@ namespace HTTP
 			_updateConnection(client);
 	}
 
-	void	Server::_timeout(void)
+	void	Server::_timeoutChildPrune(void)
 	{
 		double seconds = time(NULL);
 
@@ -369,19 +367,28 @@ namespace HTTP
 			{
 				if (it->second.childPid == childIt->first)
 				{
+					bool resetIt = false;
 					if (childIt->second == 500)
 						it->second.error(500, true);
 					else if (childIt->second != 0)
 						it->second.error(childIt->second, false);
 					it->second.childPid = 0;
+					if ((it->second.req.getField("connection") && *it->second.req.getField("connection") == "close")
+							|| (it->second.res.getField("connection") && *it->second.res.getField("connection") == "close"))
+						resetIt = true;
 					_updateConnection(it->second);
 					childProcInfo.erase(childIt->first);
 					childIt = childProcInfo.begin();
+					if (resetIt == true)
+					{
+						it = clients.begin();
+						if (it == clients.end())
+							return;
+					}
 					continue;
 				}
 				childIt++;
 			}
-
 			if (seconds - it->second.timestamp >= S_CONN_TIMEOUT)
 			{
 				// DEBUG2('[' << it->first << "] timed out");
@@ -389,11 +396,10 @@ namespace HTTP
 				{
 					kill(it->second.childPid, SIGKILL);
 					childProcInfo.erase(it->second.childPid);
+					it->second.childPid = 0;
 				}
 				it->second.error(408, true);
-				if (epoll.erase(it->first) == -1)
-					DEBUG2("epoll.erase() failed");
-				clients.erase(it->first);
+				_updateConnection(it->second);
 				it = clients.begin();
 				continue;
 			}

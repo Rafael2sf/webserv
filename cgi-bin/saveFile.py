@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import cgi, os, sys
+import cgi, os, sys, time
 
 # Date header creation
 from wsgiref.handlers import format_date_time
@@ -9,7 +9,6 @@ from time import mktime
 
 now = datetime.now()
 stamp = mktime(now.timetuple())
-
 form = cgi.FieldStorage()
 
 try:
@@ -31,12 +30,12 @@ try:
 	s += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
 	s += message
 	print(s)
-except KeyError:
-	sys.exit(4)				#If fileTest does not exist in form, the form was not well written and client receives 400
 except IOError as e:
 	if e.errno == 2:
-		sys.exit(2)
+		sys.exit(2)			#404 File not found
 	elif e.errno == 13:
-		sys.exit(3)
+		sys.exit(3)			#403 Forbidden
 	elif e.errno == 21:
-		sys.exit(3)
+		sys.exit(3)			#403 Forbidden
+except KeyError:
+	sys.exit(4)				#If fileTest does not exist in form, the form was not well written and client receives 400

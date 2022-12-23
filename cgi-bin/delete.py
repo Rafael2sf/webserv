@@ -18,11 +18,11 @@ if filedir != 'error':
 	except IOError as e:
 		
 		if e.errno == 2:
-			sys.exit(2)
+			sys.exit(2)			#404 File not found
 		elif e.errno == 13:
-			sys.exit(3)
+			sys.exit(3)			#403 Forbidden
 		elif e.errno == 21:
-			sys.exit(3)
+			sys.exit(3)			#403 Forbidden
 
 	body += "<h2>File" + filedir + "was deleted</h2>\n"
 	body += "</body>\n</html>"
@@ -32,4 +32,4 @@ if filedir != 'error':
 
 	print(s)
 else:
-	sys.exit(2)
+	sys.exit(2)			#404 File not found
