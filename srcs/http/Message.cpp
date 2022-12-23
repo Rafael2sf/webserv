@@ -62,6 +62,10 @@ namespace HTTP
 		return 0;
 	};
 
+	// uri		-->
+	// headers --->
+	// field    -->
+
 	std::string const* Message::getField(std::string const& key) const
 	{
 		std::map<std::string, std::string>::const_iterator it =

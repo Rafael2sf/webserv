@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sockets.hpp"
 #include "webserv.hpp"
 #include "Message.hpp"
 #include <cstdlib>
@@ -49,7 +50,7 @@ namespace HTTP
 		 * by reading from the %fd, if the request is complete.
 		 * method ok() will return true.
 		*/
-		int update( void );
+		int update( Sockets const& sockets );
 
 		/**
 		 * @brief Clears all the internal memory used,
@@ -69,7 +70,6 @@ namespace HTTP
 		void error(int code, bool close_connection);
 		void print_message( Message const& m, std::string const& s );
 
-		void redirect( void );
 
 		/**
 		 * @brief Helper function to request handling (GET files). It first
@@ -111,10 +111,13 @@ namespace HTTP
 		*/
 		void _owsTrimmer(std::string& str);
 		int _getHostFromUrl( void );
-		int _peekHeaderFields( void );
+		int _peekHeaderFields( Sockets const& sockts );
 		int _updateHeaders( char const* buff, size_t n );
 		int _updateStatusLine( char const* buff, size_t n );
-		int _updateBody( char const * buff, size_t n );
+		int _updateBody( char const * buff, size_t n, Sockets const& sockets );
 		int _validateStatusLine( void );
+		std::string const*  _errorPage( int code );
+		void _redirect( void );
+		void _defaultPage( int code, bool close_connection );
 	};
 }

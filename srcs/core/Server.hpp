@@ -56,6 +56,7 @@ namespace HTTP
 		*/
 		void	loop( void );
 
+		void clear( void );
 	private:
 		Server( Server const& other );
 		Server & operator=( Server const& rhs);
@@ -66,10 +67,14 @@ namespace HTTP
 		std::map<int, Client> clients;
 
 		/**
-		 * @brief Initializes the mime and error
-		 * map with default values.
+		 * @brief Initializes the mime map
 		*/
-		void _init( void );
+		void _init_mimes( void );
+
+		/**
+		 * @brief Initializes the errors map
+		*/
+		void _init_errors( void );
 
 		/**
 		 * @brief Everytime a loop occurs, this
@@ -108,4 +113,8 @@ namespace HTTP
 
 		void _updateConnection( Client & client );
 	};
+
+	JSON::Node *matchServer(Sockets const& so, Client const &cli);
+	JSON::Node *matchLocation(JSON::Node *serv, std::string const &path);
+	int	validateConfig( JSON::Json const& json );
 }

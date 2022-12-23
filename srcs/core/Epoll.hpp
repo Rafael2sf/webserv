@@ -18,6 +18,7 @@
 #include <cstring>
 #include <unistd.h>
 #include "webserv.hpp"
+
 #define	LISTEN_SOCKET 0
 #define	CLIENT_CONNECT 1
 
@@ -80,6 +81,8 @@ namespace HTTP {
 			 * otherwise, -1 and errno is set to indicate the error.
 			*/
 			int	wait(void);
+
+			void stop( void );
 
 		private:
 			Epoll(Epoll const& cpy);

@@ -52,11 +52,47 @@ namespace HTTP
 		str = str.substr(start, finish - start + 1);
 	};
 
+	static int validUrl(std::string & s)
+	{
+		int depth = 0;
+		size_t i = 0;
+
+		if (s[0] != '/')
+			return -1;
+		while (i < s.size())
+		{
+			i = s.find_first_of('/', i);
+			if ((i + 1) == s.size() || i == std::string::npos)
+				break ;
+			if (s[++i] == '/')
+			{
+				s.erase(i--, 1);
+				continue ;
+			}
+
+			if (!s.compare(i, 3, ".."))
+			{
+				s.push_back('/');
+				depth--;
+			}
+			else if (!s.compare(i, 3, "../"))
+				depth--;
+			else if (!s.compare(i, 2, "."))
+				s.erase(i--, 1);
+			else if (s.compare(i, 2, "./") != 0)
+				depth++;
+
+			if (depth < 0)
+				return -1;
+		}
+		return 0;
+	}
+
 	int Client::_validateStatusLine( void )
 	{
 		int v[2];
 
-		if (req.method[1][0] != '/')
+		if (validUrl(req.method[1]) < 0)
 		{
 			error(400, true);
 			return -1;
@@ -84,17 +120,18 @@ namespace HTTP
 	{
 		if (req.method.size() != 2)
 			return -1;
-		size_t x = req.method[1].find_first_of("http://") + 7;
+		size_t x = req.method[1].find("http://") + 7;
 		if (x != 0 || x == std::string::npos)
-			x = req.method[1].find_first_of("https://") + 8;
+			x = req.method[1].find("https://") + 8;
 		if (x == std::string::npos)
 			return -1;
 		std::string::iterator y = std::find(
 			req.method[1].begin() + x, req.method[1].end(), '/');
+		if (y == req.method[1].end())
+			return -1;
 		std::string host = req.method[1].substr(x, std::distance(req.method[1].begin() + x, y));
 		req.setField("host", req.method[1].substr(x, std::distance(req.method[1].begin() + x, y)));
 		req.method[1].erase(req.method[1].begin(), y);
-		DEBUG2("uri: " << req.method[1]);
 		req.method.push_back("");
 		return 0;
 	}
@@ -159,7 +196,7 @@ namespace HTTP
 		}
 		_owsTrimmer(val);
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		if (val.empty() && key == "host")
+		if (key == "host" && (val.empty() || req.getField("host")))
 		{
 			error(400, true);
 			return -1;
@@ -171,39 +208,7 @@ namespace HTTP
 			*req.getField(key) += ',' + val;
 		else
 			req.setField(key, val);
-		//std::cout << key << " " << val << std::endl;
 		return 0;
-	}
-
-	static JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
-	{
-		JSON::Object *tmp;
-		size_t last_len = 0;
-		JSON::Node *last_match = 0;
-		size_t i = 0;
-
-		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
-		if (!tmp)
-			return 0;
-		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc.skip())
-		{
-			if (path.size() == 1)
-				i = path.find_first_of(*path.c_str());
-			else
-				i = path.find(loc->getProperty());
-			if (i != std::string::npos && i == 0)
-			{
-				i = loc->getProperty().size();
-				if (path.size() == i)
-					return &*loc;
-				if (i > last_len)
-				{
-					last_len = i;
-					last_match = &*loc;
-				}
-			}
-		}
-		return last_match;
 	}
 
 	static bool isMethodAllowed( std::string const& method, JSON::Node const*nptr )
@@ -224,41 +229,59 @@ namespace HTTP
 		return false;
 	}
 
-	void Client::redirect( void )
+	void Client::_defaultPage( int code, bool close_connection )
+	{
+		std::string s;
+
+		s = itos(code, std::dec) + ' ' + Server::error[code];
+		res.clear();
+		res.createMethodVec("HTTP/1.1 " + s);
+
+		if (close_connection || (req.getField("connection") &&
+			*req.getField("connection") == "close"))
+			res.setField("connection", "close");
+		else
+			res.setField("connection", "keep-alive");
+		res.body = \
+"<html>\n\
+<head><title>"+ s + "</title></head>\n\
+<body bgcolor=\"white\">\n\
+<center><h1>" + s + "</h1></center>\n\
+<hr><center>webserv/0.4</center>\n\
+</body>\n\
+</html>\n";
+		res.setField("content-type", "text/html");
+		res.setField("content-length", itos(res.body.size(), std::dec));
+	}
+
+	void Client::_redirect( void )
 	{
 		JSON::Node * loc = location->search(1, "redirect");
 		int code = loc->begin()->as<int>();
 		std::string const& page = (++loc->begin())->as<std::string const&>();
 
-		res.createMethodVec("HTTP/1.1 " + itos(code, std::dec) + ' ' + Server::error[code]);
+		_defaultPage(code, false);
 		res.setField("location", page);
-		res.setField("content-length", "0");
-		//res.setField("connection", "close");
 		res.toString();
 		state = REDIRECT;
 	}
 
-	int Client::_peekHeaderFields( void )
+	int Client::_peekHeaderFields( Sockets const& sockets )
 	{
 		int				size;
 		JSON::Node * 	nptr = 0;
 
-		if (server)
-			location = matchLocation(this->server, req.method[1]);
-		if (!location)
-		{
-			error(404, false);
-			return -1;
-		}
-		if (location->search(1, "redirect"))
-		{
-			DEBUG2("REDIRECT");
-			redirect();
-			return -1;
-		}
 		if (req.getField("host") == 0)
 		{
 			error(400, true);
+			return -1;
+		}
+		server = matchServer(sockets, *this);
+		if (server)
+			location = matchLocation(server, req.method[1]);
+		if (!location)
+		{
+			error(404, false);
 			return -1;
 		}
 		if (!isMethodAllowed(req.method[0], location))
@@ -266,9 +289,13 @@ namespace HTTP
 			error(405, true);
 			return -1;
 		}
+		if (location->search(1, "redirect"))
+		{
+			_redirect();
+			return -1;
+		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
 		{
-
 			if (server)
 				nptr = server->search(1, "client_max_body_size");
 			if (nptr)
@@ -276,7 +303,7 @@ namespace HTTP
 			else
 				size = 1048576;
 			req.content_length = stoi(*req.getField("content-length"), std::dec);
-			if (size < 0 || size < req.content_length)
+			if (size < 0 || (size_t)size < req.content_length)
 			{
 				error(413, true);
 				return -1;
@@ -288,10 +315,9 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::_updateBody( char const* buff, size_t readval )
+	int Client::_updateBody( char const* buff, size_t readval, Sockets const& sockets )
 	{
-
-		if (req.body.size() == 0 && _peekHeaderFields() < 0)
+		if (req.body.size() == 0 && _peekHeaderFields(sockets) < 0)
 		{
 			if (state == REDIRECT)
 				return 0;
@@ -332,7 +358,7 @@ namespace HTTP
 			*j += 1;
 	}
 
-	int Client::update( void )
+	int Client::update( Sockets const& sockets )
 	{
 		std::stringstream	ss;
 		ssize_t				readval;
@@ -357,7 +383,7 @@ namespace HTTP
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
-					return _updateBody(buff + i, readval - i);
+					return _updateBody(buff + i, readval - i, sockets);
 				j = std::find(buff + i, buff + readval, '\n');
 				if (j != (buff + readval))
 				{
@@ -374,6 +400,11 @@ namespace HTTP
 					}
 					else if (state == HEADER_FIELDS)
 						state = BODY_CONTENT;
+					else if (state != STATUS_LINE)
+					{
+						error(400, true);
+						return -1;
+					}
 					nextField(&state, &j);
 				}
 				else
@@ -414,29 +445,40 @@ namespace HTTP
 		);
 	}
 
+	std::string const* Client::_errorPage( int code )
+	{
+		JSON::Node * nptr = server->search(1, "error_page");
+
+		if (!nptr)
+			return 0;
+		for (JSON::Node::const_iterator it = nptr->begin();
+			it != nptr->end(); it.skip())
+		{
+			for (JSON::Node::const_iterator err = it->begin();
+				err != it->end(); err++)
+			{
+				if (err->type() == JSON::integer && 
+					err->as<int>() == code)
+				{
+					return &it->getProperty();
+				}
+			}
+		}
+		return 0;
+	}
+
 	void Client::error(int code, bool close_connection)
 	{
 		std::string s;
+		std::string const * ep = 0;
 
-		s = itos(code, std::dec) + ' ' + Server::error[code];
-		res.clear();
-		res.createMethodVec("HTTP/1.1 " + s);
-
-		if (close_connection || (req.getField("connection") &&
-			*req.getField("connection") == "close"))
-			res.setField("connection", "close");
-		else
-			res.setField("connection", "keep-alive");
-		res.body = \
-"<html>\n\
-<head><title>"+ s + "</title></head>\n\
-<body bgcolor=\"white\">\n\
-<center><h1>" + s + "</h1></center>\n\
-<hr><center>webserv/0.4</center>\n\
-</body>\n\
-</html>\n";
-		res.setField("content-type", "text/html");
-		res.setField("content-length", itos(res.body.size(), std::dec));
+		if (server)
+			ep = _errorPage(code);
+		if (ep)
+			code = 301;
+		_defaultPage(code, close_connection);
+		if (ep)
+			res.setField("location", *ep);
 		s = res.toString();
 		if (send(fd, s.c_str(), s.size(), 0) == -1)
 			res.setField("connection", "close");
@@ -449,6 +491,7 @@ namespace HTTP
 		res.clear();
 		state = CONNECTED;
 		server = 0;
+		location = 0;
 		cgiSentBytes = 0;
 		childPid = 0;
 		if (fp != NULL)
@@ -462,52 +505,77 @@ namespace HTTP
 		clientPipe[1] = 0;
 	}
 
-	bool Client::getFile(std::string & path)
+	// open  file or return http error code (403/404)
+	// if return == 1 file is dir
+	// on sucess 0
+	static int fopenr(FILE **fp, std::string const& path)
 	{
 		struct stat		stat;
-		std::string		path_index;
-		JSON::Node *	var = 0;
-		this->fp = fopen(path.c_str(), "r");
 
-		if (fp == NULL && errno == ENOENT) {
-			error(404, false);
-			return false;
+		*fp = fopen(path.c_str(), "r");
+		if (*fp == NULL)
+		{
+			if (errno == ENOENT)
+				return 404;
+			return 403;
 		}
-		else if (fp == NULL && errno == EACCES) {
-			error(403, false);
-			return false;
-		}
-		if (lstat(path.c_str(), &stat) == -1) {
-			fclose(fp);
-			fp = NULL;
-			error(404, false); // temporary ?
-			return false;
+		if (lstat(path.c_str(), &stat) == -1) 
+		{
+			fclose(*fp);
+      *fp = NULL;
+			return 404;
 		}
 		if (S_ISDIR(stat.st_mode))
+			return 1;
+		return 0;
+	}
+
+	bool Client::getFile(std::string & path)
+	{
+		int				code;
+		std::string		path_index;
+		JSON::Node *	var = 0;
+
+		code = fopenr(&fp, path);
+		if (code == 1)// dir
 		{
+			if (*--path.end() != '/')
+			{
+				error(403, false);
+				return false;
+			}
 			var = location->search(1, "index");
 			if (var)
 			{
-				path_index = path + var->as<std::string const&>();
 				fclose(fp);
-				fp = NULL;
-				if ((fp = fopen(path_index.c_str(), "r")) == NULL) {
-					if (errno == ENOENT) {
-						dirIndex(path);
-						return false;
+        fp = NULL;
+				for (JSON::Node::const_iterator it = var->begin();
+					it != var->end(); it++)
+				{
+					path_index = path + it->as<std::string const&>();
+					code = fopenr(&fp, path_index);
+					if (code == 1)
+					{
+						fclose(fp);
+            fp = NULL;
+						code = 403;
 					}
-					else if (errno == EACCES) {
-						error(403, false);
-						return false;
+					else if (code == 0)
+					{
+						path.swap(path_index);
+						return true;
 					}
-				}
-				path = path_index;
+				}	
 			}
-			else
-			{
+			if (code == 1 || code == 404)
 				dirIndex(path);
-				return false;
-			}
+			error(403, false);
+			return false;
+		}
+		else if (code != 0)
+		{
+			error(code, false);
+			return false;
 		}
 		return true;
 	}
@@ -589,7 +657,6 @@ namespace HTTP
 			return error(404, false);
 		res.createMethodVec("HTTP/1.1 200 OK");
 		res.setField("content-type", "text/html");
-		// client.res.setField("date", getDate(time(0)));
 
 		autoindex = location->search(1, "autoindex");
 		if (!autoindex || !autoindex->as<bool>())
@@ -598,7 +665,7 @@ namespace HTTP
 		DIR * dirp = opendir(path.c_str());
 		if (!dirp)
 			return error(403, false);
-		res.body = "<html>\n<headfile explorer</head>\n<body>\n<hr><pre><a href=\"../\"/>../</a>\n";
+		res.body = "<html>\n<head>file explorer</head>\n<body>\n<hr><pre><a href=\"../\"/>../</a>\n";
 		dirent * dp;
 		while ((dp = readdir(dirp)) != NULL)
 		{

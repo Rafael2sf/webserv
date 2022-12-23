@@ -16,6 +16,7 @@ namespace HTTP
 
 	Server::~Server(void)
 	{
+		clear();
 	}
 
 	Server::Server(void)
@@ -113,6 +114,7 @@ namespace HTTP
 		{
 			if (!strncmp(s, "localhost", 9))
 			{
+				*port = 8000;
 				tmp[0] = 127;
 				tmp[3] = 1;
 				if (s[9] == ':' && sscanf(s + 10, "%d", port) != 1)
@@ -157,7 +159,7 @@ namespace HTTP
 					 i != t->end(); i++)
 				{
 					if (stohp(i->as<std::string const &>().c_str(), &host, &port) == -1)
-						return err(-1, "invalid listen field");
+						return configError("invalid host/port", i->as<std::string const&>().c_str());
 					if (std::find(used.begin(), used.end(), std::make_pair(host, port)) != used.end())
 						return err(-1, "duplicate listen field");
 					si = so.insert(host, port);
@@ -176,61 +178,34 @@ namespace HTTP
 	int
 	Server::init(char const *filepath)
 	{
-		if (config.from(filepath) < 0)
+		try
 		{
-			std::cerr << "webserv: error: " \
-				<< filepath << ":" << config.err() << std::endl;
+			if (config.from(filepath) < 0)
+			{
+				std::cerr << "webserv: error: " \
+					<< filepath << ":" << config.err() << std::endl;
+				return -1;
+			}
+			else if (validateConfig(config) < 0)
+				return -1;
+			DEBUG(std::cerr << "| JSON |\n"; config.cout());
+			if (listenMap(config, socks) < 0
+				|| socks.listen() < 0
+				|| epoll.init(socks) < 0)
+			{
+				clear();
+				return -1;
+			}
+			_init_mimes();
+			_init_errors();
+		}
+		catch (std::exception const& e)
+		{
+			err(-1, e.what());
+			clear();
 			return -1;
 		}
-		DEBUG(std::cerr << "| JSON |\n"; config.cout());
-		if (listenMap(config, socks) == -1)
-			return -1;
-		if (socks.listen() == -1)
-			return -1;
-		epoll.init(socks);
-		_init();
 		return (0);
-	}
-
-	static JSON::Node *matchCon(Sockets &so, Client const &cli)
-	{
-		std::list<t_sock_info *> interest;
-		bool perfect_match = 0;
-
-		for (std::list<t_sock_info>::iterator it = so.list.begin();
-			 it != so.list.end(); it++)
-		{
-			if ((*it).addr.sin_port == cli.ai.sin_port
-				&& (((*it).addr.sin_addr.s_addr == cli.ai.sin_addr.s_addr)
-					|| (*it).addr.sin_addr.s_addr == 0))
-			{
-				if (((*it).addr.sin_addr.s_addr) != 0)
-					perfect_match = true;
-				interest.push_back(&(*it));
-			}
-		}
-
-		// if full match remove 0.0.0.0
-		std::list<t_sock_info *>::iterator tmp;
-		if (perfect_match && cli.ai.sin_addr.s_addr != 0)
-		{
-			for (std::list<t_sock_info *>::iterator it = interest.begin();
-				 it != interest.end(); it++)
-			{
-				if (((*it)->addr.sin_addr.s_addr) == 0)
-				{
-					tmp = it++;
-					interest.erase(tmp);
-					it--;
-				}
-			}
-		}
-		if (interest.size() == 0)
-			return 0;
-		else if (interest.size() == 1)
-			return (*interest.begin())->config;
-		// TODO -- look at server_name
-		return (*interest.begin())->config;
 	}
 
 	void
@@ -238,10 +213,13 @@ namespace HTTP
 	{
 		int					socket;
 		Client * 			cl;
+		sockaddr_in			addr;
+		socklen_t			len = sizeof(addr);
 
 		try
 		{
-			if ((socket = accept(si.fd, 0, 0)) == -1)
+			memset(&addr, 0, len);
+			if ((socket = accept(si.fd, (sockaddr *)&addr, &len)) == -1)
 			{
 				err(-1);
 				return ;
@@ -254,7 +232,7 @@ namespace HTTP
 			cl = &clients.insert(clients.end(), 
 				std::make_pair(socket, Client()))->second;
 			cl->fd = socket;
-			cl->ai.sin_addr.s_addr = si.addr.sin_addr.s_addr;
+			cl->ai.sin_addr.s_addr = addr.sin_addr.s_addr;
 			cl->ai.sin_port = si.addr.sin_port;
 			cl->server = 0;
 			cl->timestamp = time(NULL);
@@ -305,13 +283,8 @@ namespace HTTP
 				if (client->contentEncoding() <= 0)
 					_updateConnection(*client);
 			}
-			else
-			{
-				if (!client->server)
-					client->server = matchCon(socks, *client);
-				if (client->update() < 0)
-					_updateConnection(*client);
-			}
+			else if (client->update(socks) < 0)
+				_updateConnection(*client);
 		}
 		catch (const std::exception &e)
 		{
@@ -327,15 +300,12 @@ namespace HTTP
 		int				socket;
 		int				events;
 
-		if (socks.list.empty())
-			exit(err(1, "logic error", "no sockets available"));
 		while (1)
 		{
 			if (state)
 				break ;
 			_timeoutChildPrune();
 			events = epoll.wait();
-			// DEBUG2("Finished sleeping");
 			for (int i = 0; i < events; i++)
 			{
 				socket = epoll[i].data.fd;
@@ -412,7 +382,7 @@ namespace HTTP
 		std::string str = client.req.getMethod()[0];
 		if (str == "GET") 
 			Get().response(client);		
-		else if (str =="POST")
+		else if (str == "POST")
 			Post().response(client);
 		else if (str == "DELETE")
 			Delete().response(client);
@@ -420,8 +390,34 @@ namespace HTTP
 			client.error(501, false);
 	};
 
-	void  Server::_init( void )
+	void Server::clear( void )
 	{
+		epoll.stop();
+		for (std::map<int, Client>::iterator it = clients.begin();
+			it != clients.end(); it++)
+		{
+			epoll.erase(it->first);
+			close(it->first);
+			it->second.reset();
+		}
+		clients.clear();
+		for (std::list<t_sock_info>::iterator it = socks.list.begin();
+			it != socks.list.end(); it++)
+		{
+			if (it->fd != -1)
+			{
+				epoll.erase(it->fd);
+				close(it->fd);
+			}
+		}
+		socks.list.clear();
+		config.clear();
+	}
+
+	void  Server::_init_mimes( void )
+	{
+		if (!mime.empty())
+			return ;
 		mime["html"]	=	"text/html";
 		mime["htm"]		=	"text/html";
 		mime["shtml"]	=	"text/html";
@@ -535,8 +531,12 @@ namespace HTTP
 		mime["asf"]		=	"video/x-ms-asf";
 		mime["wmv"]		=	"video/x-ms-wmv";
 		mime["avi"]		=	"video/x-msvideo";
+	}
 
-		//Creation of default error pages map
+	void  Server::_init_errors( void )
+	{
+		if (!error.empty())
+			return ;
 		error[301] = "Moved Permanently";
 		error[302] = "Found";
 		error[303] = "See Other";
@@ -553,6 +553,8 @@ namespace HTTP
 		error[413] = "Content Too Large";
 		error[414] = "URI Too Long";
 		error[415] = "Unsuported Media Type";
+		error[431] = "Request Header Fields Too Large";
+
 		error[500] = "Internal Server Error";
 		error[501] = "Not Implemented";
 		error[505] = "HTTP Version not supported";

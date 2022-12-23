@@ -40,6 +40,8 @@ namespace HTTP
 	int	err( int ret );
 	int	err( int ret, char const*str );
 	int	err( int ret, char const*err, char const*str );
+	int configError(char const* s1, char const *s2);
+
 	std::string getDate(time_t const& tm_info);
 
 	int	stoi(std::string const& str, std::ios_base & (&f)(std::ios_base &__base));

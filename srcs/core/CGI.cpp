@@ -36,7 +36,7 @@ namespace HTTP
 		if (*--path.end() == '/')
 			path.erase(--path.end());
 		std::string					filePath = path + client.req.getMethod()[1];
-		
+
 		if (client.req.getField("content-type"))
 			vec.push_back("CONTENT_TYPE=" + *client.req.getField("content-type"));
 		else

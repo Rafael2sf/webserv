@@ -16,42 +16,6 @@ namespace HTTP
 		return *this;
 	};
 
-	JSON::Node *matchLocation(JSON::Node *serv, std::string const &path)
-	{
-		JSON::Object *tmp;
-		size_t last_len = 0;
-		JSON::Node *last_match = 0;
-		size_t i = 0;
-
-		tmp = dynamic_cast<JSON::Object *>(serv->search(1, "location"));
-		if (!tmp)
-		{
-			DEBUG2("no location");
-			return 0;
-		}
-		for (JSON::Node::iterator loc = tmp->begin(); loc != tmp->end(); loc.skip())
-		{
-			DEBUG2("LOOP");
-			if (path.size() == 1)
-				i = path.find_first_of(*path.c_str());
-			else
-				i = path.find(loc->getProperty());
-			if (i != std::string::npos && i == 0)
-			{
-				i = loc->getProperty().size();
-				if (path.size() == i)
-					return &*loc;
-				if (i > last_len)
-				{
-					last_len = i;
-					last_match = &*loc;
-				}
-			}
-		}
-		DEBUG2("END");
-		return last_match;
-	}
-
 	void Get::response(Client & client)
 	{
 		std::string		path;
@@ -73,7 +37,7 @@ namespace HTTP
 		client.res.createMethodVec("HTTP/1.1 200 OK");
 		size_t index = path.find_last_of(".");
 		if (index == std::string::npos)
-			client.res.setField("content-type", "text/html");
+			client.res.setField("content-type", "application/octet-stream");
 		else
 		{
 			std::map<std::string, std::string>::const_iterator
@@ -81,7 +45,7 @@ namespace HTTP
 			if (mime_val != Server::mime.end())
 				client.res.setField("content-type", mime_val->second);
 			else
-				client.res.setField("content-type", "text/html");
+				client.res.setField("content-type", "application/octet-stream");
 		}
 		if (client.req.getField("connection")
 			&& *client.req.getField("connection") == "close")

@@ -55,6 +55,8 @@ namespace JSON
 		try
 		{
 			ifs.seekg (0, std::ios::end);
+			if (ifs.tellg() == -1)
+				return std::make_pair(0, "");
 			buffer.reserve(ifs.tellg());
 			ifs.seekg (0, std::ios::beg);
 			if (!ifs.good())
@@ -93,11 +95,14 @@ namespace JSON
 		std::pair<int, std::string> f;
 		std::pair<size_t, size_t> loc;
 
-		f = readFile(file);
-		if (f.first == -1)
-			return -1;
 		try
 		{
+			f = readFile(file);
+			if (f.first == -1)
+			{
+				_err = strerror(errno);
+				return -1;
+			}
 			tokens = parser.build(f.second); 
 		}
 		catch (ParseError const& e)
@@ -146,7 +151,7 @@ namespace JSON
 		}
 		else if (p->type() == array)
 		{
-			std::cerr << "[" << std::endl;
+			std::cerr << std::endl;
 			Array const* tmp = dynamic_cast<Array const*>(p);
 			for (std::vector<Node *>::const_iterator it = tmp->impl.begin();
 				it != tmp->impl.end(); it++)
@@ -156,7 +161,7 @@ namespace JSON
 			i = 0;
 			// while (i++ != depth)
 			// 	std::cout << " ";
-			std::cerr << std::endl;
+			//std::cerr << std::endl;
 			return ;
 		}
 		switch (p->type())
@@ -188,5 +193,7 @@ namespace JSON
 	{
 		if (tokens)
 			delete tokens;
+		tokens = 0;
+		_err.clear();
 	}
 }

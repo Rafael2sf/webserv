@@ -42,4 +42,11 @@ namespace HTTP
 		std::cerr << "webserv: " << err << ": " << str << std::endl;
 		return ret;
 	}
+
+	int configError(char const* s1, char const *s2)
+	{
+		std::cerr << "webserv: config error: "
+			 << s2 << ": " <<  s1 << std::endl;
+		return -1;
+	}
 }

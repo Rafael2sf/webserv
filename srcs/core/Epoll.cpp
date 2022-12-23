@@ -43,12 +43,12 @@ namespace HTTP {
 		this->size = S_MAX_CLIENT;
 		this->fd = epoll_create(S_MAX_CLIENT);
 		if (this->fd  == -1)
-			return err(-1, "error in epoll_create()");
+			return err(-1);
 		for (std::list<t_sock_info>::const_iterator it = socks.list.begin();
 			it != socks.list.end(); it++)
 		{
 			if (it->fd != -1 && insert(it->fd, LISTEN_SOCKET) == -1)
-				return err(-1, "error in insert()");
+				return err(-1);
 		}
 		return 0;
 	};
@@ -76,14 +76,19 @@ namespace HTTP {
 		if (epoll_ctl(this->fd, EPOLL_CTL_DEL,
 				cli_fd, NULL) == -1)
 			return -1;
-		if (close(cli_fd) == -1)
-			DEBUG2("IS ALREADY CLOSED!");
+		close(cli_fd);
 		return 0;
 	};
-	
+
 	int	Epoll::wait(void)
 	{
 		return epoll_wait(this->fd, this->events,
 			S_MAX_CLIENT, S_EPOLL_TIMEOUT);
+	}
+
+	void Epoll::stop( void )
+	{
+		close(this->fd);
+		fd = -1;
 	}
 }

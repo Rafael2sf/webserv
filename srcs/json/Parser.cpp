@@ -241,6 +241,8 @@ namespace JSON
 	{
 		std::string property;
 
+		if (*_beg != '\"')
+			throw ParseError("property keys must be doublequoted");
 		property = readString(_beg, _end);
 		_ignoreSpaces(true);
 		if (*_beg == ':')
