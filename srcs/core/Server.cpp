@@ -205,6 +205,8 @@ namespace HTTP
 			clear();
 			return -1;
 		}
+		DEBUG2("OK!");
+		exit(0);
 		return (0);
 	}
 

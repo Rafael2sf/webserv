@@ -30,10 +30,10 @@ namespace HTTP
 		{
 			if (pipe(client.clientPipe) == -1)
 				return client.error(500, true);
-			if (fcntl(client.clientPipe[0], F_SETFL, O_NONBLOCK )  == -1)
-				return client.error(500, true);
-			if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1)
-				return client.error(500, true);
+			// if (fcntl(client.clientPipe[0], F_SETFL, O_NONBLOCK )  == -1)
+			// 	return client.error(500, true);
+			// if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1)
+			// 	return client.error(500, true);
 			client.childPid = fork();
 			if (client.childPid == -1)
 				return client.error(500, true);
@@ -72,7 +72,7 @@ namespace HTTP
 				else
 					client.cgiSentBytes = -1;
 				client.state = CGI_PIPING;
-				if (client.cgiSentBytes == client.req.content_length)
+				if ((size_t)client.cgiSentBytes == client.req.content_length)
 				{
 					close(client.clientPipe[1]);
 					client.clientPipe[1] = 0;
@@ -90,7 +90,7 @@ namespace HTTP
 				client.cgiSentBytes += bytes;
 				client.req.body.clear();
 			}
-			if (client.cgiSentBytes < client.req.content_length)
+			if ((size_t)client.cgiSentBytes < client.req.content_length)
 				client.state = CGI_PIPING;
 			else
 			{

@@ -1,4 +1,6 @@
 #include "Parser.hpp"
+#include <limits>
+#include <cmath>
 
 namespace JSON
 {
@@ -194,24 +196,73 @@ namespace JSON
 		dst = new String(readString(beg, end));
 	}
 
+	static double spow(double n, char const* power, char **endptr)
+	{
+		long value;
+
+		value = strtol(power, endptr, 10);
+		DEBUG2("pow(" << n << "," << value << ')');
+		return pow(n, value);
+	}
+
+	void
+	jsonReadFlosat(std::string::const_iterator &beg,
+					std::string::const_iterator const &end, Node *&dst)
+	{
+		double n = 0;
+		char *endptr = 0;
+
+		(void)end;
+		value = strtof(&*beg, &endptr);
+		DEBUG2("pow = " << pow(1.1, 5));
+		DEBUG2("flaat = " << value);
+		DEBUG2("endptr = " << *endptr);
+		if (!endptr || !*endptr)
+			throw ParseError("unexpected end of file");
+		if (value > std::numeric_limits<float>::max() 
+			|| value < -std::numeric_limits<float>::max())
+			throw ParseError("floating-point values must fit in a signed 32 bits float");
+		beg += (endptr - &*beg);
+		dst = new Point(value);
+	}
+
 	void
 	jsonReadInteger(std::string::const_iterator &beg,
 					std::string::const_iterator const &end, Node *&dst)
 	{
-		(void)end;
 		long value;
 		char *endptr = 0;
 
+		(void)end;
+		errno = 0;
 		if (*beg == '-' && !isdigit(*(beg + 1)))
 			throw ParseError("value expected");
+		if (*beg == '0' && *(beg + 1) != '.')
+		{
+			dst = new Integer(0);
+			beg++;
+			return ;
+		}
 		value = strtol(&*beg, &endptr, 10);
-		if (value > 2147483647 || value < -2147483648)
-			throw ParseError("numeric values must fit in a signed 32 bits integer");
+		if (!endptr || !*endptr)
+			throw ParseError("unexpected end of file");
+		if (*endptr == '.')
+		{
+			if (!isdigit(*(endptr + 1)))
+				throw ParseError("unexpected end of number");
+			return jsonReadFloat(beg, end, dst);
+		}
+		if (endptr && (*endptr == 'e' || *endptr == 'E'))
+		{
+			if ((!isdigit(*(endptr + 1)) && *(endptr + 1) != '+'
+				&& *(endptr + 1) != '-'))
+				throw ParseError("unexpected end of number");
+			value = spow(value, endptr + 1, &endptr);
+		}
+		if (errno == EDOM || errno == ERANGE
+			|| value > 2147483647 || value < -2147483648)
+			throw ParseError("integer values must fit in a signed 32 bits integer");	
 		beg += (endptr - &*beg);
-		if (*beg == '.')
-			throw ParseError("floating point values are not supported");
-		if (*beg == 'e' || *beg == 'E')
-			throw ParseError("exponent numeric values are not supported");
 		dst = new Integer(value);
 	}
 

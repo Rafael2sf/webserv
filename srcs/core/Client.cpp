@@ -655,7 +655,7 @@ namespace HTTP
 
 		if (!location)
 			return error(404, false);
-		res.createMethodVec("HTTP/1.1 200 OK");
+		res.createMethodVec("HTTPS/1.1 200 OK");
 		res.setField("content-type", "text/html");
 
 		autoindex = location->search(1, "autoindex");

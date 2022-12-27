@@ -175,6 +175,9 @@ namespace JSON
 			case integer:
 				std::cerr << p->as<int>();
 				break ;
+			case point:
+				std::cerr << '!' << p->as<float>();
+				break ;
 			case null:
 				std::cerr << "<null>";
 				break ;
