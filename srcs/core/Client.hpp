@@ -26,6 +26,7 @@ namespace HTTP
 		SENDING,
 		CGI_PIPING,
 		CGI_FINISHED,
+		SEND_ERROR
 	};
 
 	class Client

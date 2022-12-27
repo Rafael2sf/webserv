@@ -26,7 +26,7 @@ try:
 		message = 'No file was uploaded'
 		message =  "<html>\n<body>\n<p>" + message + "</p>\n</body>\n</html>\r\n\r"
 
-	s = "HTTP/1.1 200 OK\r\n" + "content-Length: " + str(len(message)) + "\r\n" + "content-type: text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
+	s = "HTTP/1.1 201 Created\r\n" + "content-Length: " + str(len(message)) + "\r\n" + "content-type: text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
 	s += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
 	s += message
 	print(s)

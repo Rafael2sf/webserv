@@ -375,8 +375,7 @@ namespace HTTP
 			timestamp = time(NULL);
 			if (state == CGI_PIPING)
 			{
-				if (req.body.empty())
-					req.body.append(buff, readval);
+				req.body.append(buff, readval);
 				state = OK;
 				return 0;
 			}
@@ -420,6 +419,8 @@ namespace HTTP
 			error(400, true);
 			return -1;
 		}
+		else if (readval == -1 && state == CGI_PIPING)
+			state = OK;
 		return 0; // If EPOLLOUT event, it will be ignored!
 	}
 
@@ -548,7 +549,7 @@ namespace HTTP
 			if (var)
 			{
 				fclose(fp);
-        fp = NULL;
+				fp = NULL;
 				for (JSON::Node::const_iterator it = var->begin();
 					it != var->end(); it++)
 				{
@@ -557,7 +558,7 @@ namespace HTTP
 					if (code == 1)
 					{
 						fclose(fp);
-            fp = NULL;
+						fp = NULL;
 						code = 403;
 					}
 					else if (code == 0)
@@ -569,7 +570,8 @@ namespace HTTP
 			}
 			if (code == 1 || code == 404)
 				dirIndex(path);
-			error(403, false);
+			else
+				error(403, false);
 			return false;
 		}
 		else if (code != 0)
@@ -590,11 +592,12 @@ namespace HTTP
 		//memset(buf, 0, S_BUFFER_SIZE);
 		if (state == REDIRECT)
 		{
+			
 			str = res.toString();
 			if (send(fd, str.c_str(), str.size(), 0) == -1)
 			{
-				error(500, true);
-				return -1;
+				state = SEND_ERROR;
+				return SEND_ERROR;
 			}
 			return 0;
 		}
@@ -614,8 +617,8 @@ namespace HTTP
 				str = res.toString();
 				if (send(fd, str.c_str(), str.size(), 0) == -1)
 				{
-					error(500, true);
-					return -1;
+					state = SEND_ERROR;
+					return SEND_ERROR;
 				}
 				return 0;
 			}
@@ -629,9 +632,8 @@ namespace HTTP
 			str += res.body + "\r\n";
 			if (send(fd, str.c_str(), str.size(), 0) == -1)
 			{
-				state = OK;
-				error(500, true);
-				return -1;
+				state = SEND_ERROR;
+				return SEND_ERROR;
 			}
 			res.body.clear();
 		}
@@ -639,8 +641,8 @@ namespace HTTP
 		{
 			if (send(fd, "0\r\n\r\n", 5, 0) == -1)
 			{
-				error(500, true);
-				return -1;
+				state = SEND_ERROR;
+				return SEND_ERROR;
 			}
 			fclose(fp);
 			fp = NULL;
@@ -653,8 +655,6 @@ namespace HTTP
 		JSON::Node * autoindex;
 		std::string	 str;
 
-		if (!location)
-			return error(404, false);
 		res.createMethodVec("HTTP/1.1 200 OK");
 		res.setField("content-type", "text/html");
 
@@ -695,7 +695,7 @@ namespace HTTP
 			res.setField("connection", "keep-alive");
 		str = res.toString();
 		if (send(fd, str.c_str(), str.size(), 0) == -1)
-			return error(500, true);			//??????????
-		return ;
+			state = SEND_ERROR;
+		return;
 	};
 }

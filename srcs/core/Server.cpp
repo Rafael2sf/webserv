@@ -274,11 +274,16 @@ namespace HTTP
 		try
 		{
 			client = &clients.at(socket);
+			if (client->state == SEND_ERROR) {
+				client->error(500, true);
+				return _updateConnection(*client);
+			}
 			if (client->state == CGI_FINISHED) //Child process is still working!!
 				return;
 			if (client->state == OK)
 				_handle(*client);
-			else if (client->state == SENDING)
+			else if (client->state == SENDING
+						|| client->state == REDIRECT)
 			{
 				if (client->contentEncoding() <= 0)
 					_updateConnection(*client);
@@ -321,7 +326,9 @@ namespace HTTP
 	void Server::_handle(Client & client)
 	{
 		_methodChoice(client);
-		if (client.state != SENDING && client.state != CGI_PIPING)
+		if (client.state != SENDING 
+				&& client.state != CGI_PIPING
+				&& client.state != SEND_ERROR)
 			_updateConnection(client);
 	}
 

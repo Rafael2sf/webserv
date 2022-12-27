@@ -30,9 +30,7 @@ namespace HTTP
 		{
 			if (pipe(client.clientPipe) == -1)
 				return client.error(500, true);
-			if (fcntl(client.clientPipe[0], F_SETFL, O_NONBLOCK )  == -1)
-				return client.error(500, true);
-			if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1)
+			if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1) // only the server-side pipe will be NONBLOCK, CGI uses STDIN as the other side of the pipe!
 				return client.error(500, true);
 			client.childPid = fork();
 			if (client.childPid == -1)
@@ -72,7 +70,7 @@ namespace HTTP
 				else
 					client.cgiSentBytes = -1;
 				client.state = CGI_PIPING;
-				if (client.cgiSentBytes == client.req.content_length)
+				if ((size_t)client.cgiSentBytes == client.req.content_length)
 				{
 					close(client.clientPipe[1]);
 					client.clientPipe[1] = 0;
@@ -88,9 +86,9 @@ namespace HTTP
 				if (client.cgiSentBytes == -1)
 					client.cgiSentBytes = 0;
 				client.cgiSentBytes += bytes;
-				client.req.body.clear();
+				client.req.body.erase(0, bytes);
 			}
-			if (client.cgiSentBytes < client.req.content_length)
+			if ((size_t)client.cgiSentBytes < client.req.content_length)
 				client.state = CGI_PIPING;
 			else
 			{
