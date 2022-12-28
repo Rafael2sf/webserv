@@ -1,18 +1,22 @@
 {
 	"server" : {
 		"listen" : "8000",
-		"client_max_body_size" : 1.1e5,
-		"server_name" : "localhost",
+		"error_page" : {
+			"/html/400.html" : 431
+		},
+		"client_max_body_size" : 989273921,
+		"server_name" : ["localhost.*", "localhost.*"],
 		"location" : {
-			"/uploads/" : {
-				"root" : "./",
-				"autoindex" : true
-			},
 			"/" : {
 				"root" : "./www/",
 				"index" : "index.html",
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
+			},
+			"/uploads/" : {
+				"root" : "./",
+				"index" : "whatever",
+				"autoindex" : true
 			}
 		}
 	}

@@ -26,9 +26,11 @@ namespace HTTP
 		if (client.req.getMethod()[1].find(".py") != std::string::npos
 				&& client.location->search(1, "cgi"))
 			return cgi(client);
-		if (!(var = client.location->search(1, "root")))
-			return client.error(404, false);
-		path = var->as<std::string const&>();
+		var = client.location->search(1, "root");
+		if (!var)
+			path = std::string("./html/");
+		else
+			path = var->as<std::string const&>();
 		if (*--path.end() == '/')
 			path.erase(--path.end());
 		path += client.req.getMethod()[1];

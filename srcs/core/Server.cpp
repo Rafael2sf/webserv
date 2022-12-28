@@ -186,18 +186,17 @@ namespace HTTP
 					<< filepath << ":" << config.err() << std::endl;
 				return -1;
 			}
-			else if (validateConfig(config) < 0)
-				return -1;
+			_init_mimes();
+			_init_errors();
 			DEBUG(std::cerr << "| JSON |\n"; config.cout());
-			if (listenMap(config, socks) < 0
+			if (validateConfig(config) < 0
+				|| listenMap(config, socks) < 0
 				|| socks.listen() < 0
 				|| epoll.init(socks) < 0)
 			{
 				clear();
 				return -1;
 			}
-			_init_mimes();
-			_init_errors();
 		}
 		catch (std::exception const& e)
 		{
@@ -205,8 +204,6 @@ namespace HTTP
 			clear();
 			return -1;
 		}
-		DEBUG2("OK!");
-		exit(0);
 		return (0);
 	}
 
@@ -249,8 +246,8 @@ namespace HTTP
 
 	void Server::_updateConnection( Client & client )
 	{
-		// client.print_message(client.req, "-->");
-		// client.print_message(client.res, "<--");
+		client.print_message(client.req, "-->");
+		client.print_message(client.res, "<--");
 		
 		if (client.childPid == 0)
 		{

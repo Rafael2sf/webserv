@@ -5,7 +5,7 @@
 
 namespace HTTP
 {
-	static int countEq(JSON::Node const& nref, std::string const& s)
+	static int count(JSON::Node const& nref, std::string const& s)
 	{
 		int	i = 0;
 
@@ -20,7 +20,7 @@ namespace HTTP
 		return i;
 	}
 
-	static int vOf( JSON::Node const& nref, bool unique, int types )
+	static int isOfType( JSON::Node const& nref, bool unique, int types )
 	{
 		size_t	count = 0;
 
@@ -37,7 +37,7 @@ namespace HTTP
 		return 0;
 	}
 
-	static int vRedirect( JSON::Node const& nref )
+	static int validateRedirect( JSON::Node const& nref )
 	{
 		int rcode;
 		if (nref.type() != JSON::array)
@@ -67,10 +67,49 @@ namespace HTTP
 			itos(rcode, std::dec).c_str());
 	}
 
-	static int vPath( JSON::Node const& nref )
+	static int validateLimitExcept( JSON::Node const& nref )
 	{
-		static char const* arr[] = {"root", "index",
-			"cgi", "upload_store", "redirect", "autoindex"};
+		static char const*methods[] = {
+			"CONNECT",
+			"DELETE",
+			"GET",
+			"HEAD",
+			"OPTIONS",
+			"PATCH",
+			"POST",
+			"PUT",
+			"TRACE",
+		};
+
+		if (nref.type() != JSON::array && nref.type() != JSON::string)
+		{
+			return configError("invalid value type",
+				nref.getProperty().c_str());
+		}
+
+		for (JSON::Node::const_iterator it = nref.begin();
+			it != nref.end(); it++)
+		{
+			if (it->type() != JSON::string)
+			{
+				return configError("invalid value type",
+					nref.getProperty().c_str());
+			}
+			if (std::find(methods, methods + 9, 
+				it->as<std::string const&>()) == (methods + 9))
+			{
+				return configError("no such method",
+					it->as<std::string const&>().c_str());
+			}
+		}
+		return 0;
+	}
+
+	static int validatePath( JSON::Node const& nref )
+	{
+		static char const* arr[] = {"root", "index", 
+			"cgi", "upload_store", "redirect", 
+			"autoindex", "limit_except"};
 
 		if (nref.type() != JSON::object)
 		{
@@ -81,31 +120,34 @@ namespace HTTP
 		for (JSON::Node::const_iterator it = nref.begin();
 			it != nref.end(); it.skip())
 		{
-			if (countEq(nref, it->getProperty()) > 1)
+			if (count(nref, it->getProperty()) > 1)
 			{
 				return configError("duplicated directive",
 					it->getProperty().c_str());
 			}
-			char const** s = std::find(arr, arr + 6, it->getProperty());
+			char const** s = std::find(arr, arr + 7, it->getProperty());
 			switch (s - arr)
 			{
 				case 0:
-					RETURN_EQ(vOf(*it, true, JSON::string), -1);
+					RETURN_EQ(isOfType(*it, true, JSON::string), -1);
 					continue ;
 				case 1:
-					RETURN_EQ(vOf(*it, false, JSON::string), -1);
+					RETURN_EQ(isOfType(*it, false, JSON::string), -1);
 					continue ;
 				case 2:
-					RETURN_EQ(vOf(*it, true, JSON::string), -1);
+					RETURN_EQ(isOfType(*it, true, JSON::string), -1);
 					continue ;
 				case 3:
-					RETURN_EQ(vOf(*it, true, JSON::string), -1);
+					RETURN_EQ(isOfType(*it, true, JSON::string), -1);
 					continue ;
 				case 4:
-					RETURN_EQ(vRedirect(*it), -1);
+					RETURN_EQ(validateRedirect(*it), -1);
 					continue ;
 				case 5:
-					RETURN_EQ(vOf(*it, false, JSON::boolean), -1);
+					RETURN_EQ(isOfType(*it, false, JSON::boolean), -1);
+					continue ;
+				case 6:
+					RETURN_EQ(validateLimitExcept(*it), -1);
 					continue ;
 				default:
 					return configError("unknown directive",
@@ -115,7 +157,36 @@ namespace HTTP
 		return 0;
 	}
 
-	static int vLocation( JSON::Node const& nref )
+	static int validateLocationString( std::string const& str )
+	{
+		std::string::const_iterator it = str.begin();
+		
+		if (str.empty())
+			return -1;
+		if (str.size() == 1 && *it != '/')
+			return -1;
+		if (*it == '*')
+		{
+			it++;
+			if (str.size() <= 2 || *it != '.')
+				return -1;
+		}
+		else
+		{
+			if (*it == '=')
+				it++;
+			if (*it != '/')
+				return -1;
+		}
+		for (it++; it != str.end(); it++)
+		{
+			if (!isgraph(*it) || *it == '*')
+				return -1;
+		}
+		return 0;
+	}
+
+	static int validateLocations( JSON::Node const& nref )
 	{
 		if (nref.type() != JSON::object)
 		{
@@ -126,18 +197,23 @@ namespace HTTP
 		for (JSON::Node::const_iterator it = nref.begin();
 			it != nref.end(); it.skip())
 		{
-			if (countEq(nref, it->getProperty()) > 1)
+			if (count(nref, it->getProperty()) > 1)
 			{
-				return configError("duplicated directive",
+				return configError("duplicated location",
 					it->getProperty().c_str());
 			}
-			if (vPath(*it) == -1)
+			if (validateLocationString(it->getProperty()) == -1)
+			{
+				return configError("invalid location path",
+					it->getProperty().c_str());
+			}
+			if (validatePath(*it) == -1)
 				return -1;
 		}
 		return 0;
 	}
 
-	static int vErrorPage( JSON::Node const& nref )
+	static int validateErrorPage( JSON::Node const& nref )
 	{
 		int error;
 		std::vector<int> used_errors;
@@ -166,19 +242,7 @@ namespace HTTP
 						it->getProperty().c_str());
 				}
 				error = it2->as<int>();
-				if (error != 400
-					&& error != 403
-					&& error != 404
-					&& error != 405
-					&& error != 406
-					&& error != 408
-					&& error != 411
-					&& error != 413
-					&& error != 414
-					&& error != 415
-					&& error != 500
-					&& error != 501
-					&& error != 505)
+				if (error < 300 || !Server::error.count(error))
 				{
 					return configError("invalid error code",
 						it->getProperty().c_str());
@@ -195,7 +259,60 @@ namespace HTTP
 		return 0;
 	}
 
-	static int vServer( JSON::Node const& nref )
+	static int validateServerNameString( std::string const& str )
+	{
+		bool leading_wcard = false;
+		std::string::const_iterator it = str.begin();
+		
+		if (str.empty())
+			return -1;
+		if (*it == '*')
+		{
+			it++;
+			if (it == str.end() || *it != '.')
+				return -1;
+			leading_wcard = true;
+		}
+		for (; it != str.end(); it++)
+		{
+			if (!isgraph(*it))
+				return -1;
+			if (*it == '.'
+				&& (*(it + 1) == '.'|| *(it - 1) == '.'))
+				return -1;
+			if (*it == '*' && (leading_wcard
+				|| ((it + 1) != str.end() || *(it - 1) != '.')))
+				return -1;
+		}
+		return 0;
+	}
+
+	static int validateServerName( JSON::Node const& nref )
+	{
+		if (nref.type() != JSON::array 
+			&& nref.type() != JSON::string)
+		{
+			return configError("invalid value type",
+				nref.getProperty().c_str());
+		}
+		for (JSON::Node::const_iterator it = nref.begin();
+			it != nref.end(); it++)
+		{
+			if (it->type() != JSON::string)
+			{
+				return configError("invalid value type",
+					nref.getProperty().c_str());
+			}
+			if (validateServerNameString(it->as<std::string const&>()) == -1)
+			{
+				return configError("invalid server_name string",
+					it->as<std::string const&>().c_str());
+			}
+		}
+		return 0;
+	}
+
+	static int validateServer( JSON::Node const& nref )
 	{
 		static char const* arr[] = {"listen", "error_page",
 			"client_max_body_size", "location", "server_name"};
@@ -209,7 +326,7 @@ namespace HTTP
 		for (JSON::Node::const_iterator it = nref.begin();
 			it != nref.end(); it.skip())
 		{
-			if (countEq(nref, it->getProperty()) > 1)
+			if (count(nref, it->getProperty()) > 1)
 			{
 				return configError("duplicated directive",
 					it->getProperty().c_str());
@@ -218,19 +335,19 @@ namespace HTTP
 			switch (s - arr)
 			{
 				case 0:
-					RETURN_EQ(vOf(*it, false, JSON::string), -1);
+					RETURN_EQ(isOfType(*it, false, JSON::string), -1);
 					continue ;
 				case 1:
-					RETURN_EQ(vErrorPage(*it), -1);
+					RETURN_EQ(validateErrorPage(*it), -1);
 					continue ;
 				case 2:
-					RETURN_EQ(vOf(*it, true, JSON::integer), -1);
+					RETURN_EQ(isOfType(*it, true, JSON::integer), -1);
 					continue ;
 				case 3:
-					RETURN_EQ(vLocation(*it),  -1);
+					RETURN_EQ(validateLocations(*it),  -1);
 					continue ;
 				case 4:
-					RETURN_EQ(vOf(*it, false, JSON::string), -1);
+					RETURN_EQ(validateServerName(*it), -1);
 					continue ;
 				default:
 					return configError("unknown directive",
@@ -245,13 +362,18 @@ namespace HTTP
 		for (JSON::Node::iterator it = json.tokens->begin();
 			it != json.tokens->end(); it.skip())
 		{
+			if (it->type() != JSON::object
+				&& it->getProperty().empty())
+			{
+				return configError("invalid value type", "()");
+			}
 			if (it->getProperty() != "server")
 			{
 				return configError("unknown directive",
 					 it->getProperty().c_str());
 			}
 			else
-				RETURN_EQ(vServer(*it), -1);
+				RETURN_EQ(validateServer(*it), -1);
 		}
 		return 0;
 	}

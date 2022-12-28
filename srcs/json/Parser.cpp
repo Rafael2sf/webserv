@@ -1,6 +1,7 @@
 #include "Parser.hpp"
 #include <limits>
 #include <cmath>
+#include <bitset>
 
 namespace JSON
 {
@@ -122,7 +123,7 @@ namespace JSON
 		}
 	}
 
-	static int escape( char c)
+	static int escapeCharacter( char c)
 	{
 		switch (c)
 		{
@@ -148,12 +149,67 @@ namespace JSON
 		return -1;
 	}
 
+	static void utf8Encode(std::string &s, int utf)
+	{
+		if (utf <= 0x7F) {
+			s += (char) utf;
+		}
+		else if (utf <= 0x07FF) {
+			s += (char) (((utf >> 6) & 0x1F) | 0xC0);
+			s += (char) (((utf >> 0) & 0x3F) | 0x80);
+		}
+		else if (utf <= 0xFFFF) {
+			s += (char) (((utf >> 12) & 0x0F) | 0xE0);
+			s += (char) (((utf >>  6) & 0x3F) | 0x80);
+			s += (char) (((utf >>  0) & 0x3F) | 0x80);
+		}
+		else if (utf <= 0x10FFFF) {
+			s += (char) (((utf >> 18) & 0x07) | 0xF0);
+			s += (char) (((utf >> 12) & 0x3F) | 0x80);
+			s += (char) (((utf >>  6) & 0x3F) | 0x80);
+			s += (char) (((utf >>  0) & 0x3F) | 0x80);
+		}
+		else { 
+			s += (char) 0xEF;
+			s += (char) 0xBF;
+			s += (char) 0xBD;
+		}
+	}
+
+	static void escapeUnicode(std::string & str,
+		std::string::const_iterator & beg,
+		std::string::const_iterator const& end)
+	{
+		int digits = 0;
+		int value = 0;
+
+		beg++;
+		while (beg != end && (isdigit(*beg) 
+			|| (tolower(*beg) >= 'a' && tolower(*beg) <= 'f')))
+		{
+			value *= 16;
+			if (isdigit(*beg))
+				value += (*beg - '0');
+			else
+				value += (tolower(*beg) - 'a' + 10);
+			beg++;
+			digits++;
+			if (digits == 4)
+				break ;
+		}
+		if (beg == end)
+			throw ParseError("unexpected end of string");
+		if (digits != 4)
+			throw ParseError("invalide unicode sequence in string");
+		beg--;
+		utf8Encode(str, value);
+	}
+
 	static std::string readString(std::string::const_iterator & beg,
 		std::string::const_iterator const& end)
 	{
 		std::string str;
 		std::string::const_iterator it = beg + 1;
-		size_t size = 0;
 
 		while (it != end)
 		{
@@ -167,103 +223,120 @@ namespace JSON
 				if (it == end)
 					throw ParseError("unexpected end of string");
 				if (*it == 'u')
-					throw ParseError("unicode escape is not supported");
-				if (escape(*it) == -1)
+					escapeUnicode(str, it, end);
+				else if (escapeCharacter(*it) == -1)
 					throw ParseError("invalid escape character in string");
+				else
+					str += escapeCharacter(*it);
 			}
-			it++;
-			size++;
-		}
-		if (size != 0)
-			str.resize(size);
-		beg += 1;
-		for (size_t i = 0; i < size; i++)
-		{
-			if (*beg == '\\')
-				str[i] = escape(*(++beg));
 			else
-				str[i] = *beg;
-			beg++;
+				str += *it;
+			it++;
 		}
-		beg++;
+		if (it == end)
+			throw ParseError("unexpected end of string");
+		beg = ++it;
 		return str;
 	}
 
 	void
 	jsonReadString(std::string::const_iterator &beg,
-				   std::string::const_iterator const &end, Node *&dst)
+		std::string::const_iterator const &end, Node *&dst)
 	{
 		dst = new String(readString(beg, end));
 	}
 
-	static double spow(double n, char const* power, char **endptr)
-	{
-		long value;
-
-		value = strtol(power, endptr, 10);
-		DEBUG2("pow(" << n << "," << value << ')');
-		return pow(n, value);
-	}
-
 	void
-	jsonReadFlosat(std::string::const_iterator &beg,
-					std::string::const_iterator const &end, Node *&dst)
+	jsonReadFloat(std::string::const_iterator &beg,
+		std::string::const_iterator const &end, Node *&dst)
 	{
 		double n = 0;
 		char *endptr = 0;
 
 		(void)end;
-		value = strtof(&*beg, &endptr);
-		DEBUG2("pow = " << pow(1.1, 5));
-		DEBUG2("flaat = " << value);
-		DEBUG2("endptr = " << *endptr);
+		n = strtof(&*beg, &endptr);
 		if (!endptr || !*endptr)
 			throw ParseError("unexpected end of file");
-		if (value > std::numeric_limits<float>::max() 
-			|| value < -std::numeric_limits<float>::max())
+		if (*endptr == 'e' || *endptr == 'E')
+			throw ParseError("unexpected end of number");
+		if (n > std::numeric_limits<float>::max() 
+			|| n < -std::numeric_limits<float>::max())
 			throw ParseError("floating-point values must fit in a signed 32 bits float");
 		beg += (endptr - &*beg);
-		dst = new Point(value);
+		dst = new Point(n);
+	}
+
+	static int analyzeInteger(char const* ptr, char** dot, char** exp, char** endptr)
+	{
+		*dot = 0;
+		*exp = 0;
+		if (*ptr == '-')
+			ptr++;
+		if (!isdigit(*ptr))
+			return -1;
+		if (*ptr == '0' && *(ptr + 1) == '0')
+		{
+			*endptr = const_cast<char *>(ptr + 1);
+			return 0;
+		}
+		while (*ptr)
+		{
+			if (*ptr == '.')
+			{
+				if (*dot || !isdigit(*(ptr + 1)))
+					return -1;
+				*dot = const_cast<char *>(ptr);
+			}
+			else if (*ptr == 'e' || *ptr == 'E')
+			{
+				if (*(ptr + 1) == '-' || *(ptr + 1) == '+')
+					ptr++;
+				if (*exp || !isdigit(*(ptr + 1)))
+					return -1;
+				*exp = const_cast<char *>(ptr);
+			}
+			else if (!isdigit(*ptr))
+				break ;
+			ptr++;
+		}
+		*endptr = const_cast<char *>(ptr);
+		return 0;
 	}
 
 	void
 	jsonReadInteger(std::string::const_iterator &beg,
 					std::string::const_iterator const &end, Node *&dst)
 	{
-		long value;
-		char *endptr = 0;
+		double value = 0;
+		char * arr[3];
 
-		(void)end;
+		(void) end;
 		errno = 0;
-		if (*beg == '-' && !isdigit(*(beg + 1)))
-			throw ParseError("value expected");
-		if (*beg == '0' && *(beg + 1) != '.')
+		if (analyzeInteger(&*beg, &arr[0], &arr[1], &arr[2]) == -1)
+			throw ParseError("unexpected end of number");
+		if ((*beg == '0' && *(beg + 1)  != '.')
+			|| (*beg == '-' && *(beg + 1) == '0' && *(beg + 2) != '.'))
+			value = 0;
+		else
+			value = strtod(&*beg, &arr[2]);
+		if (!arr[2])
+			throw ParseError("unexpected end of number");
+		beg += (arr[2] - &*beg);
+		if (!arr[0])
 		{
-			dst = new Integer(0);
-			beg++;
-			return ;
+			if (errno == EDOM || errno == ERANGE
+				|| value > 2147483647 || value < -2147483648)
+				throw ParseError("integer values must fit in a signed 32 bits integer");	
+			dst = new Integer(value);
 		}
-		value = strtol(&*beg, &endptr, 10);
-		if (!endptr || !*endptr)
-			throw ParseError("unexpected end of file");
-		if (*endptr == '.')
+		else
 		{
-			if (!isdigit(*(endptr + 1)))
-				throw ParseError("unexpected end of number");
-			return jsonReadFloat(beg, end, dst);
+			if (errno == EDOM || errno == ERANGE
+				|| value > std::numeric_limits<float>::max() 
+				|| value < -std::numeric_limits<float>::max())
+				throw ParseError("floating-point values must fit in a signed 32 bits float");
+			dst = new Point(value);
 		}
-		if (endptr && (*endptr == 'e' || *endptr == 'E'))
-		{
-			if ((!isdigit(*(endptr + 1)) && *(endptr + 1) != '+'
-				&& *(endptr + 1) != '-'))
-				throw ParseError("unexpected end of number");
-			value = spow(value, endptr + 1, &endptr);
-		}
-		if (errno == EDOM || errno == ERANGE
-			|| value > 2147483647 || value < -2147483648)
-			throw ParseError("integer values must fit in a signed 32 bits integer");	
-		beg += (endptr - &*beg);
-		dst = new Integer(value);
 	}
 
 	void

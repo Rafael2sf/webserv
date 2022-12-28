@@ -101,13 +101,13 @@ namespace HTTP
 		if (req.method[2] != "")
 		{
 			if (req.method[2].size() != 8 || sscanf(req.method[2].c_str(),
-				"HTTP/%d.%d", &v[0], &v[1]) != 2 || v[0] == 0)
+				"HTTP/%d.%d", &v[0], &v[1]) != 2)
 			{
 				error(400, true);
 				return -1;
 			}
 
-			if (v[0] > 1 || v[1] > 1)
+			if (v[0] != 1 || v[1] != 1)
 			{
 				error(505, true);
 				return -1;
@@ -120,11 +120,17 @@ namespace HTTP
 	{
 		if (req.method.size() != 2)
 			return -1;
-		size_t x = req.method[1].find("http://") + 7;
-		if (x != 0 || x == std::string::npos)
-			x = req.method[1].find("https://") + 8;
+		size_t x = req.method[1].find("http://");
 		if (x == std::string::npos)
-			return -1;
+		{
+			x = req.method[1].find("https://");
+			if (x != std::string::npos)
+				x += 8;
+			else
+				return -1;
+		}
+		else
+			x += 7;
 		std::string::iterator y = std::find(
 			req.method[1].begin() + x, req.method[1].end(), '/');
 		if (y == req.method[1].end())
@@ -147,6 +153,13 @@ namespace HTTP
 			error(400, true);
 			return -1;
 		}
+		req.header_bytes = req.method[0].size()
+			 + req.method[1].size() + req.method[2].size();
+		if (req.header_bytes > S_URI_MAX)
+		{
+			error(414, true);
+			return -1;
+		}
 		start = req.method[1].find_first_of('?');
 		if (start != std::string::npos)
 		{
@@ -157,14 +170,8 @@ namespace HTTP
 		}
 		else
 			req.method.push_back("");
-
 		if (_validateStatusLine() < 0)
 			return -1;
-
-		// for (std::vector<std::string>::iterator it = req.method.begin();
-		// 	it != req.method.end(); it++)
-		// { std::cout << *it << " "; }
-		// std::cout << std::endl;
 
 		state = HEADER_FIELDS;
 		return 0;
@@ -195,6 +202,13 @@ namespace HTTP
 			key.erase(key.begin() + pos, key.end());
 		}
 		_owsTrimmer(val);
+		req.header_bytes += key.size() + val.size();
+		if (key.size() + val.size() > S_FIELD_MAX
+			|| req.header_bytes > S_HEADERS_MAX)
+		{
+			error(431, true);
+			return -1;
+		}
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		if (key == "host" && (val.empty() || req.getField("host")))
 		{
@@ -203,7 +217,6 @@ namespace HTTP
 		}
 		else if (key.empty())
 			return 0;
-
 		if (req.getField(key))
 			*req.getField(key) += ',' + val;
 		else
@@ -303,12 +316,12 @@ namespace HTTP
 			else
 				size = 1048576;
 			req.content_length = stoi(*req.getField("content-length"), std::dec);
-			if (size < 0 || (size_t)size < req.content_length)
+			if (size < 0 || req.content_length > (size_t)size)
 			{
 				error(413, true);
 				return -1;
 			}
-			req.content_length = req.content_length;
+			req.content_length = stoi(*req.getField("content-length"), std::dec);
 		}
 		else
 			state = OK;
@@ -325,7 +338,8 @@ namespace HTTP
 		}
 		if (req.body.size() + readval < (size_t)req.content_length)
 		{
-			if (req.getField("content-type")->find("multipart/form-data") != std::string::npos)
+			if (req.getField("content-type")
+				&& *req.getField("content-type") == "multipart/form-data")
 				state = OK;
 			req.body.append(buff, readval);
 		}
@@ -380,6 +394,7 @@ namespace HTTP
 				state = OK;
 				return 0;
 			}
+			DEBUG2("@(READ): " << buff);
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
@@ -409,6 +424,7 @@ namespace HTTP
 				}
 				else
 				{
+					DEBUG2("state: " << state << "|" << buff + i);
 					error(400, true);
 					return -1;
 				}
@@ -505,13 +521,11 @@ namespace HTTP
 		clientPipe[1] = 0;
 	}
 
-	// open  file or return http error code (403/404)
-	// if return == 1 file is dir
-	// on sucess 0
 	static int fopenr(FILE **fp, std::string const& path)
 	{
 		struct stat		stat;
 
+		DEBUG2("OPENING> " << path);
 		*fp = fopen(path.c_str(), "r");
 		if (*fp == NULL)
 		{
@@ -522,7 +536,7 @@ namespace HTTP
 		if (lstat(path.c_str(), &stat) == -1) 
 		{
 			fclose(*fp);
-      *fp = NULL;
+			*fp = NULL;
 			return 404;
 		}
 		if (S_ISDIR(stat.st_mode))
@@ -548,7 +562,7 @@ namespace HTTP
 			if (var)
 			{
 				fclose(fp);
-        fp = NULL;
+				fp = NULL;
 				for (JSON::Node::const_iterator it = var->begin();
 					it != var->end(); it++)
 				{
@@ -557,7 +571,7 @@ namespace HTTP
 					if (code == 1)
 					{
 						fclose(fp);
-            fp = NULL;
+						fp = NULL;
 						code = 403;
 					}
 					else if (code == 0)
@@ -567,8 +581,27 @@ namespace HTTP
 					}
 				}	
 			}
+			else
+			{
+				path_index = path + "index.html";
+				code = fopenr(&fp, path_index);
+				if (code == 1)
+				{
+					fclose(fp);
+					fp = NULL;
+					code = 403;
+				}
+				else if (code == 0)
+				{
+					path.swap(path_index);
+					return true;
+				}
+			}
 			if (code == 1 || code == 404)
+			{
 				dirIndex(path);
+				return false;
+			}
 			error(403, false);
 			return false;
 		}
@@ -583,9 +616,8 @@ namespace HTTP
 	int Client::contentEncoding(void) 
 	{
 		static char			buf[S_BUFFER_SIZE + 1];
-		std::string			str;
-
 		int					read_nbr = 0;
+		std::string			str;
 
 		//memset(buf, 0, S_BUFFER_SIZE);
 		if (state == REDIRECT)
@@ -655,7 +687,7 @@ namespace HTTP
 
 		if (!location)
 			return error(404, false);
-		res.createMethodVec("HTTPS/1.1 200 OK");
+		res.createMethodVec("HTTP/1.1 200 OK");
 		res.setField("content-type", "text/html");
 
 		autoindex = location->search(1, "autoindex");

@@ -66,7 +66,7 @@ info:
 	 SRCS		=  $(SRCS)\n"
 
 $(NAME) : $(_BIN)$(NAME)
-	
+
 $(_BIN)$(NAME): $(_BIN) $(_OBJ) $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(@) $(INCS)
 
