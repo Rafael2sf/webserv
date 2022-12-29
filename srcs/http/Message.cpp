@@ -62,10 +62,6 @@ namespace HTTP
 		return 0;
 	};
 
-	// uri		-->
-	// headers --->
-	// field    -->
-
 	std::string const* Message::getField(std::string const& key) const
 	{
 		std::map<std::string, std::string>::const_iterator it =
@@ -122,6 +118,7 @@ namespace HTTP
 		method.clear();
 		body.clear();
 		headers.clear();
+		header_bytes = 0;
 		content_length = 0;
 	}
 }

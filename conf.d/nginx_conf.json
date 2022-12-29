@@ -4,14 +4,15 @@
 		"error_page" : {
 			"/html/400.html" : 431
 		},
-		"client_max_body_size" : 989273921,
+		"client_max_body_size" : 321878182,
 		"server_name" : ["localhost.*", "localhost.*"],
 		"location" : {
 			"/" : {
 				"root" : "./www/",
-				"index" : "index.html",
+				"index" : ["html", "index.html"],
 				"cgi" : "./cgi-bin/",
-				"upload_store" : "./uploads/"
+				"upload_store" : "./uploads/",
+				"autoindex" : true
 			},
 			"/uploads/" : {
 				"root" : "./",

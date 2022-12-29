@@ -100,7 +100,7 @@ namespace HTTP
 			}
 		}
 	};
-	
+
 	int	AMethod::_confCheck(Client & client) {
 
 		JSON::Node* var = client.location->search(1, "upload_store");
@@ -116,5 +116,4 @@ namespace HTTP
 		}
 		return 0;
 	};
-
 }

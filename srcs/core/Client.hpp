@@ -113,11 +113,12 @@ namespace HTTP
 		int _getHostFromUrl( void );
 		int _peekHeaderFields( Sockets const& sockts );
 		int _updateHeaders( char const* buff, size_t n );
-		int _updateStatusLine( char const* buff, size_t n );
+		int _checkSpacesRequestLine( char const* buff, size_t n );
+		int _updateRequestLine( char const* buff, size_t n );
 		int _updateBody( char const * buff, size_t n, Sockets const& sockets );
-		int _validateStatusLine( void );
+		int _validateRequestLine( void );
 		std::string const*  _errorPage( int code );
-		void _redirect( void );
+		void _redirect( std::string const& address );
 		void _defaultPage( int code, bool close_connection );
 	};
 }

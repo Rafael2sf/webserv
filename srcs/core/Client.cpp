@@ -88,10 +88,19 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::_validateStatusLine( void )
+	int Client::_validateRequestLine( void )
 	{
 		int v[2];
 
+		for (std::string::iterator it = req.method[0].begin();
+			it != req.method[0].end(); it++)
+		{
+			if (!isupper(*it))
+			{
+				error(400, true);
+				return -1;
+			}
+		}
 		if (validUrl(req.method[1]) < 0)
 		{
 			error(400, true);
@@ -118,8 +127,6 @@ namespace HTTP
 
 	int Client::_getHostFromUrl( void )
 	{
-		if (req.method.size() != 2)
-			return -1;
 		size_t x = req.method[1].find("http://");
 		if (x == std::string::npos)
 		{
@@ -127,7 +134,7 @@ namespace HTTP
 			if (x != std::string::npos)
 				x += 8;
 			else
-				return -1;
+				return 0;
 		}
 		else
 			x += 7;
@@ -138,26 +145,49 @@ namespace HTTP
 		std::string host = req.method[1].substr(x, std::distance(req.method[1].begin() + x, y));
 		req.setField("host", req.method[1].substr(x, std::distance(req.method[1].begin() + x, y)));
 		req.method[1].erase(req.method[1].begin(), y);
-		req.method.push_back("");
+		if (req.getField("host")->empty() || req.method[1].empty())
+			return -1;
 		return 0;
 	}
 
-	int Client::_updateStatusLine( char const* buff, size_t n )
+	int Client::_checkSpacesRequestLine( char const* buff, size_t n )
+	{
+		size_t index;
+
+		if (isspace(*buff))
+			return -1;
+		index = req.method[0].size();
+		if (buff[index] != ' ' || isspace(buff[index + 1]))
+			return -1;
+		index += 1 + req.method[1].size();
+		if (buff[index] != ' ' || isspace(buff[index + 1]))
+			return -1;
+		index += 1 + req.method[2].size();
+		if (index != n || (index + 1 == n && buff[index + 1] != '\r'))
+			return -1;
+		return 0;
+	}
+
+	int Client::_updateRequestLine( char const* buff, size_t n )
 	{
 		std::string str;
 		size_t		start;
 
 		req.createMethodVec(std::string().assign(buff, n));
-		if (req.method.size() != 3 && _getHostFromUrl() < 0)
+		if (req.method.size() != 3
+			|| _checkSpacesRequestLine(buff, n) < 0)
 		{
 			error(400, true);
 			return -1;
 		}
-		req.header_bytes = req.method[0].size()
-			 + req.method[1].size() + req.method[2].size();
-		if (req.header_bytes > S_URI_MAX)
+		if (req.method[1].size() > S_URI_MAX)
 		{
 			error(414, true);
+			return -1;
+		}
+		if (_getHostFromUrl() < 0)
+		{
+			error(400, true);
 			return -1;
 		}
 		start = req.method[1].find_first_of('?');
@@ -170,9 +200,8 @@ namespace HTTP
 		}
 		else
 			req.method.push_back("");
-		if (_validateStatusLine() < 0)
+		if (_validateRequestLine() < 0)
 			return -1;
-
 		state = HEADER_FIELDS;
 		return 0;
 	}
@@ -183,14 +212,21 @@ namespace HTTP
 		std::string key;
 		std::string val;
 
+		if (isspace(*buff))
+		{
+			error(400, true);
+			return -1;
+		}
 		ss.str(std::string().assign(buff, n));
 		ss.seekg(0);
 		ss >> key;
 
 		size_t pos = key.find_first_of(':');
 		if (pos == std::string::npos)
-			return 0;
-
+		{
+			error(400, true);
+			return -1;
+		}
 		if (pos == key.size() - 1)
 		{
 			key.erase(--key.end());
@@ -202,6 +238,11 @@ namespace HTTP
 			key.erase(key.begin() + pos, key.end());
 		}
 		_owsTrimmer(val);
+		if (!val.empty() && (*val.begin() == '\r' || *--val.end() == '\r'))
+		{
+			error(400, true);
+			return -1;
+		}		
 		req.header_bytes += key.size() + val.size();
 		if (key.size() + val.size() > S_FIELD_MAX
 			|| req.header_bytes > S_HEADERS_MAX)
@@ -217,7 +258,7 @@ namespace HTTP
 		}
 		else if (key.empty())
 			return 0;
-		if (req.getField(key))
+		if (req.getField(key) && !req.getField(key)->empty())
 			*req.getField(key) += ',' + val;
 		else
 			req.setField(key, val);
@@ -255,27 +296,40 @@ namespace HTTP
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
-		res.body = \
-"<html>\n\
-<head><title>"+ s + "</title></head>\n\
-<body bgcolor=\"white\">\n\
-<center><h1>" + s + "</h1></center>\n\
-<hr><center>webserv/0.4</center>\n\
-</body>\n\
-</html>\n";
-		res.setField("content-type", "text/html");
+		if (code < 300 || code > 399)
+		{
+			res.body = \
+				"<html>\n\
+				<head><title>"+ s + "</title></head>\n\
+				<body bgcolor=\"white\">\n\
+				<center><h1>" + s + "</h1></center>\n\
+				<hr><center>webserv/0.4</center>\n\
+				</body>\n\
+				</html>\n";
+			res.setField("content-type", "text/html");
+		}
 		res.setField("content-length", itos(res.body.size(), std::dec));
 	}
 
-	void Client::_redirect( void )
+	// if adress empty use config
+	void Client::_redirect( std::string const& address )
 	{
-		JSON::Node * loc = location->search(1, "redirect");
-		int code = loc->begin()->as<int>();
-		std::string const& page = (++loc->begin())->as<std::string const&>();
+		JSON::Node * loc;
+		int code;
 
-		_defaultPage(code, false);
-		res.setField("location", page);
-		res.toString();
+		if (address.empty())
+		{
+			loc = location->search(1, "redirect");
+			code = loc->begin()->as<int>();
+			std::string const& page = (++loc->begin())->as<std::string const&>();
+			_defaultPage(code, false);
+			res.setField("location", page);
+		}
+		else
+		{
+			_defaultPage(301, false);
+			res.setField("location", address);
+		}
 		state = REDIRECT;
 	}
 
@@ -304,7 +358,7 @@ namespace HTTP
 		}
 		if (location->search(1, "redirect"))
 		{
-			_redirect();
+			_redirect("");
 			return -1;
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
@@ -352,39 +406,17 @@ namespace HTTP
 		return readval;
 	}
 
-	static void nextField( int *state, char **j )
-	{
-		if (*state == HEADER_FIELDS
-			&& (!strncmp(*j, "\r\n\r\n", 4) || !strncmp(*j, "\n\r\n\r", 4)))
-		{
-			*state = BODY_CONTENT;
-			*j += 4;
-		}
-		else if (*state == HEADER_FIELDS
-			&& !strncmp(*j, "\n\n", 2))
-		{
-			*state = BODY_CONTENT;
-			*j += 2;
-		}
-		else if (!strncmp(*j, "\r\n", 2) || !strncmp(*j, "\n\r", 2))
-			*j += 2;
-		else
-			*j += 1;
-	}
-
 	int Client::update( Sockets const& sockets )
 	{
-		std::stringstream	ss;
-		ssize_t				readval;
-		char				buff[S_BUFFER_SIZE];
+		char	buff[S_BUFFER_SIZE];
+		ssize_t	readval;
+		ssize_t	i = 0, n = 0;
+		char *	j = 0;
 
 		if (state == CONNECTED)
 			state = STATUS_LINE;
 		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
 		{
-			ssize_t i = 0;
-			char * j = 0;
-			size_t n = 0;
 			buff[readval] = 0;
 			timestamp = time(NULL);
 			if (state == CGI_PIPING)
@@ -394,7 +426,6 @@ namespace HTTP
 				state = OK;
 				return 0;
 			}
-			DEBUG2("@(READ): " << buff);
 			while (state == BODY_CONTENT || i < readval)
 			{
 				if (state == BODY_CONTENT)
@@ -404,12 +435,19 @@ namespace HTTP
 				{
 					if (j != (buff + i) && *(j - 1) == '\r')
 						j--;
+					else
+					{
+						error(400, true);
+						return -1;
+					}
 					n = j - (buff + i);
 					if (n > 0)
 					{
-						if (state == STATUS_LINE
-							&& _updateStatusLine(buff + i, n) < 0)
-							return -1;
+						if (state == STATUS_LINE)
+						{
+							if (_updateRequestLine(buff + i, n) < 0)
+								return -1;
+						}
 						else if (_updateHeaders(buff + i, n) < 0)
 							return -1;
 					}
@@ -420,23 +458,28 @@ namespace HTTP
 						error(400, true);
 						return -1;
 					}
-					nextField(&state, &j);
+					if (!strncmp(j, "\r\n", 2))
+						j += 2;
+					else
+					{
+						error(400, true);
+						return -1;
+					}
 				}
 				else
 				{
-					DEBUG2("state: " << state << "|" << buff + i);
 					error(400, true);
 					return -1;
 				}
 				i += j - (buff + i);
 			}
 		}
-		if (readval == 0 && state == STATUS_LINE) // empty request 
+		if (readval == 0 && state == STATUS_LINE)
 		{
 			error(400, true);
 			return -1;
 		}
-		return 0; // If EPOLLOUT event, it will be ignored!
+		return 0;
 	}
 
 	void Client::print_message( Message const& m, std::string const& s  )
@@ -525,7 +568,6 @@ namespace HTTP
 	{
 		struct stat		stat;
 
-		DEBUG2("OPENING> " << path);
 		*fp = fopen(path.c_str(), "r");
 		if (*fp == NULL)
 		{
@@ -572,13 +614,26 @@ namespace HTTP
 					{
 						fclose(fp);
 						fp = NULL;
-						code = 403;
+						if (*--path_index.end() != '/')
+							code = 403;
+						else
+						{
+							if (!path_index.compare(0, 2, "./"))
+								path_index.erase(path_index.begin());
+							if (!path_index.compare(0, 3, "../"))
+								path_index.erase(path_index.begin(), path_index.begin() + 2);
+							
+							_redirect(location->getProperty() + it->as<std::string const&>());
+							return false;
+						}
 					}
 					else if (code == 0)
 					{
 						path.swap(path_index);
 						return true;
 					}
+					else
+						code = 404;
 				}	
 			}
 			else
@@ -589,13 +644,25 @@ namespace HTTP
 				{
 					fclose(fp);
 					fp = NULL;
-					code = 403;
+					if (*--path_index.end() != '/')
+						code = 403;
+					else
+					{
+						if (!path_index.compare(0, 2, "./"))
+							path_index.erase(path_index.begin());
+						if (!path_index.compare(0, 3, "../"))
+							path_index.erase(path_index.begin(), path_index.begin() + 2);
+						_redirect(path_index);
+						return false;
+					}
 				}
 				else if (code == 0)
 				{
 					path.swap(path_index);
 					return true;
 				}
+				else
+					code = 404;
 			}
 			if (code == 1 || code == 404)
 			{
