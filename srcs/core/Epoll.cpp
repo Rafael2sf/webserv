@@ -55,7 +55,7 @@ namespace HTTP {
 
 	int	Epoll::insert(int sofd, int flag)
 	{
-		int				flags;
+		// int				flags;
 		epoll_event		ev;
 
 		memset(&ev, 0, sizeof(ev));
@@ -63,10 +63,11 @@ namespace HTTP {
 		if (flag == LISTEN_SOCKET)
 			ev.events = EPOLLIN;
 		ev.data.fd = sofd;
-		flags = fcntl(sofd, F_GETFL, 0);
-		if (flags == -1)
-			return -1;
-		if (fcntl(sofd, F_SETFL, flags | O_NONBLOCK )  == -1)
+		// flags = fcntl(sofd, F_GETFL, 0);
+		// DEBUG2(flags);
+		// if (flags == -1)
+		// 	return -1;
+		if (fcntl(sofd, F_SETFL, O_NONBLOCK )  == -1)
 			return -1;
 		return (epoll_ctl(this->fd, EPOLL_CTL_ADD, sofd, &ev));
 	}

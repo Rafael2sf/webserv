@@ -28,3 +28,76 @@ confirmar -> error in index html -> bad request???
 
 IMPORTANT: send() errors will call send() inside error() -> Shouldn't?
 IMPORTANT: response 201 no POST!!
+
+
+RFC Study:
+
+-Sends 400 if there is line folding?
+-A server that receives a request message with a transfer coding it does not understand SHOULD respond with 501 (Not Implemented).
+-Transfer-Encoding types: chunked, compress, deflate, gzip.
+- CANNOT have transfer-encoding and content-length together. Server should close the connection;
+- A server MUST NOT send a response containing Transfer-Encoding unless the corresponding request indicates HTTP/1.1 (or later minor revisions).
+
+
+POST /saveFile.py HTTP/1.1
+host: localhost
+connection: keep-alive
+content-type: text/html
+date: Wed, 28 Dec 2022 14:50:22 WET
+last-modified: Mon, 19 Dec 2022 13:25:17 WET
+server: Webserv/0.4
+transfer-encoding: chunked
+
+258
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+        <title>Index</title>
+</head>
+<body>
+        <h1>HELLO WOOOOOOORLD!</h1>
+        <br>
+        <form action="/getExample.py" method="GET">
+                <label for="fname">First name:</label><br>
+                <input type="text" id="fname" name="fname" value="John"><br>
+                <label for="lname">Last name:</la
+258
+bel><br>
+                <input type="text" id="lname" name="lname" value="Doe"><br><br>
+                <input type="submit" value="Submit">
+          </form>
+        <br>
+        <h2>Upload</h2>
+        <form enctype="multipart/form-data" action="/saveFile.py" method="POST">
+                <label for="fileTest">Upload file:</label><br>
+                <input type="file"
+                                id="fileTest"
+                                name="fileTest"><br>
+                <input type="submit" value="Submit">
+        </form>
+        <br>
+        <h2>Deletion</h2>
+        <select id="del_files" name="file_select" >
+                <option disabled>Select file to delete:</option>
+        </select>
+        <script src="./js/select.js"></script>
+        <button type="button" id="btn">Delete</butto
+7d
+n>
+        <script src="./js/delete.js"></script>
+        <p>
+                <img src="./images/smoking.jpg" alt="python image">
+        </p>
+
+</body>
+</html>
+0
+
+---------------------------------------------------------------------------
+Content-Disposition: form-data; name="fileTest"; filename="grass copy.jpeg"
+Content-Type: image/jpeg

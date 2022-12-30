@@ -296,6 +296,11 @@ namespace HTTP
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
 		{
+			if (req.getField("transfer-encoding"))
+			{
+				error(400, true); //transfer-encoding and content-length cannot be both in request (potential attack)
+				return -1;
+			}
 			if (server)
 				nptr = server->search(1, "client_max_body_size");
 			if (nptr)
@@ -308,7 +313,18 @@ namespace HTTP
 				error(413, true);
 				return -1;
 			}
-			req.content_length = req.content_length;
+		}
+		else if (req.method[0] != "GET" && req.getField("transfer-encoding"))
+		{
+			std::string	encoding(*req.getField("transfer-encoding"));
+
+			if (encoding == "chunked")
+				req.content_length = 0;
+			else
+			{
+				error(501, true);
+				return -1;
+			}
 		}
 		else
 			state = OK;
@@ -317,17 +333,41 @@ namespace HTTP
 
 	int Client::_updateBody( char const* buff, size_t readval, Sockets const& sockets )
 	{
+
 		if (req.body.size() == 0 && _peekHeaderFields(sockets) < 0)
 		{
 			if (state == REDIRECT)
 				return 0;
 			return -1;
 		}
+		
+		JSON::Node*	maxBody = server->search(1, "client_max_body_size");
+
 		if (req.body.size() + readval < (size_t)req.content_length)
 		{
 			if (req.getField("content-type")->find("multipart/form-data") != std::string::npos)
 				state = OK;
 			req.body.append(buff, readval);
+		}
+		else if (req.getField("transfer-encoding")) //Checked before getting here, if transfer-encoding exists, it is chunked
+		{
+			req.body.append(buff, readval);
+			req.content_length += readval;
+			if ((maxBody && req.content_length > static_cast<size_t>(maxBody->as<int>()))
+					|| (!maxBody && req.content_length > 1048576))
+			{
+				error(413, true);
+				return -1;
+			}
+			if (std::string(buff).find("0\r\n\r\n") != std::string::npos)
+			{
+				if (_unchunking() < 0)
+				{
+					error(400, true);
+					return -1;
+				}
+				state = OK;
+			}
 		}
 		else
 		{
@@ -421,6 +461,8 @@ namespace HTTP
 		}
 		else if (readval == -1 && state == CGI_PIPING)
 			state = OK;
+		if (readval == -1)
+			DEBUG2( "\033[31m" << "READ -1" << "\033[0m");
 		return 0; // If EPOLLOUT event, it will be ignored!
 	}
 
@@ -698,4 +740,32 @@ namespace HTTP
 			state = SEND_ERROR;
 		return;
 	};
+
+	int		Client::_unchunking(void)
+	{
+		size_t	i = 0;
+		size_t	chunkEnd = 0;
+		int		chunkSize = 0;
+		try
+		{
+			while (i != std::string::npos)
+			{
+				i = req.body.find("\r\n", i);
+				if (i == std::string::npos)
+					break ;
+				chunkSize = stoi(req.body.substr(chunkEnd, i - chunkEnd), std::hex);
+				req.body.erase(chunkEnd, i + 2 - chunkEnd);
+				i = chunkEnd + chunkSize;
+				req.body.erase(i, 2);
+				chunkEnd = i;
+			}
+		}
+		catch(const std::exception& e)
+		{
+			std::cerr << e.what() << '\n';
+			return -1;
+		}
+		req.content_length = req.body.size();
+		return 0;
+	}
 }

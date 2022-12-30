@@ -65,7 +65,7 @@ namespace HTTP
 				if (bytes != -1)
 				{
 					client.cgiSentBytes += bytes;
-					client.req.body.clear();
+					client.req.body.erase(0, bytes);
 				}
 				else
 					client.cgiSentBytes = -1;

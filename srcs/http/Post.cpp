@@ -21,10 +21,13 @@ namespace HTTP {
 		return *this;
 	};
 
-	void		Post::response(Client & client)
+	void	Post::response(Client & client)
 	{
 		if (_confCheck(client) == -1)
 			return;
+		if (client.req.getField("transfer-encoding")
+				&& client.req.content_length == 0)
+			client.state = CGI_PIPING;
 		cgi(client);
 	};
 }
