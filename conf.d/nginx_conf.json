@@ -1,22 +1,16 @@
 {
 	"server" : {
-		"listen" : "8000",
-		"error_page" : {
-			"/html/400.html" : 431
-		},
-		"client_max_body_size" : 321878182,
-		"server_name" : ["localhost.*", "localhost.*"],
+		"listen" : "localhost:8000",
+		"client_max_body_size" : 214748647,
 		"location" : {
 			"/" : {
-				"root" : "./www/",
-				"index" : ["html", "index.html"],
+				"root" : "/home/rafernan/Projects/webserv/www/",
+				"index" : "index.html",
 				"cgi" : "./cgi-bin/",
-				"upload_store" : "./uploads/",
-				"autoindex" : true
+				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "./",
-				"index" : "whatever",
+				"root" : "/home/rafernan/Projects/webserv/",
 				"autoindex" : true
 			}
 		}

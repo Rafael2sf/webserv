@@ -127,17 +127,21 @@ namespace HTTP
 
 	int Client::_getHostFromUrl( void )
 	{
+		DEBUG2("HERE!");
+		if (req.method[1][0] == '/')
+			return 0;
 		size_t x = req.method[1].find("http://");
-		if (x == std::string::npos)
+		if (x != 0)
 		{
 			x = req.method[1].find("https://");
-			if (x != std::string::npos)
+			if (x == 0)
 				x += 8;
 			else
-				return 0;
+				return -1;
 		}
 		else
 			x += 7;
+		DEBUG2("(X) " << x);
 		std::string::iterator y = std::find(
 			req.method[1].begin() + x, req.method[1].end(), '/');
 		if (y == req.method[1].end())
@@ -212,6 +216,13 @@ namespace HTTP
 		std::string key;
 		std::string val;
 
+		req.header_bytes += n;
+		if (n > S_FIELD_MAX
+			|| req.header_bytes > S_HEADERS_MAX)
+		{
+			error(431, true);
+			return -1;
+		}
 		if (isspace(*buff))
 		{
 			error(400, true);
@@ -237,17 +248,12 @@ namespace HTTP
 			val = key.substr(pos + 1);
 			key.erase(key.begin() + pos, key.end());
 		}
+		if (key.empty())
+			return 0;
 		_owsTrimmer(val);
 		if (!val.empty() && (*val.begin() == '\r' || *--val.end() == '\r'))
 		{
 			error(400, true);
-			return -1;
-		}		
-		req.header_bytes += key.size() + val.size();
-		if (key.size() + val.size() > S_FIELD_MAX
-			|| req.header_bytes > S_HEADERS_MAX)
-		{
-			error(431, true);
 			return -1;
 		}
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
@@ -256,10 +262,8 @@ namespace HTTP
 			error(400, true);
 			return -1;
 		}
-		else if (key.empty())
-			return 0;
 		if (req.getField(key) && !req.getField(key)->empty())
-			*req.getField(key) += ',' + val;
+			*req.getField(key) += ", " + val;
 		else
 			req.setField(key, val);
 		return 0;
@@ -296,18 +300,15 @@ namespace HTTP
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
-		if (code < 300 || code > 399)
-		{
-			res.body = \
-				"<html>\n\
-				<head><title>"+ s + "</title></head>\n\
-				<body bgcolor=\"white\">\n\
-				<center><h1>" + s + "</h1></center>\n\
-				<hr><center>webserv/0.4</center>\n\
-				</body>\n\
-				</html>\n";
-			res.setField("content-type", "text/html");
-		}
+		res.body = \
+			"<html>\n\
+			<head><title>"+ s + "</title></head>\n\
+			<body bgcolor=\"white\">\n\
+			<center><h1>" + s + "</h1></center>\n\
+			<hr><center>webserv/0.4</center>\n\
+			</body>\n\
+			</html>\n";
+		res.setField("content-type", "text/html");
 		res.setField("content-length", itos(res.body.size(), std::dec));
 	}
 
@@ -571,7 +572,7 @@ namespace HTTP
 		*fp = fopen(path.c_str(), "r");
 		if (*fp == NULL)
 		{
-			if (errno == ENOENT)
+			if (errno == ENOENT || errno == ENOTDIR)
 				return 404;
 			return 403;
 		}
@@ -586,10 +587,71 @@ namespace HTTP
 		return 0;
 	}
 
+	/*
+		TODO: HANLED CGI AS INdex
+		-1 (something hapened response is built stop)
+		0 (success found file)
+		404 (no such file)
+	*/
+	int Client::tryIndex(std::string const& index, std::string & path)
+	{
+		std::string		path_index;
+		JSON::Node *	root;
+		JSON::Node *	loc;
+		//bool			redirect = false;
+		int				code;
+
+		DEBUG2("INDEX>" << index);
+		path_index = path + index;
+		loc = matchLocation(server, path_index);
+		if (!loc)
+		{
+			error(404, false);
+			return -1;
+		}
+
+		// new root and index
+		root = loc->search(1, "root");
+		if (!root)
+			path_index = std::string("./html/");
+		else
+		{
+			path_index = root->as<std::string const&>();
+			DEBUG2("ROOT> " << path_index);
+		}
+		if (*--path_index.end() == '/')
+			path_index.erase(--path_index.end());
+		path_index += req.getMethod()[1] + index;
+
+		DEBUG2("TRYING> " << path_index);
+		code = fopenr(&fp, path_index);
+		if (code == 404)
+		{
+			DEBUG2("HOW!?");
+			return code;
+		}
+		if (code == 1)
+		{
+			fclose(fp);
+			fp = NULL;
+			if (*--path_index.end() != '/')
+			{
+				_redirect(req.method[1] + index + '/');
+				return -1;
+			}
+			DEBUG2("INDEXING> " << path_index);
+			dirIndex(path_index);
+			return -1;
+		}
+		else if (code != 0)
+			return code;
+		path.swap(path_index);
+		return 0;
+	}
+
 	bool Client::getFile(std::string & path)
 	{
 		int				code;
-		std::string		path_index;
 		JSON::Node *	var = 0;
 
 		code = fopenr(&fp, path);
@@ -608,68 +670,39 @@ namespace HTTP
 				for (JSON::Node::const_iterator it = var->begin();
 					it != var->end(); it++)
 				{
-					path_index = path + it->as<std::string const&>();
-					code = fopenr(&fp, path_index);
-					if (code == 1)
+					code = tryIndex(it->as<std::string const&>(), path);
+					switch (code)
 					{
-						fclose(fp);
-						fp = NULL;
-						if (*--path_index.end() != '/')
-							code = 403;
-						else
-						{
-							if (!path_index.compare(0, 2, "./"))
-								path_index.erase(path_index.begin());
-							if (!path_index.compare(0, 3, "../"))
-								path_index.erase(path_index.begin(), path_index.begin() + 2);
-							
-							_redirect(location->getProperty() + it->as<std::string const&>());
+						case 404:
+							continue ;
+						case -1:
 							return false;
-						}
+						case 0:
+							return true;
+						default:
+							error(403, false);
+							return false;
 					}
-					else if (code == 0)
-					{
-						path.swap(path_index);
-						return true;
-					}
-					else
-						code = 404;
-				}	
+				}
 			}
 			else
 			{
-				path_index = path + "index.html";
-				code = fopenr(&fp, path_index);
-				if (code == 1)
-				{
-					fclose(fp);
-					fp = NULL;
-					if (*--path_index.end() != '/')
-						code = 403;
-					else
+					code = tryIndex("index.html", path);
+					switch (code)
 					{
-						if (!path_index.compare(0, 2, "./"))
-							path_index.erase(path_index.begin());
-						if (!path_index.compare(0, 3, "../"))
-							path_index.erase(path_index.begin(), path_index.begin() + 2);
-						_redirect(path_index);
-						return false;
+						case 404:
+							break ;
+						case -1:
+							return false;
+						case 0:
+							return true;
+						default:
+							error(403, false);
+							return false;
 					}
-				}
-				else if (code == 0)
-				{
-					path.swap(path_index);
-					return true;
-				}
-				else
-					code = 404;
 			}
-			if (code == 1 || code == 404)
-			{
-				dirIndex(path);
-				return false;
-			}
-			error(403, false);
+			DEBUG2("OK> " << path);
+			dirIndex(path);
 			return false;
 		}
 		else if (code != 0)

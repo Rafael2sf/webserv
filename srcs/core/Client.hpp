@@ -120,5 +120,6 @@ namespace HTTP
 		std::string const*  _errorPage( int code );
 		void _redirect( std::string const& address );
 		void _defaultPage( int code, bool close_connection );
+		int tryIndex(std::string const& index, std::string & path);
 	};
 }
