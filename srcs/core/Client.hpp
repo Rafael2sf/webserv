@@ -121,5 +121,6 @@ namespace HTTP
 		void _redirect( std::string const& address );
 		void _defaultPage( int code, bool close_connection );
 		int tryIndex(std::string const& index, std::string & path);
+		int _validateHeaderField( std::string const& key, std::string const& val );
 	};
 }

@@ -52,13 +52,11 @@ namespace HTTP
 		str = str.substr(start, finish - start + 1);
 	};
 
-	static int validUrl(std::string & s)
+	static int validateRequestPath(std::string & s)
 	{
 		int depth = 0;
 		size_t i = 0;
 
-		if (s[0] != '/')
-			return -1;
 		while (i < s.size())
 		{
 			i = s.find_first_of('/', i);
@@ -88,6 +86,29 @@ namespace HTTP
 		return 0;
 	}
 
+	static int validRelativePath(std::string const& s)
+	{
+		int depth = 0;
+		size_t i = 0;
+
+		while (i < s.size())
+		{
+			i = s.find_first_of('/', i);
+			if ((i + 1) == s.size() || i == std::string::npos)
+				break ;
+			i++;
+			if (!s.compare(i, 2, ".."))
+				depth--;
+			else if (s.compare(i, 2, "./") != 0)
+				depth++;
+
+			if (depth < 0)
+				return -1;
+			i++;	
+		}
+		return 0;
+	}
+
 	int Client::_validateRequestLine( void )
 	{
 		int v[2];
@@ -101,7 +122,7 @@ namespace HTTP
 				return -1;
 			}
 		}
-		if (validUrl(req.method[1]) < 0)
+		if (req.method[1][0] != '/' || validateRequestPath(req.method[1]) < 0)
 		{
 			error(400, true);
 			return -1;
@@ -125,23 +146,27 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::_getHostFromUrl( void )
+	static int validateContentLength(std::string const& s)
 	{
-		DEBUG2("HERE!");
-		if (req.method[1][0] == '/')
-			return 0;
-		size_t x = req.method[1].find("http://");
-		if (x != 0)
+		if (s.empty())
+			return -1;
+		for (std::string::const_iterator it = s.begin();
+			it != s.end(); it++)
 		{
-			x = req.method[1].find("https://");
-			if (x == 0)
-				x += 8;
-			else
+			if (!isdigit(*it))
 				return -1;
 		}
-		else
-			x += 7;
-		DEBUG2("(X) " << x);
+		return 0;
+	}
+
+	int Client::_getHostFromUrl( void )
+	{
+		if (req.method[1][0] == '/')
+			return 0;
+		size_t x = req.method[1].find("://");
+		if (x == 0)
+			return -1;
+		x += 3;
 		std::string::iterator y = std::find(
 			req.method[1].begin() + x, req.method[1].end(), '/');
 		if (y == req.method[1].end())
@@ -210,6 +235,31 @@ namespace HTTP
 		return 0;
 	}
 
+	int Client::_validateHeaderField( std::string const& key, std::string const& val )
+	{
+		if (key.empty())
+		{
+			error(400, true);
+			return -1;
+		}
+		if (!val.empty() && (*val.begin() == '\r' || *--val.end() == '\r'))
+		{
+			error(400, true);
+			return -1;
+		}
+		if (key == "host" && (val.empty() || req.getField("host")))
+		{
+			error(400, true);
+			return -1;
+		}
+		if (key == "content-length" && req.getField("content-length"))
+		{
+			error(400, true);
+			return -1;
+		}
+		return 0;
+	}
+
 	int Client::_updateHeaders( char const* buff, size_t n )
 	{
 		std::stringstream ss;
@@ -248,20 +298,10 @@ namespace HTTP
 			val = key.substr(pos + 1);
 			key.erase(key.begin() + pos, key.end());
 		}
-		if (key.empty())
-			return 0;
 		_owsTrimmer(val);
-		if (!val.empty() && (*val.begin() == '\r' || *--val.end() == '\r'))
-		{
-			error(400, true);
-			return -1;
-		}
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		if (key == "host" && (val.empty() || req.getField("host")))
-		{
-			error(400, true);
+		if (_validateHeaderField(key, val) < 0)
 			return -1;
-		}
 		if (req.getField(key) && !req.getField(key)->empty())
 			*req.getField(key) += ", " + val;
 		else
@@ -364,6 +404,11 @@ namespace HTTP
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
 		{
+			if (validateContentLength(*req.getField("content-length")) < 0)
+			{
+				error(400, true);
+				return -1;
+			}
 			if (server)
 				nptr = server->search(1, "client_max_body_size");
 			if (nptr)
@@ -376,7 +421,6 @@ namespace HTTP
 				error(413, true);
 				return -1;
 			}
-			req.content_length = stoi(*req.getField("content-length"), std::dec);
 		}
 		else
 			state = OK;
@@ -591,6 +635,7 @@ namespace HTTP
 		TODO: HANLED CGI AS INdex
 		-1 (something hapened response is built stop)
 		0 (success found file)
+		403 (failed to open)
 		404 (no such file)
 	*/
 	int Client::tryIndex(std::string const& index, std::string & path)
@@ -598,38 +643,46 @@ namespace HTTP
 		std::string		path_index;
 		JSON::Node *	root;
 		JSON::Node *	loc;
-		//bool			redirect = false;
 		int				code;
+		std::string		loc_str;
 
-		DEBUG2("INDEX>" << index);
 		path_index = path + index;
-		loc = matchLocation(server, path_index);
+		loc_str = req.method[1] + index;
+		loc = matchLocation(server, loc_str);
 		if (!loc)
 		{
 			error(404, false);
 			return -1;
 		}
-
-		// new root and index
+		if (validRelativePath(req.method[1] + index) < 0)
+		{
+			error(403, false);
+			return -1;
+		}
+		if (!isMethodAllowed(req.method[0], loc))
+		{
+			error(405, false);
+			return -1;
+		}
+		if (location->search(1, "redirect"))
+		{
+			_redirect("");
+			return -1;
+		}
 		root = loc->search(1, "root");
 		if (!root)
 			path_index = std::string("./html/");
+		else if (root->as<std::string const&>().empty())
+			return 404;
 		else
-		{
 			path_index = root->as<std::string const&>();
-			DEBUG2("ROOT> " << path_index);
-		}
 		if (*--path_index.end() == '/')
 			path_index.erase(--path_index.end());
 		path_index += req.getMethod()[1] + index;
-
-		DEBUG2("TRYING> " << path_index);
 		code = fopenr(&fp, path_index);
+		DEBUG2("code: " << code);
 		if (code == 404)
-		{
-			DEBUG2("HOW!?");
 			return code;
-		}
 		if (code == 1)
 		{
 			fclose(fp);
@@ -639,12 +692,12 @@ namespace HTTP
 				_redirect(req.method[1] + index + '/');
 				return -1;
 			}
-			DEBUG2("INDEXING> " << path_index);
 			dirIndex(path_index);
 			return -1;
 		}
 		else if (code != 0)
 			return code;
+		location = loc;
 		path.swap(path_index);
 		return 0;
 	}
@@ -658,10 +711,7 @@ namespace HTTP
 		if (code == 1)// dir
 		{
 			if (*--path.end() != '/')
-			{
-				error(403, false);
 				return false;
-			}
 			var = location->search(1, "index");
 			if (var)
 			{
@@ -691,7 +741,7 @@ namespace HTTP
 					switch (code)
 					{
 						case 404:
-							break ;
+							break;
 						case -1:
 							return false;
 						case 0:
@@ -701,7 +751,6 @@ namespace HTTP
 							return false;
 					}
 			}
-			DEBUG2("OK> " << path);
 			dirIndex(path);
 			return false;
 		}
@@ -719,7 +768,6 @@ namespace HTTP
 		int					read_nbr = 0;
 		std::string			str;
 
-		//memset(buf, 0, S_BUFFER_SIZE);
 		if (state == REDIRECT)
 		{
 			str = res.toString();
@@ -792,7 +840,7 @@ namespace HTTP
 
 		autoindex = location->search(1, "autoindex");
 		if (!autoindex || !autoindex->as<bool>())
-			return error(404, false);
+			return error(403, false);
 
 		DIR * dirp = opendir(path.c_str());
 		if (!dirp)

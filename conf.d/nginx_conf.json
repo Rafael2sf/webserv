@@ -4,14 +4,23 @@
 		"client_max_body_size" : 214748647,
 		"location" : {
 			"/" : {
-				"root" : "/home/rafernan/Projects/webserv/www/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
 				"index" : "index.html",
-				"cgi" : "./cgi-bin/",
-				"upload_store" : "./uploads/"
+				"autoindex" : true
 			},
 			"/uploads/" : {
-				"root" : "/home/rafernan/Projects/webserv/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
 				"autoindex" : true
+			},
+			"/cgi-bin/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"index" : "getExample.py",
+				"autoindex" : true
+			},		
+			"*.py" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"cgi" : "./cgi-bin/",
+				"upload_store" : "./uploads/"
 			}
 		}
 	}

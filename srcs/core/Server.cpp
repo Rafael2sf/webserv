@@ -246,11 +246,11 @@ namespace HTTP
 
 	void Server::_updateConnection( Client & client )
 	{
-		client.print_message(client.req, "-->");
-		client.print_message(client.res, "<--");
 		
 		if (client.childPid == 0)
 		{
+			client.print_message(client.req, "-->");
+			client.print_message(client.res, "<--");
 			if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
 				|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
 			{

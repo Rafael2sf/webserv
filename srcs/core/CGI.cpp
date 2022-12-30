@@ -23,7 +23,7 @@ namespace HTTP
 		*this = other;
 	}
 
-	CGI::CGI(Client const& client)
+	CGI::CGI(Client const& client, std::string const& file)
 	{
 		env = new char*[9];
 		std::vector<std::string>	vec;
@@ -32,11 +32,17 @@ namespace HTTP
 
 		vec.reserve(10);
 		vec.push_back("PATH_INFO=" + path);
-		
+
 		if (*--path.end() == '/')
 			path.erase(--path.end());
-		std::string					filePath = path + client.req.getMethod()[1];
-
+		std::string filePath = path + client.req.getMethod()[1];
+		DEBUG2("FILEPATH");
+		DEBUG2(filePath);
+		if (*--filePath.end() == '/')
+			filePath.erase(--filePath.end());
+		DEBUG2(filePath);
+		filePath += file;
+		DEBUG2(filePath);
 		if (client.req.getField("content-type"))
 			vec.push_back("CONTENT_TYPE=" + *client.req.getField("content-type"));
 		else
@@ -49,7 +55,7 @@ namespace HTTP
 			vec.push_back("HTTP_USER_AGENT=" + *client.req.getField("user-agent"));
 		else
 			vec.push_back("HTTP_USER_AGENT=");
-		
+
 		var = client.location->search(1, "upload_store");
 		path = var->as<std::string const&>();
 		vec.push_back("DOCUMENT_ROOT=" + path);
@@ -66,7 +72,7 @@ namespace HTTP
 		vec.push_back("HTTP_CONNECTION=" + *client.req.getField("connection"));
 		else
 			vec.push_back("HTTP_CONNECTION=");
-		
+		DEBUG2("ENV");
 		int	vec_size = vec.size();
 		env = new char*[vec_size + 1];
 		for (int i = 0; i < vec_size; i++) {

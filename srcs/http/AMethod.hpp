@@ -30,7 +30,7 @@ namespace HTTP
 		 * treated by a CGI (html forms with GET).
 		 * @param client http client class
 		*/
-		void	cgi(Client & client);
+		void	cgi(Client & client, std::string const& path);
 		
 		int		_confCheck(Client & client);
 

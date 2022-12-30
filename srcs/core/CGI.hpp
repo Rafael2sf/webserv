@@ -18,8 +18,9 @@ namespace HTTP
 			 * variables and arguments to be passed to the execve() function,
 			 * independently of the CGI method used.
 			 * @param req HTTP request which will be responded to by the CGI.
+			 * @param file --
 			*/
-			CGI(Client const& req);
+			CGI(Client const& req, std::string const& file);
 
 			/**
 			 * @brief Getter for the CGI environment variables.

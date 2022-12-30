@@ -25,6 +25,6 @@ namespace HTTP {
 	{
 		if (_confCheck(client) == -1)
 			return;
-		cgi(client);
+		cgi(client, "");
 	};
 }

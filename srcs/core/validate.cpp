@@ -67,6 +67,33 @@ namespace HTTP
 			itos(rcode, std::dec).c_str());
 	}
 
+	static int validateIndex( JSON::Node const& nref )
+	{
+		if ((nref.type() != JSON::string && nref.type() != JSON::array)
+			|| (nref.type() == JSON::array && nref.begin() == nref.end()))
+		{
+			return configError("invalid value type",
+				nref.getProperty().c_str());
+		}
+
+		for (JSON::Node::const_iterator it = nref.begin();
+			it != nref.end(); it++)
+		{
+			if (it->type() != JSON::string)
+			{
+				return configError("invalid index file",
+					nref.getProperty().c_str());
+			}
+			if (it->as<std::string const&>().empty()
+				|| it->as<std::string const&>()[0] == '/')
+			{
+				return configError("invalid index file",
+					it->as<std::string const&>().c_str());
+			}
+		}
+		return 0;
+	}
+
 	static int validateLimitExcept( JSON::Node const& nref )
 	{
 		static char const*methods[] = {
@@ -132,7 +159,7 @@ namespace HTTP
 					RETURN_EQ(isOfType(*it, true, JSON::string), -1);
 					continue ;
 				case 1:
-					RETURN_EQ(isOfType(*it, false, JSON::string), -1);
+					RETURN_EQ(validateIndex(*it), -1);
 					continue ;
 				case 2:
 					RETURN_EQ(isOfType(*it, true, JSON::string), -1);
@@ -342,6 +369,11 @@ namespace HTTP
 					continue ;
 				case 2:
 					RETURN_EQ(isOfType(*it, true, JSON::integer), -1);
+					if (it->as<int>() < 0)
+					{
+						return configError("invalid client_max_body_size",
+							itos(it->as<int>(), std::dec).c_str());
+					}
 					continue ;
 				case 3:
 					RETURN_EQ(validateLocations(*it),  -1);
@@ -365,7 +397,7 @@ namespace HTTP
 			if (it->type() != JSON::object
 				&& it->getProperty().empty())
 			{
-				return configError("invalid value type", "()");
+				return configError("invalid value type", "");
 			}
 			if (it->getProperty() != "server")
 			{

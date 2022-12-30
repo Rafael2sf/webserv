@@ -21,7 +21,7 @@ namespace HTTP
 		return *this;
 	};
 
-	void AMethod::cgi(Client & client)
+	void AMethod::cgi(Client & client, std::string const& path)
 	{
 		int	bytes = 0;
 		std::string const& body = client.req.body;
@@ -40,7 +40,7 @@ namespace HTTP
 			else if (client.childPid == 0)
 			{	
 				close(client.clientPipe[1]);
-				CGI	test(client);
+				CGI	test(client, path);
 				while (client.server->getParent() != NULL)
 					client.server = client.server->getParent();
 				delete client.server;
