@@ -7,8 +7,6 @@ def gen():
 	yield bytes('bel><br>\n                <input type=\"text\" id=\"lname\" name=\"lname\" value=\"Doe\"><br><br>\n                <input type=\"submit\" value=\"Submit\">\n          </form>\n        <br>\n        <h2>Upload</h2>\n        <form enctype=\"multipart/form-data\" action=\"/saveFile.py\" method=\"POST\">\n                <label for=\"fileTest\">Upload file:</label><br>\n                <input type=\"file\"\n                                id=\"fileTest\"\n                                name=\"fileTest\"><br>\n                <input type=\"submit\" value=\"Submit\">\n        </form>\n        <br>\n        <h2>Deletion</h2>\n        <select id=\"del_files\" name=\"file_select\" >\n                <option disabled>Select file to delete:</option>\n        </select>\n        <script src=\"./js/select.js\"></script>\n        <button type=\"button\" id=\"btn\">Delete</butto', 'utf-8')
 	yield bytes('n>\n        <script src=\"./js/delete.js\"></script>\n        <p>\n                <img src=\"./images/smoking.jpg\" alt=\"python image\">\n        </p>\n\n</body>\n</html>', 'utf-8')
 
-headers = {'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'}
 
-res = requests.post('http://localhost:8000/saveChunked.py', data=gen(), headers=headers)
-
+res = requests.post('http://localhost:8000/saveChunked.py', data=gen())
 print(res)

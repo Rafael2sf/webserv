@@ -26,7 +26,7 @@ namespace HTTP
 		int	bytes = 0;
 		std::string const& body = client.req.body;
 
-		if (client.cgiSentBytes == 0)
+		if (client.childPid == 0)
 		{
 			if (pipe(client.clientPipe) == -1)
 				return client.error(500, true);
@@ -62,15 +62,13 @@ namespace HTTP
 				close(client.clientPipe[0]);
 				client.clientPipe[0] = 0;
 				bytes = write(client.clientPipe[1], body.c_str(), body.size());
-				if (bytes != -1)
+				if (bytes > 0)
 				{
 					client.cgiSentBytes += bytes;
 					client.req.body.erase(0, bytes);
 				}
-				else
-					client.cgiSentBytes = -1;
 				client.state = CGI_PIPING;
-				if ((size_t)client.cgiSentBytes == client.req.content_length)
+				if (client.cgiSentBytes == client.req.content_length)
 				{
 					close(client.clientPipe[1]);
 					client.clientPipe[1] = 0;
@@ -81,14 +79,17 @@ namespace HTTP
 		else
 		{
 			bytes = write(client.clientPipe[1], body.c_str(), body.size());
-			if (bytes != -1)
+			if (bytes > 0)
 			{
-				if (client.cgiSentBytes == -1)
-					client.cgiSentBytes = 0;
 				client.cgiSentBytes += bytes;
 				client.req.body.erase(0, bytes);
 			}
-			if ((size_t)client.cgiSentBytes < client.req.content_length)
+			else
+			{
+				client.state = FULL_PIPE;	//Due to being non-blocking fds, the pipe buffer might be still full when the server gets here, this state allows it to return to the loop without erasing stuff.
+				return;
+			}
+			if (client.cgiSentBytes < client.req.content_length) // 0 is acceptable too
 				client.state = CGI_PIPING;
 			else
 			{

@@ -459,11 +459,9 @@ namespace HTTP
 			error(400, true);
 			return -1;
 		}
-		else if (readval == -1 && state == CGI_PIPING)
-			state = OK;
-		if (readval == -1)
-			DEBUG2( "\033[31m" << "READ -1" << "\033[0m");
-		return 0; // If EPOLLOUT event, it will be ignored!
+		else if (readval == -1)
+			return -1;
+		return 0;
 	}
 
 	void Client::print_message( Message const& m, std::string const& s  )
@@ -523,8 +521,11 @@ namespace HTTP
 		if (ep)
 			res.setField("location", *ep);
 		s = res.toString();
-		if (send(fd, s.c_str(), s.size(), 0) == -1)
+		if (send(fd, s.c_str(), s.size(), 0) <= 0)
+		{
 			res.setField("connection", "close");
+			state = SEND_ERROR;
+		}
 		return ;
 	}
 
@@ -631,15 +632,15 @@ namespace HTTP
 
 		int					read_nbr = 0;
 
-		//memset(buf, 0, S_BUFFER_SIZE);
 		if (state == REDIRECT)
 		{
 			
 			str = res.toString();
-			if (send(fd, str.c_str(), str.size(), 0) == -1)
+			if (send(fd, str.c_str(), str.size(), 0) <= 0)
 			{
+				res.setField("connection", "close");
 				state = SEND_ERROR;
-				return SEND_ERROR;
+				return -1;
 			}
 			return 0;
 		}
@@ -657,10 +658,11 @@ namespace HTTP
 				res.setField("content-length", itos(read_nbr, std::dec));
 				res.body.assign(buf, read_nbr);
 				str = res.toString();
-				if (send(fd, str.c_str(), str.size(), 0) == -1)
+				if (send(fd, str.c_str(), str.size(), 0) <= 0)
 				{
+					res.setField("connection", "close");
 					state = SEND_ERROR;
-					return SEND_ERROR;
+					return -1;
 				}
 				return 0;
 			}
@@ -672,19 +674,21 @@ namespace HTTP
 			str += itos(read_nbr, std::hex) + "\r\n";
 			res.body.assign(buf, read_nbr);
 			str += res.body + "\r\n";
-			if (send(fd, str.c_str(), str.size(), 0) == -1)
+			if (send(fd, str.c_str(), str.size(), 0) <= 0)
 			{
+				res.setField("connection", "close");
 				state = SEND_ERROR;
-				return SEND_ERROR;
+				return -1;
 			}
 			res.body.clear();
 		}
 		else
 		{
-			if (send(fd, "0\r\n\r\n", 5, 0) == -1)
+			if (send(fd, "0\r\n\r\n", 5, 0) <= 0)
 			{
+				res.setField("connection", "close");
 				state = SEND_ERROR;
-				return SEND_ERROR;
+				return -1;
 			}
 			fclose(fp);
 			fp = NULL;
@@ -736,8 +740,11 @@ namespace HTTP
 		else
 			res.setField("connection", "keep-alive");
 		str = res.toString();
-		if (send(fd, str.c_str(), str.size(), 0) == -1)
-			state = SEND_ERROR;
+		if (send(fd, str.c_str(), str.size(), 0)  <= 0)
+		{
+			res.setField("connection", "close");
+			state = SEND_ERROR; //Allows for removal of the client right after _methodChoice().
+		}
 		return;
 	};
 

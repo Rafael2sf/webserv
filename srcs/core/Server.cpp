@@ -267,20 +267,19 @@ namespace HTTP
 	}
 
 	void
-	Server::_update( int socket )
+	Server::_update( int socket, int epoll_index )
 	{
 		Client * client;
 
 		try
 		{
 			client = &clients.at(socket);
-			if (client->state == SEND_ERROR) {
-				client->error(500, true);
-				return _updateConnection(*client);
-			}
+			if (!(epoll[epoll_index].events & EPOLLIN)
+					&& client->state == CGI_PIPING) //It's possible to have received the whole request body but not have sent everything to the CGI due to write() delays (full buffer). This allows to go back to the handle() function and retry a write
+				client->state = OK;
 			if (client->state == CGI_FINISHED) //Child process is still working!!
 				return;
-			if (client->state == OK)
+			if (client->state == OK || client->state == FULL_PIPE)
 				_handle(*client);
 			else if (client->state == SENDING
 						|| client->state == REDIRECT)
@@ -288,7 +287,7 @@ namespace HTTP
 				if (client->contentEncoding() <= 0)
 					_updateConnection(*client);
 			}
-			else if (client->update(socks) < 0)
+			else if (epoll[epoll_index].events & EPOLLIN && client->update(socks) < 0)
 				_updateConnection(*client);
 		}
 		catch (const std::exception &e)
@@ -318,7 +317,7 @@ namespace HTTP
 				if (si)
 					_accept(*si);
 				else
-					_update(socket);
+					_update(socket, i);
 			}
 		}
 	}
@@ -328,7 +327,7 @@ namespace HTTP
 		_methodChoice(client);
 		if (client.state != SENDING 
 				&& client.state != CGI_PIPING
-				&& client.state != SEND_ERROR)
+				&& client.state != FULL_PIPE)
 			_updateConnection(client);
 	}
 

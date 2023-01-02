@@ -14,7 +14,7 @@ file = sys.stdin.read()
 
 
 try:
-	open(os.getenv('DOCUMENT_ROOT') + "test.txt", 'wb').write(bytes(file, 'UTF-8'))
+	open(os.getenv('DOCUMENT_ROOT') + "test.html", 'wb').write(bytes(file, 'UTF-8'))
 	message = 'The file "test.txt" was uploaded successfully'
 	s = "HTTP/1.1 201 Created\r\nlocation: " + "test.txt" + "\r\n"
 	s += "content-length: " + str(len(message)) + "\r\n" + "content-type: text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"

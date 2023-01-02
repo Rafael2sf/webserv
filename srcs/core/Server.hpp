@@ -97,7 +97,7 @@ namespace HTTP
 		 * @brief Updates an existing connection
 		 * by veryfing its state.
 		*/
-		void _update( int socket );
+		void _update( int socket, int epoll_index );
 
 		/**
 		 * @brief Handles the creation of the http response

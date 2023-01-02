@@ -26,7 +26,8 @@ namespace HTTP
 		SENDING,
 		CGI_PIPING,
 		CGI_FINISHED,
-		SEND_ERROR
+		SEND_ERROR,
+		FULL_PIPE
 	};
 
 	class Client
@@ -99,7 +100,7 @@ namespace HTTP
 		void	dirIndex(std::string const& path);
 
 		int		clientPipe[2];
-		int		cgiSentBytes;
+		size_t	cgiSentBytes;
 		int		childPid;
 		int 	state;
 		FILE *	fp;

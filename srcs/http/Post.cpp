@@ -25,9 +25,6 @@ namespace HTTP {
 	{
 		if (_confCheck(client) == -1)
 			return;
-		if (client.req.getField("transfer-encoding")
-				&& client.req.content_length == 0)
-			client.state = CGI_PIPING;
 		cgi(client);
 	};
 }

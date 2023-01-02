@@ -7,8 +7,6 @@ def gen():
 	yield bytes(' there rhrtjhrt', 'utf-8')
 	yield bytes(' play', 'utf-8')
 
-headers = {'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-
-res = requests.post('http://localhost:8000/saveChunked.py', data=gen(), headers=headers)
+res = requests.post('http://localhost:8000/saveChunked.py', data=gen())
 
 print(res)

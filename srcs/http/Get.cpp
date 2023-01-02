@@ -56,6 +56,6 @@ namespace HTTP
 		struct stat f_info;
 		lstat(path.c_str(), &f_info);
 		client.res.setField("last-modified", getDate(f_info.st_mtime));
-		client.contentEncoding();
+		client.contentEncoding();	//Any errors here will set the state for client cleanup after _methodChoice() in server class.
 	};
 }
