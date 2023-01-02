@@ -164,7 +164,7 @@ namespace HTTP
 		if (req.method[1][0] == '/')
 			return 0;
 		size_t x = req.method[1].find("://");
-		if (x == 0)
+		if (x == 0 || x == std::string::npos)
 			return -1;
 		x += 3;
 		std::string::iterator y = std::find(
@@ -680,7 +680,6 @@ namespace HTTP
 			path_index.erase(--path_index.end());
 		path_index += req.getMethod()[1] + index;
 		code = fopenr(&fp, path_index);
-		DEBUG2("code: " << code);
 		if (code == 404)
 			return code;
 		if (code == 1)

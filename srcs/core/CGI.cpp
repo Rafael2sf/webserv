@@ -36,13 +36,9 @@ namespace HTTP
 		if (*--path.end() == '/')
 			path.erase(--path.end());
 		std::string filePath = path + client.req.getMethod()[1];
-		DEBUG2("FILEPATH");
-		DEBUG2(filePath);
 		if (*--filePath.end() == '/')
 			filePath.erase(--filePath.end());
-		DEBUG2(filePath);
 		filePath += file;
-		DEBUG2(filePath);
 		if (client.req.getField("content-type"))
 			vec.push_back("CONTENT_TYPE=" + *client.req.getField("content-type"));
 		else
@@ -59,7 +55,6 @@ namespace HTTP
 		var = client.location->search(1, "upload_store");
 		path = var->as<std::string const&>();
 		vec.push_back("DOCUMENT_ROOT=" + path);
-		
 		vec.push_back("SCRIPT_FILENAME=" + client.req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + client.req.getMethod()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
@@ -69,10 +64,9 @@ namespace HTTP
 		else
 			vec.push_back("HTTP_ACCEPT=");
 		if (client.req.getField("connection"))
-		vec.push_back("HTTP_CONNECTION=" + *client.req.getField("connection"));
+			vec.push_back("HTTP_CONNECTION=" + *client.req.getField("connection"));
 		else
-			vec.push_back("HTTP_CONNECTION=");
-		DEBUG2("ENV");
+			vec.push_back("HTTP_CONNECTION=close");
 		int	vec_size = vec.size();
 		env = new char*[vec_size + 1];
 		for (int i = 0; i < vec_size; i++) {
