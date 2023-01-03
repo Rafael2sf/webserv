@@ -58,10 +58,10 @@ int		main( int argc, char **argv )
 		return HTTP::err(EXIT_FAILURE, "Usage: ./webserv 'config_file'");
 	signal(SIGINT, handle_ctrl_c);
 	signal(SIGPIPE, SIG_IGN);
-  signal(SIGCHLD, child_handler);
-  
+  	signal(SIGCHLD, child_handler);
 	if (server.init(argv[1]) == -1)
 		return (EXIT_FAILURE);
 	server.loop();
+	server.clear();
 	return (EXIT_SUCCESS);
 }

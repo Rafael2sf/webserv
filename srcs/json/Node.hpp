@@ -17,6 +17,7 @@ namespace JSON
 		boolean	=	0x08,
 		null	=	0x10,
 		array	=	0x20,
+		point	=	0x40
 	} t_node;
 
 	class Node
@@ -124,6 +125,19 @@ namespace JSON
 		Array &operator=(Array const &other);
 
 		std::vector<Node*> impl;
+	private:
+	};
+
+	class Point : public Node
+	{
+	public:
+		~Point();
+		Point(void);
+		Point(float value);
+		Point(Point const &other);
+		Point &operator=(Point const &other);
+
+		float impl;
 	private:
 	};
 }

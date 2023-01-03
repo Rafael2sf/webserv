@@ -14,7 +14,8 @@ namespace HTTP
 
 	Client::Client( void )
 	: fd(-1), timestamp(0), server(0), location(0), 
-	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
+	cgiSentBytes(0), childPid(0), state(CONNECTED),
+	fp(NULL), req_host_state(HOST_UNSET)
 	{
 		clientPipe[0] = 0;
 		clientPipe[1] = 0;
@@ -23,7 +24,8 @@ namespace HTTP
 
 	Client::Client( Client const& other )
 	: fd(-1), timestamp(0), server(0), location(0),
-	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
+	cgiSentBytes(0), childPid(0), state(CONNECTED),
+	fp(NULL), req_host_state(HOST_UNSET)
 	{
 		(void) other;
 		clientPipe[0] = 0;
@@ -33,7 +35,6 @@ namespace HTTP
 
 	Client & Client::operator=( Client const& rhs )
 	{
-		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void) rhs;
 		return *this;
 	}
@@ -52,13 +53,11 @@ namespace HTTP
 		str = str.substr(start, finish - start + 1);
 	};
 
-	static int validUrl(std::string & s)
+	static int validateRequestPath(std::string & s)
 	{
 		int depth = 0;
 		size_t i = 0;
 
-		if (s[0] != '/')
-			return -1;
 		while (i < s.size())
 		{
 			i = s.find_first_of('/', i);
@@ -88,11 +87,43 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::_validateStatusLine( void )
+	static int validRelativePath(std::string const& s)
+	{
+		int depth = 0;
+		size_t i = 0;
+
+		while (i < s.size())
+		{
+			i = s.find_first_of('/', i);
+			if ((i + 1) == s.size() || i == std::string::npos)
+				break ;
+			i++;
+			if (!s.compare(i, 2, ".."))
+				depth--;
+			else if (s.compare(i, 2, "./") != 0)
+				depth++;
+
+			if (depth < 0)
+				return -1;
+			i++;	
+		}
+		return 0;
+	}
+
+	int Client::_validateRequestLine( void )
 	{
 		int v[2];
 
-		if (validUrl(req.method[1]) < 0)
+		for (std::string::iterator it = req.method[0].begin();
+			it != req.method[0].end(); it++)
+		{
+			if (!isupper(*it))
+			{
+				error(400, true);
+				return -1;
+			}
+		}
+		if (req.method[1][0] != '/' || validateRequestPath(req.method[1]) < 0)
 		{
 			error(400, true);
 			return -1;
@@ -101,13 +132,13 @@ namespace HTTP
 		if (req.method[2] != "")
 		{
 			if (req.method[2].size() != 8 || sscanf(req.method[2].c_str(),
-				"HTTP/%d.%d", &v[0], &v[1]) != 2 || v[0] == 0)
+				"HTTP/%d.%d", &v[0], &v[1]) != 2)
 			{
 				error(400, true);
 				return -1;
 			}
 
-			if (v[0] > 1 || v[1] > 1)
+			if (v[0] != 1 || v[1] != 1)
 			{
 				error(505, true);
 				return -1;
@@ -116,15 +147,27 @@ namespace HTTP
 		return 0;
 	}
 
+	static int validateContentLength(std::string const& s)
+	{
+		if (s.empty())
+			return -1;
+		for (std::string::const_iterator it = s.begin();
+			it != s.end(); it++)
+		{
+			if (!isdigit(*it))
+				return -1;
+		}
+		return 0;
+	}
+
 	int Client::_getHostFromUrl( void )
 	{
-		if (req.method.size() != 2)
+		if (req.method[1][0] == '/')
+			return 0;
+		size_t x = req.method[1].find("://");
+		if (x == 0 || x == std::string::npos)
 			return -1;
-		size_t x = req.method[1].find("http://") + 7;
-		if (x != 0 || x == std::string::npos)
-			x = req.method[1].find("https://") + 8;
-		if (x == std::string::npos)
-			return -1;
+		x += 3;
 		std::string::iterator y = std::find(
 			req.method[1].begin() + x, req.method[1].end(), '/');
 		if (y == req.method[1].end())
@@ -132,17 +175,48 @@ namespace HTTP
 		std::string host = req.method[1].substr(x, std::distance(req.method[1].begin() + x, y));
 		req.setField("host", req.method[1].substr(x, std::distance(req.method[1].begin() + x, y)));
 		req.method[1].erase(req.method[1].begin(), y);
-		req.method.push_back("");
+		if (req.getField("host")->empty() || req.method[1].empty())
+			return -1;
+		req_host_state = HOST_REQPATH;
 		return 0;
 	}
 
-	int Client::_updateStatusLine( char const* buff, size_t n )
+	int Client::_checkSpacesRequestLine( char const* buff, size_t n )
+	{
+		size_t index;
+
+		if (isspace(*buff))
+			return -1;
+		index = req.method[0].size();
+		if (buff[index] != ' ' || isspace(buff[index + 1]))
+			return -1;
+		index += 1 + req.method[1].size();
+		if (buff[index] != ' ' || isspace(buff[index + 1]))
+			return -1;
+		index += 1 + req.method[2].size();
+		if (index != n || (index + 1 == n && buff[index + 1] != '\r'))
+			return -1;
+		return 0;
+	}
+
+	int Client::_updateRequestLine( char const* buff, size_t n )
 	{
 		std::string str;
 		size_t		start;
 
 		req.createMethodVec(std::string().assign(buff, n));
-		if (req.method.size() != 3 && _getHostFromUrl() < 0)
+		if (req.method.size() != 3
+			|| _checkSpacesRequestLine(buff, n) < 0)
+		{
+			error(400, true);
+			return -1;
+		}
+		if (req.method[1].size() > S_URI_MAX)
+		{
+			error(414, true);
+			return -1;
+		}
+		if (_getHostFromUrl() < 0)
 		{
 			error(400, true);
 			return -1;
@@ -157,16 +231,36 @@ namespace HTTP
 		}
 		else
 			req.method.push_back("");
-
-		if (_validateStatusLine() < 0)
+		if (_validateRequestLine() < 0)
 			return -1;
-
-		// for (std::vector<std::string>::iterator it = req.method.begin();
-		// 	it != req.method.end(); it++)
-		// { std::cout << *it << " "; }
-		// std::cout << std::endl;
-
 		state = HEADER_FIELDS;
+		return 0;
+	}
+
+	int Client::_validateHeaderField( std::string const& key, std::string const& val )
+	{
+		if (key.empty())
+		{
+			error(400, true);
+			return -1;
+		}
+		if (!val.empty() && (*val.begin() == '\r' || *--val.end() == '\r'))
+		{
+			error(400, true);
+			return -1;
+		}
+		if (key == "host"
+			&& ((req_host_state != HOST_REQPATH && val.empty())
+			|| req_host_state == HOST_SET))
+		{
+			error(400, true);
+			return -1;
+		}
+		if (key == "content-length" && req.getField("content-length"))
+		{
+			error(400, true);
+			return -1;
+		}
 		return 0;
 	}
 
@@ -176,14 +270,28 @@ namespace HTTP
 		std::string key;
 		std::string val;
 
+		req.header_bytes += n;
+		if (n > S_FIELD_MAX
+			|| req.header_bytes > S_HEADERS_MAX)
+		{
+			error(431, true);
+			return -1;
+		}
+		if (isspace(*buff))
+		{
+			error(400, true);
+			return -1;
+		}
 		ss.str(std::string().assign(buff, n));
 		ss.seekg(0);
 		ss >> key;
 
 		size_t pos = key.find_first_of(':');
 		if (pos == std::string::npos)
-			return 0;
-
+		{
+			error(400, true);
+			return -1;
+		}
 		if (pos == key.size() - 1)
 		{
 			key.erase(--key.end());
@@ -196,16 +304,20 @@ namespace HTTP
 		}
 		_owsTrimmer(val);
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		if (key == "host" && (val.empty() || req.getField("host")))
-		{
-			error(400, true);
+		if (_validateHeaderField(key, val) < 0)
 			return -1;
+		if (key == "host")
+		{
+			if (req_host_state == HOST_UNSET)
+				req_host_state = HOST_SET;
+			else
+			{
+				req_host_state = HOST_SET;
+				return 0;
+			}
 		}
-		else if (key.empty())
-			return 0;
-
-		if (req.getField(key))
-			*req.getField(key) += ',' + val;
+		if (req.getField(key) && !req.getField(key)->empty())
+			*req.getField(key) += ", " + val;
 		else
 			req.setField(key, val);
 		return 0;
@@ -246,26 +358,36 @@ namespace HTTP
 		else
 			res.setField("connection", "keep-alive");
 		res.body = \
-"<html>\n\
-<head><title>"+ s + "</title></head>\n\
-<body bgcolor=\"white\">\n\
-<center><h1>" + s + "</h1></center>\n\
-<hr><center>webserv/0.4</center>\n\
-</body>\n\
-</html>\n";
+			"<html>\n\
+			<head><title>"+ s + "</title></head>\n\
+			<body bgcolor=\"white\">\n\
+			<center><h1>" + s + "</h1></center>\n\
+			<hr><center>webserv/0.4</center>\n\
+			</body>\n\
+			</html>\n";
 		res.setField("content-type", "text/html");
 		res.setField("content-length", itos(res.body.size(), std::dec));
 	}
 
-	void Client::_redirect( void )
+	// if adress empty use config
+	void Client::redirect( std::string const& address )
 	{
-		JSON::Node * loc = location->search(1, "redirect");
-		int code = loc->begin()->as<int>();
-		std::string const& page = (++loc->begin())->as<std::string const&>();
+		JSON::Node * loc;
+		int code;
 
-		_defaultPage(code, false);
-		res.setField("location", page);
-		res.toString();
+		if (address.empty())
+		{
+			loc = location->search(1, "redirect");
+			code = loc->begin()->as<int>();
+			std::string const& page = (++loc->begin())->as<std::string const&>();
+			_defaultPage(code, false);
+			res.setField("location", page);
+		}
+		else
+		{
+			_defaultPage(301, false);
+			res.setField("location", address);
+		}
 		state = REDIRECT;
 	}
 
@@ -294,14 +416,15 @@ namespace HTTP
 		}
 		if (location->search(1, "redirect"))
 		{
-			_redirect();
+			redirect("");
 			return -1;
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
 		{
-			if (req.getField("transfer-encoding"))
+			if (validateContentLength(*req.getField("content-length")) < 0
+					|| req.getField("transfer-encoding"))	//transfer-encoding and content-length cannot be both in request (potential attack)
 			{
-				error(400, true); //transfer-encoding and content-length cannot be both in request (potential attack)
+				error(400, true);
 				return -1;
 			}
 			if (server)
@@ -311,7 +434,7 @@ namespace HTTP
 			else
 				size = 1048576;
 			req.content_length = stoi(*req.getField("content-length"), std::dec);
-			if (size < 0 || (size_t)size < req.content_length)
+			if (size < 0 || req.content_length > (size_t)size)
 			{
 				error(413, true);
 				return -1;
@@ -348,7 +471,8 @@ namespace HTTP
 
 		if (req.body.size() + readval < (size_t)req.content_length)
 		{
-			if (req.getField("content-type")->find("multipart/form-data") != std::string::npos)
+			if (req.getField("content-type")
+				&& *req.getField("content-type") == "multipart/form-data")
 				state = OK;
 			req.body.append(buff, readval);
 		}
@@ -381,39 +505,17 @@ namespace HTTP
 		return readval;
 	}
 
-	static void nextField( int *state, char **j )
-	{
-		if (*state == HEADER_FIELDS
-			&& (!strncmp(*j, "\r\n\r\n", 4) || !strncmp(*j, "\n\r\n\r", 4)))
-		{
-			*state = BODY_CONTENT;
-			*j += 4;
-		}
-		else if (*state == HEADER_FIELDS
-			&& !strncmp(*j, "\n\n", 2))
-		{
-			*state = BODY_CONTENT;
-			*j += 2;
-		}
-		else if (!strncmp(*j, "\r\n", 2) || !strncmp(*j, "\n\r", 2))
-			*j += 2;
-		else
-			*j += 1;
-	}
-
 	int Client::update( Sockets const& sockets )
 	{
-		std::stringstream	ss;
-		ssize_t				readval;
-		char				buff[S_BUFFER_SIZE];
+		char	buff[S_BUFFER_SIZE];
+		ssize_t	readval;
+		ssize_t	i = 0, n = 0;
+		char *	j = 0;
 
 		if (state == CONNECTED)
 			state = STATUS_LINE;
 		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, MSG_DONTWAIT)) > 0)
 		{
-			ssize_t i = 0;
-			char * j = 0;
-			size_t n = 0;
 			buff[readval] = 0;
 			timestamp = time(NULL);
 			if (state == CGI_PIPING)
@@ -431,12 +533,19 @@ namespace HTTP
 				{
 					if (j != (buff + i) && *(j - 1) == '\r')
 						j--;
+					else
+					{
+						error(400, true);
+						return -1;
+					}
 					n = j - (buff + i);
 					if (n > 0)
 					{
-						if (state == STATUS_LINE
-							&& _updateStatusLine(buff + i, n) < 0)
-							return -1;
+						if (state == STATUS_LINE)
+						{
+							if (_updateRequestLine(buff + i, n) < 0)
+								return -1;
+						}
 						else if (_updateHeaders(buff + i, n) < 0)
 							return -1;
 					}
@@ -447,7 +556,13 @@ namespace HTTP
 						error(400, true);
 						return -1;
 					}
-					nextField(&state, &j);
+					if (!strncmp(j, "\r\n", 2))
+						j += 2;
+					else
+					{
+						error(400, true);
+						return -1;
+					}
 				}
 				else
 				{
@@ -457,14 +572,12 @@ namespace HTTP
 				i += j - (buff + i);
 			}
 		}
-		if (readval == 0 && state == STATUS_LINE) // empty request 
+		if (readval == 0 && state == STATUS_LINE)
 		{
 			error(400, true);
 			return -1;
 		}
-		else if (readval == -1)
-			return -1;
-		return 0;
+		return readval;
 	}
 
 	void Client::print_message( Message const& m, std::string const& s  )
@@ -487,6 +600,8 @@ namespace HTTP
 			{ std::cerr << it->first << ": " << it->second << std::endl; }
 			std::cerr << '[' << m.body.size() << ']' << std::endl;
 		);
+		(void)m;
+		(void)s;
 	}
 
 	std::string const* Client::_errorPage( int code )
@@ -539,6 +654,7 @@ namespace HTTP
 	{
 		req.clear();
 		res.clear();
+		req_host_state = HOST_UNSET;
 		state = CONNECTED;
 		server = 0;
 		location = 0;
@@ -555,9 +671,6 @@ namespace HTTP
 		clientPipe[1] = 0;
 	}
 
-	// open  file or return http error code (403/404)
-	// if return == 1 file is dir
-	// on sucess 0
 	static int fopenr(FILE **fp, std::string const& path)
 	{
 		struct stat		stat;
@@ -565,14 +678,14 @@ namespace HTTP
 		*fp = fopen(path.c_str(), "r");
 		if (*fp == NULL)
 		{
-			if (errno == ENOENT)
+			if (errno == ENOENT || errno == ENOTDIR)
 				return 404;
 			return 403;
 		}
 		if (lstat(path.c_str(), &stat) == -1) 
 		{
 			fclose(*fp);
-      *fp = NULL;
+			*fp = NULL;
 			return 404;
 		}
 		if (S_ISDIR(stat.st_mode))
@@ -580,10 +693,78 @@ namespace HTTP
 		return 0;
 	}
 
+	int Client::	_tryIndex(std::string const& index, std::string & path)
+	{
+		std::string		path_index;
+		JSON::Node *	root;
+		JSON::Node *	loc;
+		int				code;
+		std::string		loc_str;
+
+		path_index = path + index;
+		loc_str = req.method[1] + index;
+		loc = matchLocation(server, loc_str);
+		if (!loc)
+		{
+			error(404, false);
+			return -1;
+		}
+		if (validRelativePath(req.method[1] + index) < 0)
+		{
+			error(403, false);
+			return -1;
+		}
+		if (!isMethodAllowed(req.method[0], loc))
+		{
+			error(405, false);
+			return -1;
+		}
+		if (loc->search(1, "redirect"))
+		{
+			redirect("");
+			return -1;
+		}
+		if (loc->search(1, "cgi")
+			&& getFileExtension(index) == "py")
+			path_index = loc->search(1, "cgi")->as<std::string const&>();
+		else
+		{
+			root = loc->search(1, "root");
+			if (!root)
+				path_index = std::string("./html/");
+			else if (root->as<std::string const&>().empty())
+				return 404;
+			else
+				path_index = root->as<std::string const&>();
+		}
+		if (*--path_index.end() == '/')
+			path_index.erase(--path_index.end());
+		path_index += req.getMethod()[1] + index;
+		code = fopenr(&fp, path_index);
+		if (code == 404)
+			return code;
+		if (code == 1)
+		{
+			fclose(fp);
+			fp = NULL;
+			if (*--path_index.end() != '/')
+			{
+				redirect(req.method[1] + index + '/');
+				return -1;
+			}
+			dirIndex(path_index);
+			return -1;
+		}
+		else if (code != 0)
+			return code;
+		location = loc;
+		path.swap(path_index);
+		return 0;
+	}
+
 	bool Client::getFile(std::string & path)
 	{
 		int				code;
-		std::string		path_index;
 		JSON::Node *	var = 0;
 
 		code = fopenr(&fp, path);
@@ -602,25 +783,38 @@ namespace HTTP
 				for (JSON::Node::const_iterator it = var->begin();
 					it != var->end(); it++)
 				{
-					path_index = path + it->as<std::string const&>();
-					code = fopenr(&fp, path_index);
-					if (code == 1)
+					code = _tryIndex(it->as<std::string const&>(), path);
+					switch (code)
 					{
-						fclose(fp);
-						fp = NULL;
-						code = 403;
+						case 404:
+							continue ;
+						case -1:
+							return false;
+						case 0:
+							return true;
+						default:
+							error(403, false);
+							return false;
 					}
-					else if (code == 0)
-					{
-						path.swap(path_index);
-						return true;
-					}
-				}	
+				}
 			}
-			if (code == 1 || code == 404)
-				dirIndex(path);
 			else
-				error(403, false);
+			{
+					code = _tryIndex("index.html", path);
+					switch (code)
+					{
+						case 404:
+							break;
+						case -1:
+							return false;
+						case 0:
+							return true;
+						default:
+							error(403, false);
+							return false;
+					}
+			}
+			dirIndex(path);
 			return false;
 		}
 		else if (code != 0)
@@ -634,9 +828,8 @@ namespace HTTP
 	int Client::contentEncoding(void) 
 	{
 		static char			buf[S_BUFFER_SIZE + 1];
-		std::string			str;
-
 		int					read_nbr = 0;
+		std::string			str;
 
 		if (state == REDIRECT)
 		{
@@ -711,7 +904,7 @@ namespace HTTP
 
 		autoindex = location->search(1, "autoindex");
 		if (!autoindex || !autoindex->as<bool>())
-			return error(404, false);
+			return error(403, false);
 
 		DIR * dirp = opendir(path.c_str());
 		if (!dirp)

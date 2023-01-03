@@ -31,16 +31,8 @@ namespace HTTP
 	Server &
 	Server::operator=(Server const &rhs)
 	{
-		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void)rhs;
 		return *this;
-	}
-
-	int
-	Server::init(void)
-	{
-		DEBUG2("server default init");
-		return 0;
 	}
 
 	static int stohp_validate(char const *s)
@@ -186,18 +178,17 @@ namespace HTTP
 					<< filepath << ":" << config.err() << std::endl;
 				return -1;
 			}
-			else if (validateConfig(config) < 0)
-				return -1;
+			_init_mimes();
+			_init_errors();
 			DEBUG(std::cerr << "| JSON |\n"; config.cout());
-			if (listenMap(config, socks) < 0
+			if (validateConfig(config) < 0
+				|| listenMap(config, socks) < 0
 				|| socks.listen() < 0
 				|| epoll.init(socks) < 0)
 			{
 				clear();
 				return -1;
 			}
-			_init_mimes();
-			_init_errors();
 		}
 		catch (std::exception const& e)
 		{
@@ -211,7 +202,7 @@ namespace HTTP
 	void
 	Server::_accept( t_sock_info const& si )
 	{
-		int					socket;
+		int					socket = 0;
 		Client * 			cl;
 		sockaddr_in			addr;
 		socklen_t			len = sizeof(addr);
@@ -239,7 +230,6 @@ namespace HTTP
 		}
 		catch ( std::exception const& e )
 		{
-			DEBUG2("failed to create client: " << e.what());
 			epoll.erase(socket);
 			close(socket);
 		}
@@ -251,13 +241,12 @@ namespace HTTP
 		if (client.childPid == 0)
 		{
 			client.print_message(client.req, "-->");
-			// client.print_message(client.res, "<--");
+			client.print_message(client.res, "<--");
 			if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
 				|| (client.res.getField("connection") && *client.res.getField("connection") == "close")
 				|| (!client.res.getField("connection") && client.req.getMethod()[2] == "HTTP/1.0"))
 			{
-				if (epoll.erase(client.fd) == -1)
-					DEBUG2("epoll.erase() failed");
+				epoll.erase(client.fd);
 				clients.erase(client.fd);
 			}
 			else
@@ -275,11 +264,11 @@ namespace HTTP
 		try
 		{
 			client = &clients.at(socket);
+			if (client->state == CGI_FINISHED) //Child process is still working!!
+				return;
 			if (!(epoll[epoll_index].events & EPOLLIN)
 					&& client->state == CGI_PIPING) //It's possible to have received the whole request body but not have sent everything to the CGI due to write() delays (full buffer). This allows to go back to the handle() function and retry a write
 				client->state = OK;
-			if (client->state == CGI_FINISHED) //Child process is still working!!
-				return;
 			if (client->state == OK || client->state == FULL_PIPE)
 				_handle(*client);
 			else if (client->state == SENDING
@@ -327,8 +316,9 @@ namespace HTTP
 	{
 		_methodChoice(client);
 		if (client.state != SENDING 
-				&& client.state != CGI_PIPING
-				&& client.state != FULL_PIPE)
+			&& client.state != CGI_PIPING
+			&& client.state != REDIRECT
+			&& client.state != FULL_PIPE)
 			_updateConnection(client);
 	}
 
@@ -369,7 +359,6 @@ namespace HTTP
 			}
 			if (seconds - it->second.timestamp >= S_CONN_TIMEOUT)
 			{
-				// DEBUG2('[' << it->first << "] timed out");
 				if (it->second.childPid != 0) 
 				{
 					kill(it->second.childPid, SIGKILL);

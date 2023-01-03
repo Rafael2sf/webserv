@@ -32,14 +32,6 @@ namespace HTTP
 		static std::map<pid_t, int>	childProcInfo;
 
 		/**
-		 * @brief Initiates the server with default configurations.
-		 * @return
-		 * On success, returns 0. Otherwise, -1 and
-		 * errno is set to indicate the error.
-		*/
-		int		init( void );
-
-		/**
 		 * @brief Initiates the server after parsing %filepath.
 		 * @param filepath server configuration file.
 		 * @return

@@ -24,6 +24,12 @@ namespace JSON
 		return dynamic_cast<Boolean const&>(*this).impl;
 	}
 
+	template <>
+	float Node::as<float>( void ) const
+	{
+		return dynamic_cast<Point const&>(*this).impl;
+	}
+
 	static Node * find_recursive(Node * root, std::string const& key, size_t max_depth)
 	{
 		Object const*	obj;
@@ -83,7 +89,7 @@ namespace JSON
 	Node * Node::search(int depth, ...) const
 	{
 		va_list	va;
-		Node * tmp;
+		Node * tmp = NULL;
 
 		va_start(va, depth);
 		while (depth--)
@@ -372,6 +378,36 @@ namespace JSON
 	{
 		if (this != &other)
 			impl = other.impl;
+		return *this;
+	}
+
+	// Floating-point
+	
+	Point::~Point()
+	{
+	}
+
+	Point::Point( void )
+	{
+		Node::_type = point;
+	}
+
+	Point::Point( float value )
+	{
+		Node::_type = point;
+		impl = value;
+	}
+
+	Point::Point( Point const& other )
+	: Node()
+	{
+		Node::_type = point;
+		*this = other;
+	}
+
+	Point & Point::operator=( Point const& other )
+	{
+		impl = other.impl;
 		return *this;
 	}
 }

@@ -21,7 +21,7 @@ namespace HTTP
 		return *this;
 	};
 
-	void AMethod::cgi(Client & client)
+	void AMethod::cgi(Client & client, std::string const& path)
 	{
 		int	bytes = 0;
 		std::string const& body = client.req.body;
@@ -38,23 +38,16 @@ namespace HTTP
 			else if (client.childPid == 0)
 			{	
 				close(client.clientPipe[1]);
-				CGI	test(client);
+				CGI	test(client, path);
 				while (client.server->getParent() != NULL)
 					client.server = client.server->getParent();
 				delete client.server;
 				if (dup2(client.clientPipe[0], STDIN_FILENO) == -1)
-				{
-					write(2, "error: fatal\n", 13);
 					exit(EXIT_FAILURE);
-				}
 				close (client.clientPipe[0]);
 				if (dup2(client.fd, STDOUT_FILENO) == -1)
-				{
-					write(2, "error: fatal\n", 13);
 					exit(EXIT_FAILURE);
-				}
 				execve("/usr/bin/python3", test.getArgs(), test.getEnv());
-				DEBUG2("Error in execve!");
 				exit (EXIT_FAILURE);
 			}
 			else 
@@ -68,7 +61,7 @@ namespace HTTP
 					client.req.body.erase(0, bytes);
 				}
 				client.state = CGI_PIPING;
-				if (client.cgiSentBytes == client.req.content_length)
+				if ((size_t)client.cgiSentBytes == client.req.content_length)
 				{
 					close(client.clientPipe[1]);
 					client.clientPipe[1] = 0;
@@ -99,7 +92,7 @@ namespace HTTP
 			}
 		}
 	};
-	
+
 	int	AMethod::_confCheck(Client & client) {
 
 		JSON::Node* var = client.location->search(1, "upload_store");
@@ -115,5 +108,4 @@ namespace HTTP
 		}
 		return 0;
 	};
-
 }

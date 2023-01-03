@@ -23,7 +23,7 @@ namespace HTTP
 		*this = other;
 	}
 
-	CGI::CGI(Client const& client)
+	CGI::CGI(Client const& client, std::string const& file)
 	{
 		env = new char*[9];
 		std::vector<std::string>	vec;
@@ -32,11 +32,13 @@ namespace HTTP
 
 		vec.reserve(13);
 		vec.push_back("PATH_INFO=" + path);
-		
+
 		if (*--path.end() == '/')
 			path.erase(--path.end());
-		std::string					filePath = path + client.req.getMethod()[1];
-
+		std::string filePath = path + client.req.getMethod()[1];
+		if (*--filePath.end() == '/')
+			filePath.erase(--filePath.end());
+		filePath += file;
 		if (client.req.getField("content-type"))
 			vec.push_back("CONTENT_TYPE=" + *client.req.getField("content-type"));
 		else
@@ -92,7 +94,6 @@ namespace HTTP
 	CGI &
 	CGI::operator=( CGI const& rhs )
 	{
-		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void) rhs;
 		return *this;
 	}

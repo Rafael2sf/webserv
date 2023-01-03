@@ -15,7 +15,7 @@ MKDIR		=	mkdir
 
 # compiler and flags
 CXX			=	c++ -std=c++98
-CXXFLAGS	=	-Wall -Werror -Wextra -O2
+CXXFLAGS	=	-Wall -Werror -Wextra
 DBGFLAGS	=	-Wall -Werror -Wextra -Wshadow -g -DDEBUG_MODE
 
 # dir
@@ -46,6 +46,7 @@ SRCS		=	$(addsuffix .cpp, \
 					conversion \
 					validate \
 					match \
+					extension \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
 INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))
@@ -66,7 +67,7 @@ info:
 	 SRCS		=  $(SRCS)\n"
 
 $(NAME) : $(_BIN)$(NAME)
-	
+
 $(_BIN)$(NAME): $(_BIN) $(_OBJ) $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(@) $(INCS)
 

@@ -26,9 +26,12 @@ namespace HTTP
 		S_DEFAULT_PORT = 8000,
 		S_MAX_CLIENT = 42,
 		S_EPOLL_TIMEOUT = 5000,
-		S_CONN_TIMEOUT = 15,
+		S_CONN_TIMEOUT = 30,
 		S_PIPE_LIMIT = 64000,
 		S_BUFFER_SIZE = 8192,
+		S_URI_MAX = 8000,
+		S_FIELD_MAX = 8000,
+		S_HEADERS_MAX = 8000
 	};
 
 	/* core/Sockets */
@@ -43,7 +46,7 @@ namespace HTTP
 	int configError(char const* s1, char const *s2);
 
 	std::string getDate(time_t const& tm_info);
-
+	std::string getFileExtension(std::string const& str);
 	int	stoi(std::string const& str, std::ios_base & (&f)(std::ios_base &__base));
 	std::string	itos(int const& n, std::ios_base & (&f)(std::ios_base &__base));
 }

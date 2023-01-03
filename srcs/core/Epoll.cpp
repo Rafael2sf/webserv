@@ -25,7 +25,6 @@ namespace HTTP {
 
 	Epoll & Epoll::operator=(Epoll const& cpy)
 	{
-		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void) cpy;
 		return *this;
 	};
@@ -55,7 +54,6 @@ namespace HTTP {
 
 	int	Epoll::insert(int sofd, int flag)
 	{
-		// int				flags;
 		epoll_event		ev;
 
 		memset(&ev, 0, sizeof(ev));
@@ -63,8 +61,6 @@ namespace HTTP {
 		if (flag == LISTEN_SOCKET)
 			ev.events = EPOLLIN;
 		ev.data.fd = sofd;
-		// if (fcntl(sofd, F_SETFL, O_NONBLOCK )  == -1)
-		// 	return -1;
 		return (epoll_ctl(this->fd, EPOLL_CTL_ADD, sofd, &ev));
 	}
 

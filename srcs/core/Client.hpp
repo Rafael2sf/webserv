@@ -30,13 +30,19 @@ namespace HTTP
 		FULL_PIPE
 	};
 
+	enum e_host
+	{
+		HOST_UNSET,
+		HOST_REQPATH,
+		HOST_SET,
+	};
+
 	class Client
 	{
 	public:
 		~Client( void );
 		Client( void );
 		Client( Client const& other );
-		Client & operator=( Client const& rhs );
 
 		Message		req;
 		Message		res;
@@ -46,6 +52,11 @@ namespace HTTP
 		double		timestamp;
 		JSON::Node *server;
 		JSON::Node *location;
+		int		clientPipe[2];
+		size_t	cgiSentBytes;
+		int		childPid;
+		int 	state;
+		FILE *	fp;
 
 		/**
 		 * @brief Updates the request message of the client
@@ -98,14 +109,14 @@ namespace HTTP
 		 * @param path search path
 		*/
 		void	dirIndex(std::string const& path);
+		void	redirect( std::string const& address );
 
-		int		clientPipe[2];
-		size_t	cgiSentBytes;
-		int		childPid;
-		int 	state;
-		FILE *	fp;
 
 	private:
+		
+		Client & operator=( Client const& rhs );
+
+		e_host	req_host_state;
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.
 		 * @param str Reference to the string to remove from which whitespaces 
@@ -115,12 +126,14 @@ namespace HTTP
 		int _getHostFromUrl( void );
 		int _peekHeaderFields( Sockets const& sockts );
 		int _updateHeaders( char const* buff, size_t n );
-		int _updateStatusLine( char const* buff, size_t n );
+		int _checkSpacesRequestLine( char const* buff, size_t n );
+		int _updateRequestLine( char const* buff, size_t n );
 		int _updateBody( char const * buff, size_t n, Sockets const& sockets );
-		int _validateStatusLine( void );
+		int _validateRequestLine( void );
 		std::string const*  _errorPage( int code );
-		void _redirect( void );
 		void _defaultPage( int code, bool close_connection );
+		int _tryIndex(std::string const& index, std::string & path);
+		int _validateHeaderField( std::string const& key, std::string const& val );
 		int _unchunking(void);
 	};
 }
