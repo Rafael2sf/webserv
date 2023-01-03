@@ -25,14 +25,16 @@ body {
 	height: 300px;
 }
 
-.image-card > img {
+.image-card > img,
+.image-card > video {
 	height: 100%;
 	border-radius: 5px;
 	border: 1px solid white;
 	box-shadow: -1px -1px 3.5px black, 1px 1px 3.5px black;
 }
 
-.image-card:hover > img {
+.image-card:hover > img,
+.image-card:hover > video {
 	border: 2px solid white;
 }
 

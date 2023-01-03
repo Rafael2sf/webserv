@@ -60,11 +60,18 @@ try:
 	if len(fileList) > 0:
 		for file in fileList:
 			if os.path.isfile(os.getenv('DOCUMENT_ROOT') + file):
-				fileString += "<div class=\"image-card\">"
-				fileString += "<a href=\"/uploads/" + file + "\">	</a>"
-				fileString += "<button onclick=imageDelete('" + file + "')>X</button>"
-				fileString += "<label>" + file + "</label>"
-				fileString += "<img src=\"/uploads/" + file + "\"/></div>\n"
+				if file.endswith(('.mp4', '.mp3')):
+					fileString += "<div class=\"image-card\">"
+					fileString += "<a href=\"/uploads/" + file + "\">	</a>"
+					fileString += "<button onclick=imageDelete('" + file + "')>X</button>"
+					fileString += "<label>" + file + "</label>"
+					fileString += "<video autoplay muted><source type=\"video/mp4\" src=\"/uploads/" + file + "\"></source></video></div>\n"
+				else:
+					fileString += "<div class=\"image-card\">"
+					fileString += "<a href=\"/uploads/" + file + "\">	</a>"
+					fileString += "<button onclick=imageDelete('" + file + "')>X</button>"
+					fileString += "<label>" + file + "</label>"
+					fileString += "<img src=\"/uploads/" + file + "\"/></div>\n"
 		if fileString == "":
 			raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT))
 		fileString = fileString[:-1]
