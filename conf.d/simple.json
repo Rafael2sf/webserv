@@ -4,13 +4,13 @@
 		"client_max_body_size" : 2147483647,
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"root" : "/nfs/homes/daalmeid/Desktop/conflicts/www/",
 				"index" : "index.html",
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"root" : "/nfs/homes/daalmeid/Desktop/conflicts/",
 				"autoindex" : true
 			}
 		}

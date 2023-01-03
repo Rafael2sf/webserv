@@ -22,13 +22,6 @@ namespace HTTP
 		public:
 			~Message(void);
 			Message(void);
-			Message(Message const& cpy);
-			Message &operator=(Message const& rhs);
-			
-			/**
-			 * @brief Prints the content of the header map (debug use).
-			*/
-			void printMap(void) const;
 
 			/**
 			 * @brief Method getter.
@@ -76,9 +69,12 @@ namespace HTTP
 			std::string toString(void);
 			std::string	body;
 			friend class Client;
-      
 			size_t	content_length;
+      
 		private:
+			Message(Message const& cpy);
+			Message &operator=(Message const& rhs);
+
 			size_t	header_bytes;
 			std::map<std::string, std::string>	headers; //Max size of the headers section: 8k
 			std::vector<std::string>			method; //Max size: 8k

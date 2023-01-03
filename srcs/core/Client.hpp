@@ -26,6 +26,8 @@ namespace HTTP
 		SENDING,
 		CGI_PIPING,
 		CGI_FINISHED,
+		SEND_ERROR,
+		FULL_PIPE
 	};
 
 	enum e_host
@@ -41,7 +43,6 @@ namespace HTTP
 		~Client( void );
 		Client( void );
 		Client( Client const& other );
-		Client & operator=( Client const& rhs );
 
 		Message		req;
 		Message		res;
@@ -51,6 +52,11 @@ namespace HTTP
 		double		timestamp;
 		JSON::Node *server;
 		JSON::Node *location;
+		int		clientPipe[2];
+		size_t	cgiSentBytes;
+		int		childPid;
+		int 	state;
+		FILE *	fp;
 
 		/**
 		 * @brief Updates the request message of the client
@@ -105,13 +111,11 @@ namespace HTTP
 		void	dirIndex(std::string const& path);
 		void	redirect( std::string const& address );
 
-		int		clientPipe[2];
-		int		cgiSentBytes;
-		int		childPid;
-		int 	state;
-		FILE *	fp;
 
 	private:
+		
+		Client & operator=( Client const& rhs );
+
 		e_host	req_host_state;
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.
@@ -128,7 +132,8 @@ namespace HTTP
 		int _validateRequestLine( void );
 		std::string const*  _errorPage( int code );
 		void _defaultPage( int code, bool close_connection );
-		int tryIndex(std::string const& index, std::string & path);
+		int _tryIndex(std::string const& index, std::string & path);
 		int _validateHeaderField( std::string const& key, std::string const& val );
+		int _unchunking(void);
 	};
 }

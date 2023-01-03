@@ -15,7 +15,7 @@ MKDIR		=	mkdir
 
 # compiler and flags
 CXX			=	c++ -std=c++98
-CXXFLAGS	=	-Wall -Werror -Wextra -O2
+CXXFLAGS	=	-Wall -Werror -Wextra
 DBGFLAGS	=	-Wall -Werror -Wextra -Wshadow -g -DDEBUG_MODE
 
 # dir

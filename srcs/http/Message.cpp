@@ -21,16 +21,6 @@ namespace HTTP
 		return *this;
 	}
 
-	void Message::printMap(void) const
-	{
-		for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); it++) {
-			std::cout << "\033[31m" << "header key: " << "\033[0m" << it->first
-					<< "\033[32m" << "; header value: " << "\033[0m" << it->second << ';' << std::endl;
-		}
-		DEBUG2("<<END OF HEADERS>>" << std::endl);
-		//std::cout << "The method is: " << method[0] << ", " << method[1] << ", " << method[2] << std::endl;
-	}
-
 	void Message::createMethodVec(std::string const& str)
 	{
 		std::string s;
@@ -44,13 +34,6 @@ namespace HTTP
 	{
 		return this->method;
 	}
-
-	// std::string & Message::getMethodAt( size_t i )
-	// {
-	// 	if (i >= method.size())
-	// 		DEBUG2(" BAD INDEX ");
-	// 	return this->method[i];
-	// }
 
 	std::string * Message::getField(std::string const& key)
 	{
@@ -75,7 +58,6 @@ namespace HTTP
 	void Message::setField(std::string const& key, std::string const& value)
 	{
 		if (key.empty()) {
-			DEBUG2("NEED A KEY VALUE, GENIUS!");
 			return ;
 		}
 		headers.insert(std::make_pair(key, value));

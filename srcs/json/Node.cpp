@@ -89,7 +89,7 @@ namespace JSON
 	Node * Node::search(int depth, ...) const
 	{
 		va_list	va;
-		Node * tmp;
+		Node * tmp = NULL;
 
 		va_start(va, depth);
 		while (depth--)

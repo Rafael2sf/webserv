@@ -30,7 +30,7 @@ namespace HTTP
 		JSON::Node *	 			var = client.location->search(1, "cgi");
 		std::string 				path = var->as<std::string const&>();
 
-		vec.reserve(10);
+		vec.reserve(13);
 		vec.push_back("PATH_INFO=" + path);
 
 		if (*--path.end() == '/')
@@ -47,26 +47,32 @@ namespace HTTP
 			vec.push_back("CONTENT_LENGTH=" + *client.req.getField("content-length"));
 		else
 			vec.push_back("CONTENT_LENGTH=");
-		if (client.req.getField("user-agent"))
-			vec.push_back("HTTP_USER_AGENT=" + *client.req.getField("user-agent"));
-		else
-			vec.push_back("HTTP_USER_AGENT=");
-
+		
 		var = client.location->search(1, "upload_store");
 		path = var->as<std::string const&>();
 		vec.push_back("DOCUMENT_ROOT=" + path);
 		vec.push_back("SCRIPT_FILENAME=" + client.req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + client.req.getMethod()[0]);
-		vec.push_back("SERVER_SOFTWARE=Webserv/0.4");
+		vec.push_back("SERVER_SOFTWARE=Webserv/1.0");
+		vec.push_back("SERVER_NAME=" + *client.req.getField("host"));
+		vec.push_back("SERVER_PROTOCOL=" + client.req.getMethod()[2]);
 		vec.push_back("QUERY_STRING=" + client.req.getMethod()[3]);
+		
+		if (client.req.getField("user-agent"))
+			vec.push_back("HTTP_USER_AGENT=" + *client.req.getField("user-agent"));
+		else
+			vec.push_back("HTTP_USER_AGENT=");
 		if (client.req.getField("accept"))
 			vec.push_back("HTTP_ACCEPT=" + *client.req.getField("accept"));
 		else
 			vec.push_back("HTTP_ACCEPT=");
 		if (client.req.getField("connection"))
 			vec.push_back("HTTP_CONNECTION=" + *client.req.getField("connection"));
-		else
+		else if (!client.req.getField("connection") && client.req.getMethod()[2] == "HTTP/1.0")
 			vec.push_back("HTTP_CONNECTION=close");
+		else
+			vec.push_back("HTTP_CONNECTION=keep-alive");
+		
 		int	vec_size = vec.size();
 		env = new char*[vec_size + 1];
 		for (int i = 0; i < vec_size; i++) {
@@ -88,7 +94,6 @@ namespace HTTP
 	CGI &
 	CGI::operator=( CGI const& rhs )
 	{
-		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void) rhs;
 		return *this;
 	}

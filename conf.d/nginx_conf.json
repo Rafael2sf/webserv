@@ -1,0 +1,20 @@
+{
+	"server" : {
+		"listen" : "8000",
+		"client_max_body_size": 2147483647,
+		"server_name" : ["localhost", "localhost.localhost"],
+		"location" : {
+			"/uploads/" : {
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
+				"autoindex" : true
+			},
+			"/" : {
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
+				"index" : "index.html",
+				"cgi" : "./cgi-bin/",
+				"upload_store" : "./uploads/"
+
+			}
+		}
+	}
+}

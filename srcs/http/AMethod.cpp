@@ -26,14 +26,12 @@ namespace HTTP
 		int	bytes = 0;
 		std::string const& body = client.req.body;
 
-		if (client.cgiSentBytes == 0)
+		if (client.childPid == 0)
 		{
 			if (pipe(client.clientPipe) == -1)
 				return client.error(500, true);
-			// if (fcntl(client.clientPipe[0], F_SETFL, O_NONBLOCK )  == -1)
-			// 	return client.error(500, true);
-			// if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1)
-			// 	return client.error(500, true);
+			if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1) // only the server-side pipe will be NONBLOCK, CGI uses STDIN as the other side of the pipe!
+				return client.error(500, true);
 			client.childPid = fork();
 			if (client.childPid == -1)
 				return client.error(500, true);
@@ -45,18 +43,11 @@ namespace HTTP
 					client.server = client.server->getParent();
 				delete client.server;
 				if (dup2(client.clientPipe[0], STDIN_FILENO) == -1)
-				{
-					write(2, "error: fatal\n", 13);
 					exit(EXIT_FAILURE);
-				}
 				close (client.clientPipe[0]);
 				if (dup2(client.fd, STDOUT_FILENO) == -1)
-				{
-					write(2, "error: fatal\n", 13);
 					exit(EXIT_FAILURE);
-				}
 				execve("/usr/bin/python3", test.getArgs(), test.getEnv());
-				DEBUG2("Error in execve!");
 				exit (EXIT_FAILURE);
 			}
 			else 
@@ -64,13 +55,11 @@ namespace HTTP
 				close(client.clientPipe[0]);
 				client.clientPipe[0] = 0;
 				bytes = write(client.clientPipe[1], body.c_str(), body.size());
-				if (bytes != -1)
+				if (bytes > 0)
 				{
 					client.cgiSentBytes += bytes;
-					client.req.body.clear();
+					client.req.body.erase(0, bytes);
 				}
-				else
-					client.cgiSentBytes = -1;
 				client.state = CGI_PIPING;
 				if ((size_t)client.cgiSentBytes == client.req.content_length)
 				{
@@ -83,14 +72,17 @@ namespace HTTP
 		else
 		{
 			bytes = write(client.clientPipe[1], body.c_str(), body.size());
-			if (bytes != -1)
+			if (bytes > 0)
 			{
-				if (client.cgiSentBytes == -1)
-					client.cgiSentBytes = 0;
 				client.cgiSentBytes += bytes;
-				client.req.body.clear();
+				client.req.body.erase(0, bytes);
 			}
-			if ((size_t)client.cgiSentBytes < client.req.content_length)
+			else
+			{
+				client.state = FULL_PIPE;	//Due to being non-blocking fds, the pipe buffer might be still full when the server gets here, this state allows it to return to the loop without erasing stuff.
+				return;
+			}
+			if (client.cgiSentBytes < client.req.content_length) // 0 is acceptable too
 				client.state = CGI_PIPING;
 			else
 			{

@@ -18,6 +18,5 @@ namespace HTTP {
 		*/
 		void response(Client & client);
 		
-		private:
 	};
 }

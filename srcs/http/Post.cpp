@@ -21,7 +21,7 @@ namespace HTTP {
 		return *this;
 	};
 
-	void		Post::response(Client & client)
+	void	Post::response(Client & client)
 	{
 		if (_confCheck(client) == -1)
 			return;

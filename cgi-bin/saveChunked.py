@@ -1,6 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
-import cgi, os, sys, time
+# Import modules for CGI handling 
+import os, sys
 
 # Date header creation
 from wsgiref.handlers import format_date_time
@@ -9,25 +10,13 @@ from time import mktime
 
 now = datetime.now()
 stamp = mktime(now.timetuple())
-form = cgi.FieldStorage()
+file = sys.stdin.read() 
+
 
 try:
-	fileitem = form['fileTest']
-	# Test if the file was uploaded
-	if fileitem.filename:
-		# strip leading path from file name to avoid 
-		# directory traversal attacks
-		fn = os.path.basename(fileitem.filename)
-		open(os.getenv('DOCUMENT_ROOT') + fn, 'wb').write(fileitem.file.read())
-
-		message = 'The file "' + fn + '" was uploaded successfully'
-		s = "HTTP/1.1 201 Created\r\nlocation: " + fn + "\r\n"
-
-	else:
-		message = 'No file was uploaded'
-		message =  "<html>\n<body>\n<p>" + message + "</p>\n</body>\n</html>\r\n\r"
-		s = "HTTP/1.1 200 OK\r\n"
-
+	open(os.getenv('DOCUMENT_ROOT') + "test.html", 'wb').write(bytes(file, 'UTF-8'))
+	message = 'The file "test.txt" was uploaded successfully'
+	s = "HTTP/1.1 201 Created\r\nlocation: " + "test.txt" + "\r\n"
 	s += "content-length: " + str(len(message)) + "\r\n" + "content-type: text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
 	s += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
 	s += message

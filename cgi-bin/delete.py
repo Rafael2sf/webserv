@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Import modules for CGI handling 
-import cgi, cgitb, os, sys
+import cgi, os, sys
 
 # Create instance of FieldStorage 
 form = cgi.FieldStorage() 

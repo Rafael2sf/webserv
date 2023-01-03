@@ -53,8 +53,10 @@ namespace HTTP
 			client.res.setField("content-type", mime_val->second);
 		else
 			client.res.setField("content-type", "application/octet-stream");
-		if (client.req.getField("connection")
-			&& *client.req.getField("connection") == "close")
+		if ((client.req.getField("connection")
+				&& *client.req.getField("connection") == "close")
+			|| (!client.res.getField("connection")
+				&& client.req.getMethod()[2] == "HTTP/1.0"))
 			client.res.setField("connection", "close");
 		else
 			client.res.setField("connection", "keep-alive");
@@ -62,6 +64,6 @@ namespace HTTP
 		struct stat f_info;
 		lstat(path.c_str(), &f_info);
 		client.res.setField("last-modified", getDate(f_info.st_mtime));
-		client.contentEncoding();
+		client.contentEncoding();	//Any errors here will set the state for client cleanup after _methodChoice() in server class.
 	};
 }

@@ -35,7 +35,6 @@ namespace HTTP
 
 	Client & Client::operator=( Client const& rhs )
 	{
-		DEBUG2("DO NOT CALL THIS COPY OPERATOR");
 		(void) rhs;
 		return *this;
 	}
@@ -350,8 +349,11 @@ namespace HTTP
 		res.clear();
 		res.createMethodVec("HTTP/1.1 " + s);
 
-		if (close_connection || (req.getField("connection") &&
-			*req.getField("connection") == "close"))
+		if (close_connection
+			|| (req.getField("connection")
+				&& *req.getField("connection") == "close")
+			|| (!req.getField("connection")
+				&& req.getMethod()[2] == "HTTP/1.0"))
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
@@ -419,7 +421,8 @@ namespace HTTP
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
 		{
-			if (validateContentLength(*req.getField("content-length")) < 0)
+			if (validateContentLength(*req.getField("content-length")) < 0
+					|| req.getField("transfer-encoding"))	//transfer-encoding and content-length cannot be both in request (potential attack)
 			{
 				error(400, true);
 				return -1;
@@ -437,6 +440,18 @@ namespace HTTP
 				return -1;
 			}
 		}
+		else if (req.method[0] != "GET" && req.getField("transfer-encoding"))
+		{
+			std::string	encoding(*req.getField("transfer-encoding"));
+
+			if (encoding == "chunked")
+				req.content_length = 0;
+			else
+			{
+				error(501, true);
+				return -1;
+			}
+		}
 		else
 			state = OK;
 		return 0;
@@ -444,18 +459,42 @@ namespace HTTP
 
 	int Client::_updateBody( char const* buff, size_t readval, Sockets const& sockets )
 	{
+
 		if (req.body.size() == 0 && _peekHeaderFields(sockets) < 0)
 		{
 			if (state == REDIRECT)
 				return 0;
 			return -1;
 		}
+		
+		JSON::Node*	maxBody = server->search(1, "client_max_body_size");
+
 		if (req.body.size() + readval < (size_t)req.content_length)
 		{
 			if (req.getField("content-type")
 				&& *req.getField("content-type") == "multipart/form-data")
 				state = OK;
 			req.body.append(buff, readval);
+		}
+		else if (req.getField("transfer-encoding")) //Checked before getting here, if transfer-encoding exists, it is chunked
+		{
+			req.body.append(buff, readval);
+			req.content_length += readval;
+			if ((maxBody && req.content_length > static_cast<size_t>(maxBody->as<int>()))
+					|| (!maxBody && req.content_length > 1048576))
+			{
+				error(413, true);
+				return -1;
+			}
+			if (std::string(buff).find("0\r\n\r\n") != std::string::npos)
+			{
+				if (_unchunking() < 0)
+				{
+					error(400, true);
+					return -1;
+				}
+				state = OK;
+			}
 		}
 		else
 		{
@@ -475,14 +514,13 @@ namespace HTTP
 
 		if (state == CONNECTED)
 			state = STATUS_LINE;
-		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
+		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, MSG_DONTWAIT)) > 0)
 		{
 			buff[readval] = 0;
 			timestamp = time(NULL);
 			if (state == CGI_PIPING)
 			{
-				if (req.body.empty())
-					req.body.append(buff, readval);
+				req.body.append(buff, readval);
 				state = OK;
 				return 0;
 			}
@@ -539,7 +577,7 @@ namespace HTTP
 			error(400, true);
 			return -1;
 		}
-		return 0;
+		return readval;
 	}
 
 	void Client::print_message( Message const& m, std::string const& s  )
@@ -562,6 +600,8 @@ namespace HTTP
 			{ std::cerr << it->first << ": " << it->second << std::endl; }
 			std::cerr << '[' << m.body.size() << ']' << std::endl;
 		);
+		(void)m;
+		(void)s;
 	}
 
 	std::string const* Client::_errorPage( int code )
@@ -598,9 +638,15 @@ namespace HTTP
 		_defaultPage(code, close_connection);
 		if (ep)
 			res.setField("location", *ep);
-		s = res.toString();
-		if (send(fd, s.c_str(), s.size(), 0) == -1)
+		if(!req.method.empty() && req.method[2] == "HTTP/1.0")
 			res.setField("connection", "close");
+		s = res.toString();
+			
+		if (send(fd, s.c_str(), s.size(), MSG_DONTWAIT) <= 0)
+		{
+			res.setField("connection", "close");
+			state = SEND_ERROR;
+		}
 		return ;
 	}
 
@@ -647,7 +693,7 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::	tryIndex(std::string const& index, std::string & path)
+	int Client::	_tryIndex(std::string const& index, std::string & path)
 	{
 		std::string		path_index;
 		JSON::Node *	root;
@@ -737,7 +783,7 @@ namespace HTTP
 				for (JSON::Node::const_iterator it = var->begin();
 					it != var->end(); it++)
 				{
-					code = tryIndex(it->as<std::string const&>(), path);
+					code = _tryIndex(it->as<std::string const&>(), path);
 					switch (code)
 					{
 						case 404:
@@ -754,7 +800,7 @@ namespace HTTP
 			}
 			else
 			{
-					code = tryIndex("index.html", path);
+					code = _tryIndex("index.html", path);
 					switch (code)
 					{
 						case 404:
@@ -788,9 +834,10 @@ namespace HTTP
 		if (state == REDIRECT)
 		{
 			str = res.toString();
-			if (send(fd, str.c_str(), str.size(), 0) == -1)
+			if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT) <= 0)
 			{
-				error(500, true);
+				res.setField("connection", "close");
+				state = SEND_ERROR;
 				return -1;
 			}
 			return 0;
@@ -809,9 +856,10 @@ namespace HTTP
 				res.setField("content-length", itos(read_nbr, std::dec));
 				res.body.assign(buf, read_nbr);
 				str = res.toString();
-				if (send(fd, str.c_str(), str.size(), 0) == -1)
+				if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT) <= 0)
 				{
-					error(500, true);
+					res.setField("connection", "close");
+					state = SEND_ERROR;
 					return -1;
 				}
 				return 0;
@@ -824,19 +872,20 @@ namespace HTTP
 			str += itos(read_nbr, std::hex) + "\r\n";
 			res.body.assign(buf, read_nbr);
 			str += res.body + "\r\n";
-			if (send(fd, str.c_str(), str.size(), 0) == -1)
+			if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT) <= 0)
 			{
-				state = OK;
-				error(500, true);
+				res.setField("connection", "close");
+				state = SEND_ERROR;
 				return -1;
 			}
 			res.body.clear();
 		}
 		else
 		{
-			if (send(fd, "0\r\n\r\n", 5, 0) == -1)
+			if (send(fd, "0\r\n\r\n", 5, MSG_DONTWAIT) <= 0)
 			{
-				error(500, true);
+				res.setField("connection", "close");
+				state = SEND_ERROR;
 				return -1;
 			}
 			fclose(fp);
@@ -850,8 +899,6 @@ namespace HTTP
 		JSON::Node * autoindex;
 		std::string	 str;
 
-		if (!location)
-			return error(404, false);
 		res.createMethodVec("HTTP/1.1 200 OK");
 		res.setField("content-type", "text/html");
 
@@ -885,14 +932,47 @@ namespace HTTP
 		closedir(dirp);
 		res.body += "</hr></pre>\n</body>\n</html>\n";
 		res.setField("content-length", itos(res.body.length(), std::dec));
-		if (req.getField("connection")
-			&& *req.getField("connection") == "close")
+		if ((req.getField("connection")
+				&& *req.getField("connection") == "close")
+			|| (!req.getField("connection")
+				&& req.getMethod()[2] == "HTTP/1.0"))
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
 		str = res.toString();
-		if (send(fd, str.c_str(), str.size(), 0) == -1)
-			return error(500, true);			//??????????
-		return ;
+		if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT)  <= 0)
+		{
+			res.setField("connection", "close");
+			state = SEND_ERROR; //Allows for removal of the client right after _methodChoice().
+		}
+		return;
 	};
+
+	int		Client::_unchunking(void)
+	{
+		size_t	i = 0;
+		size_t	chunkEnd = 0;
+		int		chunkSize = 0;
+		try
+		{
+			while (i != std::string::npos)
+			{
+				i = req.body.find("\r\n", i);
+				if (i == std::string::npos)
+					break ;
+				chunkSize = stoi(req.body.substr(chunkEnd, i - chunkEnd), std::hex);
+				req.body.erase(chunkEnd, i + 2 - chunkEnd);
+				i = chunkEnd + chunkSize;
+				req.body.erase(i, 2);
+				chunkEnd = i;
+			}
+		}
+		catch(const std::exception& e)
+		{
+			std::cerr << e.what() << '\n';
+			return -1;
+		}
+		req.content_length = req.body.size();
+		return 0;
+	}
 }
