@@ -47,8 +47,10 @@ namespace HTTP
 			else
 				client.res.setField("content-type", "application/octet-stream");
 		}
-		if (client.req.getField("connection")
-			&& *client.req.getField("connection") == "close")
+		if ((client.req.getField("connection")
+				&& *client.req.getField("connection") == "close")
+			|| (!client.res.getField("connection")
+				&& client.req.getMethod()[2] == "HTTP/1.0"))
 			client.res.setField("connection", "close");
 		else
 			client.res.setField("connection", "keep-alive");

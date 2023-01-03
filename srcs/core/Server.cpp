@@ -253,7 +253,8 @@ namespace HTTP
 			client.print_message(client.req, "-->");
 			// client.print_message(client.res, "<--");
 			if ((client.req.getField("connection") && *client.req.getField("connection") == "close")
-				|| (client.res.getField("connection") && *client.res.getField("connection") == "close"))
+				|| (client.res.getField("connection") && *client.res.getField("connection") == "close")
+				|| (!client.res.getField("connection") && client.req.getMethod()[2] == "HTTP/1.0"))
 			{
 				if (epoll.erase(client.fd) == -1)
 					DEBUG2("epoll.erase() failed");
@@ -350,7 +351,8 @@ namespace HTTP
 						it->second.error(childIt->second, false);
 					it->second.childPid = 0;
 					if ((it->second.req.getField("connection") && *it->second.req.getField("connection") == "close")
-							|| (it->second.res.getField("connection") && *it->second.res.getField("connection") == "close"))
+							|| (it->second.res.getField("connection") && *it->second.res.getField("connection") == "close")
+							|| (!it->second.req.getField("connection") && it->second.req.getMethod()[2] == "HTTP/1.0"))
 						resetIt = true;
 					_updateConnection(it->second);
 					childProcInfo.erase(childIt->first);

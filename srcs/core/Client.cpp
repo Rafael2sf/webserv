@@ -237,8 +237,11 @@ namespace HTTP
 		res.clear();
 		res.createMethodVec("HTTP/1.1 " + s);
 
-		if (close_connection || (req.getField("connection") &&
-			*req.getField("connection") == "close"))
+		if (close_connection
+			|| (req.getField("connection")
+				&& *req.getField("connection") == "close")
+			|| (!req.getField("connection")
+				&& req.getMethod()[2] == "HTTP/1.0"))
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
@@ -406,7 +409,7 @@ namespace HTTP
 
 		if (state == CONNECTED)
 			state = STATUS_LINE;
-		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, 0)) > 0)
+		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, MSG_DONTWAIT)) > 0)
 		{
 			ssize_t i = 0;
 			char * j = 0;
@@ -520,8 +523,11 @@ namespace HTTP
 		_defaultPage(code, close_connection);
 		if (ep)
 			res.setField("location", *ep);
+		if(!req.method.empty() && req.method[2] == "HTTP/1.0")
+			res.setField("connection", "close");
 		s = res.toString();
-		if (send(fd, s.c_str(), s.size(), 0) <= 0)
+			
+		if (send(fd, s.c_str(), s.size(), MSG_DONTWAIT) <= 0)
 		{
 			res.setField("connection", "close");
 			state = SEND_ERROR;
@@ -634,9 +640,8 @@ namespace HTTP
 
 		if (state == REDIRECT)
 		{
-			
 			str = res.toString();
-			if (send(fd, str.c_str(), str.size(), 0) <= 0)
+			if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT) <= 0)
 			{
 				res.setField("connection", "close");
 				state = SEND_ERROR;
@@ -658,7 +663,7 @@ namespace HTTP
 				res.setField("content-length", itos(read_nbr, std::dec));
 				res.body.assign(buf, read_nbr);
 				str = res.toString();
-				if (send(fd, str.c_str(), str.size(), 0) <= 0)
+				if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT) <= 0)
 				{
 					res.setField("connection", "close");
 					state = SEND_ERROR;
@@ -674,7 +679,7 @@ namespace HTTP
 			str += itos(read_nbr, std::hex) + "\r\n";
 			res.body.assign(buf, read_nbr);
 			str += res.body + "\r\n";
-			if (send(fd, str.c_str(), str.size(), 0) <= 0)
+			if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT) <= 0)
 			{
 				res.setField("connection", "close");
 				state = SEND_ERROR;
@@ -684,7 +689,7 @@ namespace HTTP
 		}
 		else
 		{
-			if (send(fd, "0\r\n\r\n", 5, 0) <= 0)
+			if (send(fd, "0\r\n\r\n", 5, MSG_DONTWAIT) <= 0)
 			{
 				res.setField("connection", "close");
 				state = SEND_ERROR;
@@ -734,13 +739,15 @@ namespace HTTP
 		closedir(dirp);
 		res.body += "</hr></pre>\n</body>\n</html>\n";
 		res.setField("content-length", itos(res.body.length(), std::dec));
-		if (req.getField("connection")
-			&& *req.getField("connection") == "close")
+		if ((req.getField("connection")
+				&& *req.getField("connection") == "close")
+			|| (!req.getField("connection")
+				&& req.getMethod()[2] == "HTTP/1.0"))
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
 		str = res.toString();
-		if (send(fd, str.c_str(), str.size(), 0)  <= 0)
+		if (send(fd, str.c_str(), str.size(), MSG_DONTWAIT)  <= 0)
 		{
 			res.setField("connection", "close");
 			state = SEND_ERROR; //Allows for removal of the client right after _methodChoice().
