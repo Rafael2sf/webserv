@@ -16,15 +16,6 @@ namespace HTTP
 		return *this;
 	};
 
-	static std::string getFileExtension(std::string const& str)
-	{
-		size_t index = str.find_last_of('.');
-		if (index == std::string::npos
-			|| str.find('/', index) != std::string::npos)
-			return "";
-		return std::string(str.substr(index + 1));
-	}
-
 	void Get::response(Client & client)
 	{
 		std::string		path;

@@ -46,7 +46,7 @@ namespace HTTP
 	int configError(char const* s1, char const *s2);
 
 	std::string getDate(time_t const& tm_info);
-
+	std::string getFileExtension(std::string const& str);
 	int	stoi(std::string const& str, std::ios_base & (&f)(std::ios_base &__base));
 	std::string	itos(int const& n, std::ios_base & (&f)(std::ios_base &__base));
 }

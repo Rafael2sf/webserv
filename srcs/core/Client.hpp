@@ -28,6 +28,13 @@ namespace HTTP
 		CGI_FINISHED,
 	};
 
+	enum e_host
+	{
+		HOST_UNSET,
+		HOST_REQPATH,
+		HOST_SET,
+	};
+
 	class Client
 	{
 	public:
@@ -96,6 +103,7 @@ namespace HTTP
 		 * @param path search path
 		*/
 		void	dirIndex(std::string const& path);
+		void	redirect( std::string const& address );
 
 		int		clientPipe[2];
 		int		cgiSentBytes;
@@ -104,6 +112,7 @@ namespace HTTP
 		FILE *	fp;
 
 	private:
+		e_host	req_host_state;
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.
 		 * @param str Reference to the string to remove from which whitespaces 
@@ -118,7 +127,6 @@ namespace HTTP
 		int _updateBody( char const * buff, size_t n, Sockets const& sockets );
 		int _validateRequestLine( void );
 		std::string const*  _errorPage( int code );
-		void _redirect( std::string const& address );
 		void _defaultPage( int code, bool close_connection );
 		int tryIndex(std::string const& index, std::string & path);
 		int _validateHeaderField( std::string const& key, std::string const& val );

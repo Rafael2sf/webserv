@@ -12,8 +12,7 @@
 				"index" : "_"
 			},
 			"*.py" : {
-				"cgi" : "/nfs/homes/rafernan/Desktop/webserv/cgi-bin/",
-				"upload_store" : "/nfs/homes/rafernan/Desktop/webserv/uploads/"
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/cgi-bin/"
 			},
 			"/www/" : {
 				"root" : "/nfs/homes/rafernan/Desktop/webserv/"

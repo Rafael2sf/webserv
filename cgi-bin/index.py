@@ -50,7 +50,7 @@ fileString ="""<!DOCTYPE html>
 	<div class="menu-form">
 		<form onsubmit="location.reload()" enctype="multipart/form-data" action="/saveFile.py" method="POST">
 			<input type="file" id="fileTest" name="fileTest"/>
-			<input type="submit" value="POST"/>
+			<input type="submit" value="+"/>
 		</form>
 	</div>
 	<div class="menu-images">"""

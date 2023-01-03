@@ -80,9 +80,20 @@ body {
 	border-radius: 100%;
 }
 
+@keyframes slide {
+	from {
+		bottom: -5px;
+	}
+	to {
+		bottom: 5px;
+	}
+}
+
 .image-card:hover > button {
 	display: block;
 	cursor: pointer;
+	animation-name: slide;
+	animation-duration: 1s;
 }
 
 .image-card:hover > a {

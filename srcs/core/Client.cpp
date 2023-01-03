@@ -14,7 +14,8 @@ namespace HTTP
 
 	Client::Client( void )
 	: fd(-1), timestamp(0), server(0), location(0), 
-	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
+	cgiSentBytes(0), childPid(0), state(CONNECTED),
+	fp(NULL), req_host_state(HOST_UNSET)
 	{
 		clientPipe[0] = 0;
 		clientPipe[1] = 0;
@@ -23,7 +24,8 @@ namespace HTTP
 
 	Client::Client( Client const& other )
 	: fd(-1), timestamp(0), server(0), location(0),
-	cgiSentBytes(0), childPid(0), state(CONNECTED), fp(NULL)
+	cgiSentBytes(0), childPid(0), state(CONNECTED),
+	fp(NULL), req_host_state(HOST_UNSET)
 	{
 		(void) other;
 		clientPipe[0] = 0;
@@ -176,6 +178,7 @@ namespace HTTP
 		req.method[1].erase(req.method[1].begin(), y);
 		if (req.getField("host")->empty() || req.method[1].empty())
 			return -1;
+		req_host_state = HOST_REQPATH;
 		return 0;
 	}
 
@@ -247,7 +250,9 @@ namespace HTTP
 			error(400, true);
 			return -1;
 		}
-		if (key == "host" && (val.empty() || req.getField("host")))
+		if (key == "host"
+			&& ((req_host_state != HOST_REQPATH && val.empty())
+			|| req_host_state == HOST_SET))
 		{
 			error(400, true);
 			return -1;
@@ -302,6 +307,16 @@ namespace HTTP
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		if (_validateHeaderField(key, val) < 0)
 			return -1;
+		if (key == "host")
+		{
+			if (req_host_state == HOST_UNSET)
+				req_host_state = HOST_SET;
+			else
+			{
+				req_host_state = HOST_SET;
+				return 0;
+			}
+		}
 		if (req.getField(key) && !req.getField(key)->empty())
 			*req.getField(key) += ", " + val;
 		else
@@ -353,7 +368,7 @@ namespace HTTP
 	}
 
 	// if adress empty use config
-	void Client::_redirect( std::string const& address )
+	void Client::redirect( std::string const& address )
 	{
 		JSON::Node * loc;
 		int code;
@@ -399,7 +414,7 @@ namespace HTTP
 		}
 		if (location->search(1, "redirect"))
 		{
-			_redirect("");
+			redirect("");
 			return -1;
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
@@ -593,6 +608,7 @@ namespace HTTP
 	{
 		req.clear();
 		res.clear();
+		req_host_state = HOST_UNSET;
 		state = CONNECTED;
 		server = 0;
 		location = 0;
@@ -631,14 +647,7 @@ namespace HTTP
 		return 0;
 	}
 
-	/*
-		TODO: HANLED CGI AS INdex
-		-1 (something hapened response is built stop)
-		0 (success found file)
-		403 (failed to open)
-		404 (no such file)
-	*/
-	int Client::tryIndex(std::string const& index, std::string & path)
+	int Client::	tryIndex(std::string const& index, std::string & path)
 	{
 		std::string		path_index;
 		JSON::Node *	root;
@@ -664,18 +673,24 @@ namespace HTTP
 			error(405, false);
 			return -1;
 		}
-		if (location->search(1, "redirect"))
+		if (loc->search(1, "redirect"))
 		{
-			_redirect("");
+			redirect("");
 			return -1;
 		}
-		root = loc->search(1, "root");
-		if (!root)
-			path_index = std::string("./html/");
-		else if (root->as<std::string const&>().empty())
-			return 404;
+		if (loc->search(1, "cgi")
+			&& getFileExtension(index) == "py")
+			path_index = loc->search(1, "cgi")->as<std::string const&>();
 		else
-			path_index = root->as<std::string const&>();
+		{
+			root = loc->search(1, "root");
+			if (!root)
+				path_index = std::string("./html/");
+			else if (root->as<std::string const&>().empty())
+				return 404;
+			else
+				path_index = root->as<std::string const&>();
+		}
 		if (*--path_index.end() == '/')
 			path_index.erase(--path_index.end());
 		path_index += req.getMethod()[1] + index;
@@ -688,7 +703,7 @@ namespace HTTP
 			fp = NULL;
 			if (*--path_index.end() != '/')
 			{
-				_redirect(req.method[1] + index + '/');
+				redirect(req.method[1] + index + '/');
 				return -1;
 			}
 			dirIndex(path_index);
@@ -710,7 +725,10 @@ namespace HTTP
 		if (code == 1)// dir
 		{
 			if (*--path.end() != '/')
+			{
+				error(403, false);
 				return false;
+			}
 			var = location->search(1, "index");
 			if (var)
 			{

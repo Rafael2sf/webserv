@@ -46,6 +46,7 @@ SRCS		=	$(addsuffix .cpp, \
 					conversion \
 					validate \
 					match \
+					extension \
 				)
 OBJS		=	$(addprefix $(_OBJ), $(patsubst %.cpp, %.o, $(SRCS)))
 INCS		=	-I ./$(_INC) $(addprefix -I./, $(VPATH))
