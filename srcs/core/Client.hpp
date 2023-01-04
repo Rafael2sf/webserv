@@ -3,14 +3,12 @@
 #include "Sockets.hpp"
 #include "webserv.hpp"
 #include "Message.hpp"
-#include <cstdlib>
-#include <cstdio>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
+// #include <unistd.h>
+// #include <sys/types.h>
+// #include <sys/socket.h>
+// #include <netdb.h>
 #include <sys/stat.h>
-#include <sys/types.h>
+// #include <sys/types.h>
 #include <dirent.h>
 
 namespace HTTP

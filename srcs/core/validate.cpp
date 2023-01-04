@@ -24,6 +24,11 @@ namespace HTTP
 	{
 		size_t	count = 0;
 
+		if (!unique && !std::distance(nref.begin(), nref.end()))
+		{
+			return configError("invalid value type",
+				nref.getProperty().c_str());
+		}
 		for (JSON::Node::const_iterator it = nref.begin();
 			it != nref.end(); it.skip(), count++)
 		{
@@ -254,7 +259,14 @@ namespace HTTP
 		for (JSON::Node::const_iterator it = nref.begin();
 			it != nref.end(); it.skip())
 		{
-			if (it->type() != JSON::integer && it->type() != JSON::array)
+			if (it->getProperty().empty() || it->getProperty().at(0) != '/')
+			{
+				return configError("invalid error page",
+					it->getProperty().c_str());
+			}
+			if ((it->type() != JSON::integer && it->type() != JSON::array)
+				|| (it->type() == JSON::array 
+				&& std::distance(it->begin(), it->end()) <= 0))
 			{
 				return configError("invalid value type",
 					it->getProperty().c_str());
@@ -296,7 +308,7 @@ namespace HTTP
 		if (*it == '*')
 		{
 			it++;
-			if (it == str.end() || *it != '.')
+			if (it == str.end() || it == --str.end() || *it != '.')
 				return -1;
 			leading_wcard = true;
 		}
@@ -307,7 +319,7 @@ namespace HTTP
 			if (*it == '.'
 				&& (*(it + 1) == '.'|| *(it - 1) == '.'))
 				return -1;
-			if (*it == '*' && (leading_wcard
+			if (*it == '*' && (leading_wcard || str.size() <= 2
 				|| ((it + 1) != str.end() || *(it - 1) != '.')))
 				return -1;
 		}

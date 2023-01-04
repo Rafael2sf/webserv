@@ -16,9 +16,11 @@
 namespace HTTP {
 
 	Epoll::Epoll(void)
+	: fd(-1)
 	{};
 
 	Epoll::Epoll(Epoll const& cpy)
+	: fd(-1)
 	{
 		*this = cpy;
 	};
@@ -81,7 +83,10 @@ namespace HTTP {
 
 	void Epoll::stop( void )
 	{
-		close(this->fd);
-		fd = -1;
+		if (fd >= 0)
+		{
+			close(fd);
+			fd = -1;
+		}
 	}
 }

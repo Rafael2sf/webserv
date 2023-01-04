@@ -1,10 +1,10 @@
 #include "webserv.hpp"
 #include "Server.hpp"
-#include <cstdio>
+// #include <cstdio>
 #include <csignal>
-#include "Get.hpp"
-#include "Delete.hpp"
-#include "Post.hpp"
+// #include "Get.hpp"
+// #include "Delete.hpp"
+// #include "Post.hpp"
 
 void handle_ctrl_c( int signum )
 {
@@ -53,14 +53,19 @@ void child_handler( int signum )
 int		main( int argc, char **argv )
 {
 	HTTP::Server	server;
+	int				val = -1;
 
-	if (argc != 2)
-		return HTTP::err(EXIT_FAILURE, "Usage: ./webserv 'config_file'");
 	signal(SIGINT, handle_ctrl_c);
 	signal(SIGPIPE, SIG_IGN);
-  	signal(SIGCHLD, child_handler);
-	if (server.init(argv[1]) == -1)
-		return (EXIT_FAILURE);
+	signal(SIGCHLD, child_handler);
+	if (argc == 1)
+		val = server.init("conf.d/conf.json");
+	else if (argc == 2)
+		val = server.init(argv[1]);
+	else
+		return HTTP::err(EXIT_FAILURE, "Usage: ./webserv 'config_file'");
+	if (val == -1)
+		return -1;
 	server.loop();
 	server.clear();
 	return (EXIT_SUCCESS);

@@ -4,7 +4,7 @@
 		"server_name" : "localhost",
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/html/",
+				"root" : "/home/rafernan/Projects/webserv/www/html/",
 				"index" : "index0.html"
 			}
 		}
@@ -14,7 +14,7 @@
 		"server_name" : "localhost.localhost",
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/html/",
+				"root" : "/home/rafernan/Projects/webserv/www/html/",
 				"index" : "index1.html"
 			}
 		}
@@ -24,7 +24,7 @@
 		"server_name" : "*.www.localhost",
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/html/",
+				"root" : "/home/rafernan/Projects/webserv/www/html/",
 				"index" : "index2.html"
 			}
 		}
@@ -34,7 +34,7 @@
 		"server_name" : "dev.*",
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/html/",
+				"root" : "/home/rafernan/Projects/webserv/www/html/",
 				"index" : "index3.html"
 			}
 		}
@@ -43,18 +43,18 @@
 		"listen" : "9000",
 		"location" : {
 			"/" : {
-				"index" : "index.html",
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/"
+				"root" : "/home/rafernan/Projects/webserv/www/",
+				"index" : "index.html"
 			},
 			"/html/" : {
 				"autoindex" : true,
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/"
+				"root" : "/home/rafernan/Projects/webserv/www/"
 			},
 			"=/501.html" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/html/"
+				"root" : "/home/rafernan/Projects/webserv/www/html/"
 			},
 			"*.jpeg" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/images/"
+				"root" : "/home/rafernan/Projects/webserv/www/images/"
 			}
 		}
 	}

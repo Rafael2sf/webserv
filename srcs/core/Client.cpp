@@ -1,9 +1,5 @@
 #include "Client.hpp"
-#include <fcntl.h>
-#include <iomanip>
-#include "Node.hpp"
 #include "Server.hpp"
-#include <algorithm>
 
 namespace HTTP
 {
@@ -358,13 +354,13 @@ namespace HTTP
 		else
 			res.setField("connection", "keep-alive");
 		res.body = \
-			"<html>\n\
-			<head><title>"+ s + "</title></head>\n\
-			<body bgcolor=\"white\">\n\
-			<center><h1>" + s + "</h1></center>\n\
-			<hr><center>webserv/0.4</center>\n\
-			</body>\n\
-			</html>\n";
+"<html>\n\
+<head><title>"+ s + "</title></head>\n\
+<body bgcolor=\"white\">\n\
+<center><h1>" + s + "</h1></center>\n\
+<hr><center>webserv/0.4</center>\n\
+</body>\n\
+</html>\n";
 		res.setField("content-type", "text/html");
 		res.setField("content-length", itos(res.body.size(), std::dec));
 	}
@@ -619,7 +615,8 @@ namespace HTTP
 				if (err->type() == JSON::integer && 
 					err->as<int>() == code)
 				{
-					return &it->getProperty();
+					if (err->getProperty() != req.method[1])
+						return &it->getProperty();
 				}
 			}
 		}
@@ -638,10 +635,9 @@ namespace HTTP
 		_defaultPage(code, close_connection);
 		if (ep)
 			res.setField("location", *ep);
-		if(!req.method.empty() && req.method[2] == "HTTP/1.0")
+		if(req.method.size() >= 3 && req.method[2] == "HTTP/1.0")
 			res.setField("connection", "close");
 		s = res.toString();
-			
 		if (send(fd, s.c_str(), s.size(), MSG_DONTWAIT) <= 0)
 		{
 			res.setField("connection", "close");

@@ -47,6 +47,9 @@ namespace HTTP
 				close (client.clientPipe[0]);
 				if (dup2(client.fd, STDOUT_FILENO) == -1)
 					exit(EXIT_FAILURE);
+#ifndef DEBUG_MODE
+				close(STDERR_FILENO);
+#endif
 				execve("/usr/bin/python3", test.getArgs(), test.getEnv());
 				exit (EXIT_FAILURE);
 			}

@@ -1,13 +1,12 @@
 #pragma once
 
-#include <iostream>
+// #include <iostream>
 #include <string>
-#include <map>
-#include <unistd.h>
-#include <sys/socket.h>
+// #include <map>
+// #include <unistd.h>
+// #include <sys/socket.h>
 #include <sys/wait.h>
-#include <functional>
-
+// #include <functional>
 #include "CGI.hpp"
 #include "Client.hpp"
 
