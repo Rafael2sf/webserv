@@ -287,6 +287,7 @@ namespace HTTP
 		}
 		catch (const std::exception &e)
 		{
+			client->reset();
 			epoll.erase(socket);
 			clients.erase(socket);
 		}

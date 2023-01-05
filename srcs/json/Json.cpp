@@ -1,6 +1,7 @@
 #include "Json.hpp"
 #include "Parser.hpp"
 #include <climits>
+#include <cerrno>
 
 namespace JSON
 {

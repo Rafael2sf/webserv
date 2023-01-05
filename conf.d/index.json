@@ -2,21 +2,24 @@
 	"server" : {
 		"listen" : "localhost:8000",
 		"client_max_body_size" : 214748647,
+		"error_page" : {
+			"/" : [404, 301]
+		},
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/conflicts/cgi-bin/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/cgi-bin/",
 				"index" : "index.py"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/conflicts/",
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
 				"index" : "_"
 			},
 			"*.py" : {
-				"cgi" : "/nfs/homes/daalmeid/Desktop/conflicts/cgi-bin/",
-				"upload_store" : "/nfs/homes/daalmeid/Desktop/conflicts/uploads/"
+				"cgi" : "/nfs/homes/rafernan/Desktop/webserv/cgi-bin/",
+				"upload_store" : "/nfs/homes/rafernan/Desktop/webserv/uploads/"
 			},
 			"/www/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/conflicts/"
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/"
 			}
 		}
 	}

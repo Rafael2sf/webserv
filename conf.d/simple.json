@@ -2,20 +2,19 @@
 	"server" : {
 		"listen" : "localhost",
 		"server_name" : "wtf",
-		"client_max_body_size" : 45000,
+		"client_max_body_size" : 150000,
 		"error_page" : {
-			"/" : [404, 301]
+			"/html/400.html" : 404
 		},
 		"location" : {
 			"/" : {
-				"root" : "/home/rafernan/Projects/webserv/www/",
-				"index" : "index.html",
-				"cgi" : "./cgi-bin/",
-				"upload_store" : "./uploads/",
-				"limit_except" : ["POST", "POST"]
+				"autoindex" : true,
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"cgi" : "cgi-bin",
+				"upload_store" : "uploads/"
 			},
-			"/uploads/" : {
-				"root" : "/home/rafernan/Projects/webserv/",
+			"/html/" : {
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
 				"autoindex" : true
 			}
 		}

@@ -46,6 +46,8 @@ namespace HTTP
 	{
 		// match exact server_name
 		std::string const* req_server_name  = cli.req.getField("host");
+		if (!req_server_name)
+			return (*interest.begin())->config;
 		// PART 2 match exact server_name
 		for (std::list<t_sock_info>::const_iterator it = so.list.begin();
 			it != so.list.end(); it++)

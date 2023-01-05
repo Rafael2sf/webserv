@@ -47,9 +47,11 @@ namespace HTTP
 			vec.push_back("CONTENT_LENGTH=" + *client.req.getField("content-length"));
 		else
 			vec.push_back("CONTENT_LENGTH=");
-		
 		var = client.location->search(1, "upload_store");
-		path = var->as<std::string const&>();
+		if (var)
+			path = var->as<std::string const&>();
+		else
+			path = "";
 		vec.push_back("DOCUMENT_ROOT=" + path);
 		vec.push_back("SCRIPT_FILENAME=" + client.req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + client.req.getMethod()[0]);

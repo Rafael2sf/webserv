@@ -53,12 +53,13 @@ namespace HTTP
 
 		if (dynamic_cast<JSON::Array const&>(nref).impl.size() != 2)
 		{
-			return configError("config: invalid value count",
+			return configError("invalid value count",
 				 nref.getProperty().c_str());
 		}
 
 		if (nref.begin()->type() != JSON::integer
-			|| (++nref.begin())->type() != JSON::string)
+			|| (++nref.begin())->type() != JSON::string
+			|| (++nref.begin())->as<std::string const&>().empty())
 		{
 			return configError("invalid value type",
 				nref.getProperty().c_str());
