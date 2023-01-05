@@ -138,7 +138,7 @@ namespace HTTP
 				return -1;
 			}
 
-			if (v[0] != 1 || v[1] != 1)
+			if (v[0] != 1 || (v[1] != 0 && v[1] != 1))
 			{
 				error(505, true);
 				return -1;
@@ -357,18 +357,36 @@ namespace HTTP
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
-		res.body = \
-			"<html>\n\
-			<head><title>"+ s + "</title></head>\n\
-			<body bgcolor=\"white\">\n\
-			<center><h1>" + s + "</h1></center>\n\
-			<hr><center>webserv/0.4</center>\n\
-			</body>\n\
-			</html>\n";
-		res.setField("content-type", "text/html");
-		res.setField("content-length", itos(res.body.size(), std::dec));
+		if (_checkAccept("text/html") != -1)
+		{
+			res.body = \
+"<html>\n\
+<head><title>"+ s + "</title></head>\n\
+<body bgcolor=\"white\">\n\
+<center><h1>" + s + "</h1></center>\n\
+<hr><center>webserv/1.0</center>\n\
+</body>\n\
+</html>\n";
+			res.setField("content-type", "text/html");
+			res.setField("content-length", itos(res.body.size(), std::dec));
+		}
 	}
 
+
+	int	Client::_checkAccept(std::string mime)
+	{
+		std::string *reqAccept = req.getField("accept");
+
+		if (reqAccept != NULL && *reqAccept != "")
+		{
+			if (reqAccept->find(mime) != std::string::npos
+					|| reqAccept->find(mime.substr(0, mime.find_first_of('/')) + "/*") != std::string::npos
+					|| reqAccept->find("*/*") != std::string::npos)
+				return 0;
+			return -1;
+		}
+		return 0;
+	}
 	// if adress empty use config
 	void Client::redirect( std::string const& address )
 	{
@@ -671,12 +689,12 @@ namespace HTTP
 		clientPipe[1] = 0;
 	}
 
-	static int fopenr(FILE **fp, std::string const& path)
+	int Client::fopenr(std::string const& path)
 	{
 		struct stat		stat;
 
-		*fp = fopen(path.c_str(), "r");
-		if (*fp == NULL)
+		fp = fopen(path.c_str(), "r");
+		if (fp == NULL)
 		{
 			if (errno == ENOENT || errno == ENOTDIR)
 				return 404;
@@ -684,8 +702,8 @@ namespace HTTP
 		}
 		if (lstat(path.c_str(), &stat) == -1) 
 		{
-			fclose(*fp);
-			*fp = NULL;
+			fclose(fp);
+			fp = NULL;
 			return 404;
 		}
 		if (S_ISDIR(stat.st_mode))
@@ -740,7 +758,7 @@ namespace HTTP
 		if (*--path_index.end() == '/')
 			path_index.erase(--path_index.end());
 		path_index += req.getMethod()[1] + index;
-		code = fopenr(&fp, path_index);
+		code = fopenr(path_index);
 		if (code == 404)
 			return code;
 		if (code == 1)
@@ -767,7 +785,7 @@ namespace HTTP
 		int				code;
 		JSON::Node *	var = 0;
 
-		code = fopenr(&fp, path);
+		code = fopenr(path);
 		if (code == 1)// dir
 		{
 			if (*--path.end() != '/')

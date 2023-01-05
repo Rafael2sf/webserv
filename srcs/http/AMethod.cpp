@@ -101,11 +101,29 @@ namespace HTTP
 			client.error(500, true);
 			return -1;
 		}
-		if (client.location->search(1, "cgi") == NULL)
+		var = client.location->search(1, "cgi");
+		if (var == NULL)
 		{
 			client.error(500, true);
 			return -1;
 		}
-		return 0;
+		
+		std::string path(var->as<std::string const&>());
+		if (*--path.end() == '/')
+			path.erase(--path.end());
+		std::string filePath = path + client.req.getMethod()[1];
+		int	fileAccess = client.fopenr(filePath);
+		if (fileAccess == 0)
+			return 0;
+		else if (fileAccess == 1)
+		{
+			client.error(403, false);
+			return -1;
+		}
+		else
+		{
+			client.error(fileAccess, false);
+			return -1;
+		}
 	};
 }

@@ -22,6 +22,7 @@ void child_handler( int signum )
 		C_FILE_NOT_FOUND = 2,
 		C_FORBIDDEN = 3,
 		C_BAD_REQUEST = 4,
+		C_NOT_ACCEPTABLE = 5,
 	};
 
 	(void)signum;
@@ -42,6 +43,9 @@ void child_handler( int signum )
 			break;
 		case C_BAD_REQUEST:
 			exitVal = 400;
+			break;
+		case C_NOT_ACCEPTABLE:
+			exitVal = 406;
 			break;
 		default:
 			exitVal = 500;

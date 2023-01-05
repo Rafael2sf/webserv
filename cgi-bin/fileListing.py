@@ -8,6 +8,14 @@ from wsgiref.handlers import format_date_time
 from datetime import datetime
 from time import mktime
 
+def checkAccept():
+	reqAccept = os.environ['HTTP_ACCEPT']
+	if reqAccept.find('text/plain') != -1 or reqAccept.find('text/*') != -1 or reqAccept.find('*/*') != -1:
+		return 0
+	return -1
+if checkAccept() == -1:
+	sys.exit(5) #406 Not Acceptable
+
 now = datetime.now()
 stamp = mktime(now.timetuple())
 
@@ -35,6 +43,8 @@ except IOError as e:
 			sys.exit(3)			#403 Forbidden
 		elif e.errno == 21:
 			sys.exit(3)			#403 Forbidden
+
+response += "server: " + os.environ['SERVER_SOFTWARE'] + "\r\n"
 response += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
 response += fileString
 print (response)

@@ -110,6 +110,8 @@ namespace HTTP
 		*/
 		void	dirIndex(std::string const& path);
 		void	redirect( std::string const& address );
+		int		fopenr(std::string const& path); //private??
+		int		_checkAccept(std::string mime); //private??
 
 
 	private:

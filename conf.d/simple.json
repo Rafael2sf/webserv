@@ -4,13 +4,13 @@
 		"client_max_body_size" : 2147483647,
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/conflicts/www/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
 				"index" : "index.html",
 				"cgi" : "./cgi-bin/",
 				"upload_store" : "./uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/conflicts/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
 				"autoindex" : true
 			}
 		}
