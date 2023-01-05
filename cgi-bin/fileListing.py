@@ -35,7 +35,10 @@ try:
 		if fileString == "":
 			raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT))
 		fileString = fileString[:-1]
-		response = "HTTP/1.1 200 OK\r\nContent-Length: " + str(len(fileString) + 1) + "\r\nContent-type:text/plain\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
+		response = "HTTP/1.1 200 OK\r\n"
+		if os.getenv('FORCE_CODE') != '0':
+			response = "HTTP/1.1 " +  os.getenv('FORCE_CODE') + "\r\n"
+		response += "content-length: " + str(len(fileString) + 1) + "\r\ncontent-type:text/plain\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
 except IOError as e:
 		if e.errno == 2:
 			sys.exit(2)			#404 File not found

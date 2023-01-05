@@ -2,7 +2,6 @@
 #include <limits>
 #include <cmath>
 #include <cerrno>
-// #include <bitset>
 
 namespace JSON
 {

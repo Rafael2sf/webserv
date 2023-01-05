@@ -49,6 +49,7 @@ namespace HTTP
 			vec.push_back("CONTENT_LENGTH=");
 		var = client.location->search(1, "upload_store");
 		if (var)
+		{
 			path = var->as<std::string const&>();
 			if (*--path.end() != '/')
 				path += '/';
@@ -59,6 +60,10 @@ namespace HTTP
 		vec.push_back("SCRIPT_FILENAME=" + client.req.getMethod()[1]);
 		vec.push_back("REQUEST_METHOD=" + client.req.getMethod()[0]);
 		vec.push_back("SERVER_SOFTWARE=Webserv/1.0");
+		if (client.force_code != 0)
+			vec.push_back("FORCE_CODE=" + itos(client.force_code, std::dec) + ' ' + Server::error[client.force_code]);
+		else
+			vec.push_back("FORCE_CODE=0");
 		vec.push_back("SERVER_NAME=" + *client.req.getField("host"));
 		vec.push_back("SERVER_PROTOCOL=" + client.req.getMethod()[2]);
 		vec.push_back("QUERY_STRING=" + client.req.getMethod()[3]);

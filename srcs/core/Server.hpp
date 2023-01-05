@@ -1,12 +1,7 @@
 #pragma once
 
-// #include <fcntl.h>
-// #include <cerrno>
-// #include <cstdlib>
 #include "Sockets.hpp"
 #include "Epoll.hpp"
-// #include "Message.hpp"
-//#include "Mediator.hpp"
 #include "webserv.hpp"
 #include "Client.hpp"
 #include "Json.hpp"

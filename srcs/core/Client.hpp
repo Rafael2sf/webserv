@@ -3,12 +3,7 @@
 #include "Sockets.hpp"
 #include "webserv.hpp"
 #include "Message.hpp"
-// #include <unistd.h>
-// #include <sys/types.h>
-// #include <sys/socket.h>
-// #include <netdb.h>
 #include <sys/stat.h>
-// #include <sys/types.h>
 #include <dirent.h>
 
 namespace HTTP
@@ -108,8 +103,8 @@ namespace HTTP
 		*/
 		void	dirIndex(std::string const& path, bool status_ok);
 		void	redirect( std::string const& address );
-		int		fopenr(std::string const& path); //private??
-		int		_checkAccept(std::string mime); //private??
+		int		fopenr(std::string const& path);
+		int		checkAccept(std::string mime);
 
 		int		force_code;
 	private:

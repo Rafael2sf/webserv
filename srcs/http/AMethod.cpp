@@ -1,5 +1,4 @@
 #include "AMethod.hpp"
-//#include "Mediator.hpp"
 #include "Server.hpp"
 
 namespace HTTP

@@ -3,6 +3,7 @@
 #include "webserv.hpp"
 #include "Client.hpp"
 #include "Json.hpp"
+#include "Server.hpp"
 #include <vector>
 
 namespace HTTP

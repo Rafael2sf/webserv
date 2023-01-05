@@ -27,6 +27,8 @@ if filedir != 'error':
 	try:
 		os.remove(os.getenv('DOCUMENT_ROOT') + filedir)
 		s = "HTTP/1.1 200 OK\r\n"
+		if os.getenv('FORCE_CODE') != '0':
+			s = "HTTP/1.1 " + os.getenv('FORCE_CODE') + "\r\n"
 		body = "<html>\n<head>\n<title>Delete script</title>\n</head>\n<body>\n"
 
 	except IOError as e:

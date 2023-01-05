@@ -7,7 +7,6 @@ from wsgiref.handlers import format_date_time
 from datetime import datetime
 from time import mktime
 
-
 def checkAccept():
 	reqAccept = os.environ['HTTP_ACCEPT']
 	if reqAccept.find('text/html') != -1 or reqAccept.find('text/*') != -1 or reqAccept.find('*/*') != -1:
@@ -35,6 +34,8 @@ try:
 		message = 'No file was uploaded'
 		message =  "<html>\n<body>\n<p>" + message + "</p>\n</body>\n</html>\r\n\r"
 		s = "HTTP/1.1 200 OK\r\n"
+		if os.getenv('FORCE_CODE') != '0':
+			s = "HTTP/1.1 " + os.getenv('FORCE_CODE') + "\r\n"
 
 	s += "connection: " + os.environ['HTTP_CONNECTION'] + "\r\nserver: " + os.environ['SERVER_SOFTWARE'] + "\r\n"
 	s += "date: " + str(format_date_time(stamp)) + "\r\n"

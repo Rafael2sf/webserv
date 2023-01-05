@@ -341,11 +341,11 @@ namespace HTTP
 				if (it->second.childPid == childIt->first)
 				{
 					bool resetIt = false;
+					it->second.childPid = 0;
 					if (childIt->second == 500)
 						it->second.error(500, true);
 					else if (childIt->second != 0)
 						it->second.error(childIt->second, false);
-					it->second.childPid = 0;
 					if ((it->second.req.getField("connection") && *it->second.req.getField("connection") == "close")
 							|| (it->second.res.getField("connection") && *it->second.res.getField("connection") == "close")
 							|| (!it->second.req.getField("connection") && it->second.req.getMethod()[2] == "HTTP/1.0"))

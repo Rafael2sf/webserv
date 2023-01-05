@@ -13,10 +13,6 @@
 #pragma	once
 
 #include <sys/epoll.h>
-// #include <iostream>
-// #include <cerrno>
-// #include <cstring>
-// #include <unistd.h>
 #include "webserv.hpp"
 
 #define	LISTEN_SOCKET 0

@@ -3,7 +3,8 @@
 		"listen" : "localhost:8000",
 		"client_max_body_size" : 214748647,
 		"error_page" : {
-			"/" : [404, 301]
+			"/" : 500,
+			"/www/html/404.html" : 404
 		},
 		"location" : {
 			"/" : {
@@ -13,7 +14,7 @@
 				"upload_store" : "/nfs/homes/daalmeid/Desktop/webserv/uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
 				"index" : "_"
 			},
 			"*.py" : {

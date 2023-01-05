@@ -31,8 +31,10 @@ try:
 	if first_name != None and last_name != None:
 		content = "<html>\r\n<head>\r\n<title>Hello User!</title>\r\n</head>\r\n<body>\r\n"
 		content += "<h2>Hello " + first_name + " " + last_name + "</h2>\r\n</body>\r\n</html>"
-		s = "HTTP/1.1 200 OK\r\ncontent-length: "
-		s += str(len(content)) + "\r\n" + "content-type:text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
+		s = "HTTP/1.1 200 OK\r\n"
+		if os.getenv('FORCE_CODE') != '0':
+			s = "HTTP/1.1 " + os.getenv('FORCE_CODE') + "\r\n"
+		s += "content-length: " + str(len(content)) + "\r\n" + "content-type:text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
 		s += "server: " + os.environ['SERVER_SOFTWARE'] + "\r\n"
 		s += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
 		s += content

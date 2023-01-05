@@ -354,7 +354,7 @@ namespace HTTP
 			res.setField("connection", "close");
 		else
 			res.setField("connection", "keep-alive");
-		if (_checkAccept("text/html") != -1)
+		if (checkAccept("text/html") != -1)
 		{
 			res.body = \
 "<html>\n\
@@ -369,7 +369,7 @@ namespace HTTP
 		}
 	}
 
-	int	Client::_checkAccept(std::string mime)
+	int	Client::checkAccept(std::string mime)
 	{
 		std::string *reqAccept = req.getField("accept");
 
@@ -410,7 +410,6 @@ namespace HTTP
 		int				size;
 		JSON::Node * 	nptr = 0;
 
-		(void) sockets;
 		if (req.getField("host") == 0)
 		{
 			error(400, true);
@@ -535,7 +534,6 @@ namespace HTTP
 		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, MSG_DONTWAIT)) > 0)
 		{
 			buff[readval] = 0;
-			timestamp = time(NULL);
 			if (state == CGI_PIPING)
 			{
 				req.body.append(buff, readval);
@@ -704,6 +702,7 @@ namespace HTTP
 		if (clientPipe[1] != 0)
 			close(clientPipe[1]);
 		clientPipe[1] = 0;
+		timestamp = time(NULL);
 	}
 
 	int Client::fopenr(std::string const& path)
@@ -904,6 +903,7 @@ namespace HTTP
 			state = SENDING;
 		}
 		if (read_nbr != 0) {
+			
 			str += itos(read_nbr, std::hex) + "\r\n";
 			res.body.assign(buf, read_nbr);
 			str += res.body + "\r\n";

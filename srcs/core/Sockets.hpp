@@ -6,8 +6,6 @@ extern "C"
 	#include <fcntl.h>
 	#include <unistd.h>
 }
-//#include <algorithm>
-// #include <map>
 #include <cstring>
 #include <list>
 #include "webserv.hpp"

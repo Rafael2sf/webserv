@@ -1,10 +1,6 @@
 #include "webserv.hpp"
 #include "Server.hpp"
-// #include <cstdio>
 #include <csignal>
-// #include "Get.hpp"
-// #include "Delete.hpp"
-// #include "Post.hpp"
 
 void handle_ctrl_c( int signum )
 {

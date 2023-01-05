@@ -90,7 +90,10 @@ fileString += """
 	</div>
 </body>
 </html>"""
-response = "HTTP/1.1 200 OK\r\nContent-Length: " + str(len(fileString) + 1) \
+response = "HTTP/1.1 200 OK\r\n"
+if os.getenv('FORCE_CODE') != '0':
+	response = "HTTP/1.1 " + os.getenv('FORCE_CODE') + "\r\n"
+response += "Content-Length: " + str(len(fileString) + 1) \
 + "\r\nContent-type:text/html\r\nConnection: " + os.environ['HTTP_CONNECTION'] \
 + "\r\nServer: " + os.environ['SERVER_SOFTWARE'] + "\r\n" \
 + "Date: " + str(format_date_time(stamp)) + "\r\n\r\n"

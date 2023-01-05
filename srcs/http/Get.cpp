@@ -60,7 +60,7 @@ namespace HTTP
 			client.res.setField("content-type", mime_val->second);
 		else
 			client.res.setField("content-type", "application/octet-stream");
-		if (client._checkAccept(mime_val->second) == -1)
+		if (client.checkAccept(mime_val->second) == -1)
 			return client.error(406, false);
 		if ((client.req.getField("connection")
 				&& *client.req.getField("connection") == "close")
