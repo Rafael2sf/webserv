@@ -75,7 +75,8 @@ namespace HTTP
 			if (!it->empty())
 				final_str += *it + ' ';
 		}
-		final_str.replace(final_str.size() - 1, 1, "\r\n");
+		if (final_str.size() != 0)
+			final_str.replace(final_str.size() - 1, 1, "\r\n");
 		for (std::map<std::string, std::string>::iterator it =
 			headers.begin(); it != headers.end(); it++)
 		{

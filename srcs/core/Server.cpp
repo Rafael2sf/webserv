@@ -175,7 +175,7 @@ namespace HTTP
 			if (config.from(filepath) < 0)
 			{
 				std::cerr << "webserv: error: " \
-					<< filepath << ":" << config.err() << std::endl;
+					<< filepath << ": " << config.err() << std::endl;
 				return -1;
 			}
 			_init_mimes();
@@ -188,6 +188,11 @@ namespace HTTP
 			{
 				clear();
 				return -1;
+			}
+			if (socks.list.empty())
+			{
+				clear();
+				return err(-1, "logic error", "no sockets listening");
 			}
 		}
 		catch (std::exception const& e)
@@ -282,6 +287,7 @@ namespace HTTP
 		}
 		catch (const std::exception &e)
 		{
+			client->reset();
 			epoll.erase(socket);
 			clients.erase(socket);
 		}
@@ -389,7 +395,6 @@ namespace HTTP
 
 	void Server::clear( void )
 	{
-		epoll.stop();
 		for (std::map<int, Client>::iterator it = clients.begin();
 			it != clients.end(); it++)
 		{
@@ -407,6 +412,7 @@ namespace HTTP
 				close(it->fd);
 			}
 		}
+		epoll.stop();
 		socks.list.clear();
 		config.clear();
 	}

@@ -1,9 +1,6 @@
 #include "Client.hpp"
-#include <fcntl.h>
-#include <iomanip>
-#include "Node.hpp"
 #include "Server.hpp"
-#include <algorithm>
+#include "Get.hpp"
 
 namespace HTTP
 {
@@ -15,7 +12,7 @@ namespace HTTP
 	Client::Client( void )
 	: fd(-1), timestamp(0), server(0), location(0), 
 	cgiSentBytes(0), childPid(0), state(CONNECTED),
-	fp(NULL), req_host_state(HOST_UNSET)
+	fp(NULL), force_code(0), req_host_state(HOST_UNSET)
 	{
 		clientPipe[0] = 0;
 		clientPipe[1] = 0;
@@ -25,7 +22,7 @@ namespace HTTP
 	Client::Client( Client const& other )
 	: fd(-1), timestamp(0), server(0), location(0),
 	cgiSentBytes(0), childPid(0), state(CONNECTED),
-	fp(NULL), req_host_state(HOST_UNSET)
+	fp(NULL), force_code(0), req_host_state(HOST_UNSET)
 	{
 		(void) other;
 		clientPipe[0] = 0;
@@ -372,7 +369,6 @@ namespace HTTP
 		}
 	}
 
-
 	int	Client::_checkAccept(std::string mime)
 	{
 		std::string *reqAccept = req.getField("accept");
@@ -414,6 +410,7 @@ namespace HTTP
 		int				size;
 		JSON::Node * 	nptr = 0;
 
+		(void) sockets;
 		if (req.getField("host") == 0)
 		{
 			error(400, true);
@@ -531,7 +528,10 @@ namespace HTTP
 		char *	j = 0;
 
 		if (state == CONNECTED)
+		{
+			server = matchServer(sockets, *this);
 			state = STATUS_LINE;
+		}
 		if ((readval = recv(fd, buff, S_BUFFER_SIZE - 1, MSG_DONTWAIT)) > 0)
 		{
 			buff[readval] = 0;
@@ -637,7 +637,8 @@ namespace HTTP
 				if (err->type() == JSON::integer && 
 					err->as<int>() == code)
 				{
-					return &it->getProperty();
+					if (err->getProperty() != req.method[1])
+						return &it->getProperty();
 				}
 			}
 		}
@@ -649,17 +650,32 @@ namespace HTTP
 		std::string s;
 		std::string const * ep = 0;
 
-		if (server)
+		if (server && code >= 400)
+		{
 			ep = _errorPage(code);
-		if (ep)
-			code = 301;
+			if (ep && *ep != req.method[1])
+			{
+				req.method.clear();
+				req.createMethodVec("GET " + *ep + " HTTP/1.1");
+				location = matchLocation(server, req.method[1]);
+				if (location && !location->search(1, "redirect")
+					&& isMethodAllowed(req.method[0], location))
+				{
+					if (close_connection)
+						req.setField("connection", "close");
+					else
+						req.setField("connection", "keep-alive");
+					force_code = code;
+					state = OK;
+					Get().response(*this);
+					return ;
+				}
+			}
+		}
 		_defaultPage(code, close_connection);
-		if (ep)
-			res.setField("location", *ep);
-		if(!req.method.empty() && req.method[2] == "HTTP/1.0")
+		if(req.method.size() >= 3 && req.method[2] == "HTTP/1.0")
 			res.setField("connection", "close");
 		s = res.toString();
-			
 		if (send(fd, s.c_str(), s.size(), MSG_DONTWAIT) <= 0)
 		{
 			res.setField("connection", "close");
@@ -673,6 +689,7 @@ namespace HTTP
 		req.clear();
 		res.clear();
 		req_host_state = HOST_UNSET;
+		force_code = 0;
 		state = CONNECTED;
 		server = 0;
 		location = 0;
@@ -711,7 +728,7 @@ namespace HTTP
 		return 0;
 	}
 
-	int Client::	_tryIndex(std::string const& index, std::string & path)
+	int Client::_tryIndex(std::string const& index, std::string & path)
 	{
 		std::string		path_index;
 		JSON::Node *	root;
@@ -770,7 +787,7 @@ namespace HTTP
 				redirect(req.method[1] + index + '/');
 				return -1;
 			}
-			dirIndex(path_index);
+			dirIndex(path_index, false);
 			return -1;
 		}
 		else if (code != 0)
@@ -832,7 +849,7 @@ namespace HTTP
 							return false;
 					}
 			}
-			dirIndex(path);
+			dirIndex(path, true);
 			return false;
 		}
 		else if (code != 0)
@@ -912,12 +929,15 @@ namespace HTTP
 		return read_nbr;
 	};
 
-	void Client::dirIndex(std::string const& path)
+	void Client::dirIndex(std::string const& path, bool status_ok)
 	{
 		JSON::Node * autoindex;
 		std::string	 str;
 
-		res.createMethodVec("HTTP/1.1 200 OK");
+		if (status_ok)
+			res.createMethodVec("HTTP/1.1 404 Not Found");
+		else
+			res.createMethodVec("HTTP/1.1 200 OK");
 		res.setField("content-type", "text/html");
 
 		autoindex = location->search(1, "autoindex");

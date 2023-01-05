@@ -43,8 +43,8 @@
 		"listen" : "9000",
 		"location" : {
 			"/" : {
-				"index" : "index.html",
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/"
+				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+				"index" : "index.html"
 			},
 			"/html/" : {
 				"autoindex" : true,

@@ -46,7 +46,14 @@ namespace HTTP
 				index = 0;
 			return cgi(client, path.substr(index));
 		}
-		client.res.createMethodVec("HTTP/1.1 200 OK");
+		if (client.force_code)
+		{
+			client.res.createMethodVec("HTTP/1.1 "
+			 + itos(client.force_code, std::dec)
+			 + " " + Server::error[client.force_code]);
+		}
+		else
+			client.res.createMethodVec("HTTP/1.1 200 OK");
 		std::map<std::string, std::string>::const_iterator
 				mime_val =	Server::mime.find(getFileExtension(path));
 		if (mime_val != Server::mime.end())

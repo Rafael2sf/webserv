@@ -47,10 +47,8 @@ namespace HTTP
 			vec.push_back("CONTENT_LENGTH=" + *client.req.getField("content-length"));
 		else
 			vec.push_back("CONTENT_LENGTH=");
-		
 		var = client.location->search(1, "upload_store");
 		if (var)
-		{
 			path = var->as<std::string const&>();
 			if (*--path.end() != '/')
 				path += '/';

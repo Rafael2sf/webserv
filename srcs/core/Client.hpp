@@ -3,14 +3,12 @@
 #include "Sockets.hpp"
 #include "webserv.hpp"
 #include "Message.hpp"
-#include <cstdlib>
-#include <cstdio>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
+// #include <unistd.h>
+// #include <sys/types.h>
+// #include <sys/socket.h>
+// #include <netdb.h>
 #include <sys/stat.h>
-#include <sys/types.h>
+// #include <sys/types.h>
 #include <dirent.h>
 
 namespace HTTP
@@ -108,16 +106,14 @@ namespace HTTP
 		 * to the -path- if autoindex is set on -location- and -path- is a dir.
 		 * @param path search path
 		*/
-		void	dirIndex(std::string const& path);
+		void	dirIndex(std::string const& path, bool status_ok);
 		void	redirect( std::string const& address );
 		int		fopenr(std::string const& path); //private??
 		int		_checkAccept(std::string mime); //private??
 
-
+		int		force_code;
 	private:
-		
 		Client & operator=( Client const& rhs );
-
 		e_host	req_host_state;
 			/**
 		 * @brief Removes starting and trailing whitespaces in a header string.

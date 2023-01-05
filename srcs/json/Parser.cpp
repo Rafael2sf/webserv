@@ -1,7 +1,8 @@
 #include "Parser.hpp"
 #include <limits>
 #include <cmath>
-#include <bitset>
+#include <cerrno>
+// #include <bitset>
 
 namespace JSON
 {

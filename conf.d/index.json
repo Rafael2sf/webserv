@@ -2,6 +2,9 @@
 	"server" : {
 		"listen" : "localhost:8000",
 		"client_max_body_size" : 214748647,
+		"error_page" : {
+			"/" : [404, 301]
+		},
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/cgi-bin/",

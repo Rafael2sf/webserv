@@ -1,7 +1,11 @@
 {
 	"server" : {
-		"listen" : "8000",
-		"client_max_body_size" : 2147483647,
+		"listen" : "localhost",
+		"server_name" : "wtf",
+		"client_max_body_size" : 150000,
+		"error_page" : {
+			"/html/400.html" : 404
+		},
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",

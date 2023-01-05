@@ -1,5 +1,7 @@
 #include "Json.hpp"
 #include "Parser.hpp"
+#include <climits>
+#include <cerrno>
 
 namespace JSON
 {
@@ -55,7 +57,7 @@ namespace JSON
 		try
 		{
 			ifs.seekg (0, std::ios::end);
-			if (ifs.tellg() == -1)
+			if (ifs.tellg() <= 0 || ifs.tellg() == LONG_MAX)
 				return std::make_pair(0, "");
 			buffer.reserve(ifs.tellg());
 			ifs.seekg (0, std::ios::beg);
@@ -72,7 +74,6 @@ namespace JSON
 		{
 			if (ifs.is_open())
 				ifs.close();
-			std::cerr << err.what() << std::endl;
 			return std::make_pair(-1, "");
 		}
 		ifs.close();
