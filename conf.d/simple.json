@@ -8,13 +8,13 @@
 		},
 		"location" : {
 			"/" : {
-				"autoindex" : true,
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
-				"cgi" : "cgi-bin",
-				"upload_store" : "uploads/"
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
+				"index" : "index.html",
+				"cgi" : "./cgi-bin/",
+				"upload_store" : "./uploads/"
 			},
-			"/html/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/www/",
+			"/uploads/" : {
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
 				"autoindex" : true
 			}
 		}

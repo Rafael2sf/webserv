@@ -8,6 +8,15 @@ from wsgiref.handlers import format_date_time
 from datetime import datetime
 from time import mktime
 
+def checkAccept():
+	reqAccept = os.environ['HTTP_ACCEPT']
+	if reqAccept.find('text/html') != -1 or reqAccept.find('text/*') != -1 or reqAccept.find('*/*') != -1:
+		return 0
+	return -1
+
+if checkAccept() == -1:
+	sys.exit(5) #406 Not Acceptable
+
 now = datetime.now()
 stamp = mktime(now.timetuple())
 

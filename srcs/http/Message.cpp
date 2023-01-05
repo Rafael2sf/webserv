@@ -67,7 +67,7 @@ namespace HTTP
 	{
 		std::string	final_str;
 
-		setField("server", "Webserv/0.4");
+		setField("server", "Webserv/1.0");
 		setField("date", getDate(time(0)));
 		for (std::vector<std::string>::iterator it =
 			method.begin(); it != method.end(); it++)

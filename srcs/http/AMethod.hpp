@@ -25,8 +25,9 @@ namespace HTTP
 		protected:
 
 		/**
-		 * @brief CGI handler specific for GET requests that need to be
-		 * treated by a CGI (html forms with GET).
+		 * @brief 
+		 * Handler specific for requests that need to be
+		 * treated by a CGI.
 		 * @param client http client class
 		*/
 		void	cgi(Client & client, std::string const& path);

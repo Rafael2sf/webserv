@@ -1,5 +1,9 @@
 ISSUES:
 
+NEW: remove http/1.0 protection, now compatible
+
+
+
 -Full request construction if it does not come in one go; DONE!!!!
 -If GET of very big file (over 5 Mb), send returns -1 (due to non blocking file descriptors); DONE!!!
 

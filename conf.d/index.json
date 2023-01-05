@@ -7,19 +7,21 @@
 		},
 		"location" : {
 			"/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/cgi-bin/",
-				"index" : "index.py"
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/cgi-bin/",
+				"index" : "index.py",
+				"cgi" : "/nfs/homes/daalmeid/Desktop/webserv/cgi-bin/",
+				"upload_store" : "/nfs/homes/daalmeid/Desktop/webserv/uploads/"
 			},
 			"/uploads/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
 				"index" : "_"
 			},
 			"*.py" : {
-				"cgi" : "/nfs/homes/rafernan/Desktop/webserv/cgi-bin/",
-				"upload_store" : "/nfs/homes/rafernan/Desktop/webserv/uploads/"
+				"cgi" : "/nfs/homes/daalmeid/Desktop/webserv/cgi-bin/",
+				"upload_store" : "/nfs/homes/daalmeid/Desktop/webserv/uploads/"
 			},
 			"/www/" : {
-				"root" : "/nfs/homes/rafernan/Desktop/webserv/"
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/"
 			}
 		}
 	}

@@ -50,6 +50,9 @@ namespace HTTP
 		var = client.location->search(1, "upload_store");
 		if (var)
 			path = var->as<std::string const&>();
+			if (*--path.end() != '/')
+				path += '/';
+		}
 		else
 			path = "";
 		vec.push_back("DOCUMENT_ROOT=" + path);

@@ -7,6 +7,14 @@ from wsgiref.handlers import format_date_time
 from datetime import datetime
 from time import mktime
 
+
+def checkAccept():
+	reqAccept = os.environ['HTTP_ACCEPT']
+	if reqAccept.find('text/html') != -1 or reqAccept.find('text/*') != -1 or reqAccept.find('*/*') != -1:
+		return 0
+	return -1
+
+
 now = datetime.now()
 stamp = mktime(now.timetuple())
 form = cgi.FieldStorage()
@@ -28,9 +36,12 @@ try:
 		message =  "<html>\n<body>\n<p>" + message + "</p>\n</body>\n</html>\r\n\r"
 		s = "HTTP/1.1 200 OK\r\n"
 
-	s += "content-length: " + str(len(message)) + "\r\n" + "content-type: text/html\r\nconnection: " + os.environ['HTTP_CONNECTION'] + "\r\n"
-	s += "date: " + str(format_date_time(stamp)) + "\r\n\r\n"
-	s += message
+	s += "connection: " + os.environ['HTTP_CONNECTION'] + "\r\nserver: " + os.environ['SERVER_SOFTWARE'] + "\r\n"
+	s += "date: " + str(format_date_time(stamp)) + "\r\n"
+	if checkAccept() != -1:
+		s += "content-length: " + str(len(message)) + "\r\n" + "content-type: text/html\r\n\r\n"
+		s += message
+	
 	print(s)
 except IOError as e:
 	if e.errno == 2:

@@ -11,3 +11,4 @@ def gen():
 
 res = requests.post('http://localhost:8000/saveChunked.py', data=gen())
 print(res)
+print(res.content)
