@@ -1,6 +1,7 @@
 #include "Client.hpp"
 #include "Server.hpp"
 #include "Get.hpp"
+#include <cerrno>
 
 namespace HTTP
 {
