@@ -9,6 +9,6 @@ def gen():
 	yield bytes('n>\n        <script src=\"./js/delete.js\"></script>\n        <p>\n                <img src=\"./images/smoking.jpg\" alt=\"python image\">\n        </p>\n\n</body>\n</html>', 'utf-8')
 
 
-res = requests.post('http://localhost:8000/saveChunked.py', data=gen())
+res = requests.post('http://localhost:8000/saveSimple.py', data=gen())
 print(res)
 print(res.content)

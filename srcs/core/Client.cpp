@@ -728,12 +728,27 @@ namespace HTTP
 		clientPipe[1] = 0;
 		timestamp = time(NULL);
 	}
+	static void	hexTranslate(std::string& path)
+	{
+		for (std::string::iterator it = path.begin(); it != path.end(); it++)
+		{
+			if (*it == '%')
+			{
+				std::string hex(it + 1, it + 3);
+				it = path.insert(it, stoi(hex, std::hex));
+				it++;
+				it = path.erase(it, it + 3);
+			}
+		}
+	}
 
-	int Client::fopenr(std::string const& path)
+	int Client::fopenr(std::string& path)
 	{
 		struct stat		stat;
 
+		hexTranslate(path);
 		fp = fopen(path.c_str(), "r");
+
 		if (fp == NULL)
 		{
 			if (errno == ENOENT || errno == ENOTDIR)

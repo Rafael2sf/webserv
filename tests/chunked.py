@@ -7,7 +7,7 @@ def gen():
 	yield bytes(' there rhrtjhrt', 'utf-8')
 	yield bytes(' play', 'utf-8')
 
-res = requests.post('http://localhost:8000/saveChunked.py', data=gen())
+res = requests.post('http://localhost:8000/saveSimple.py', data=gen())
 
 print(res)
 print(res.content)
