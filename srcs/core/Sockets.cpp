@@ -100,9 +100,6 @@ namespace HTTP
 		return false;
 	}
 
-	// -> search for used port
-	// -> if not used search for any -> if foound 
-
 	int Sockets::listen( void )
 	{
 		std::vector<t_sock_info*> used;

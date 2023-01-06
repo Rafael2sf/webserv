@@ -83,7 +83,6 @@ namespace JSON
 		return _root;
 	}
 
-	// Make this return new object wihout using prev
 	void Parser::_readObject( Node * parent )
 	{
 		bool comma = false;

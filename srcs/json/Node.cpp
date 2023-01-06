@@ -226,11 +226,6 @@ namespace JSON
 		return *this;
 	}
 
-	// std::string const& String::getValue( void ) const
-	// {
-	// 	return *this;
-	// }
-
 	// json object
 
 	Object::~Object()
@@ -289,11 +284,6 @@ namespace JSON
 		return *this;
 	}
 
-	// int const& Integer::getValue( void ) const
-	// {
-	// 	return _data;
-	// }
-
 	// json bool
 
 	Boolean::~Boolean()
@@ -322,11 +312,6 @@ namespace JSON
 		impl = other.impl;
 		return *this;
 	}
-
-	// bool const& Boolean::getValue( void ) const
-	// {
-	// 	return _data;
-	// }
 
 	// json null
 

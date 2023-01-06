@@ -31,7 +31,7 @@ namespace HTTP
 		S_BUFFER_SIZE = 8192,
 		S_URI_MAX = 8000,
 		S_FIELD_MAX = 8000,
-		S_HEADERS_MAX = 8000
+		S_HEADERS_MAX = 16000
 	};
 
 	/* core/Sockets */

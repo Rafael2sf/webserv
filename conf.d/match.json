@@ -1,7 +1,7 @@
 {
 	"server" : {
 		"listen" : "8000",
-		"server_name" : "localhost",
+		"server_name" : "example",
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/html/",
@@ -11,7 +11,7 @@
 	},
 	"server" : {
 		"listen" : "8000",
-		"server_name" : "localhost.localhost",
+		"server_name" : "www.example",
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/html/",
@@ -21,7 +21,7 @@
 	},
 	"server" : {
 		"listen" : "8000",
-		"server_name" : "*.www.localhost",
+		"server_name" : "*.www.example",
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/html/",

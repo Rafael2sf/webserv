@@ -269,10 +269,14 @@ namespace HTTP
 		try
 		{
 			client = &clients.at(socket);
-			if (client->state == CGI_FINISHED) //Child process is still working!!
+			//Child process is still working!!
+			if (client->state == CGI_FINISHED)
 				return;
+			/*It's possible to have received the whole request body but not have sent everything
+				to the CGI due to write() delays (full buffer). This allows to go back to the
+				handle() function and retry a write*/
 			if (!(epoll[epoll_index].events & EPOLLIN)
-					&& client->state == CGI_PIPING) //It's possible to have received the whole request body but not have sent everything to the CGI due to write() delays (full buffer). This allows to go back to the handle() function and retry a write
+					&& client->state == CGI_PIPING)
 				client->state = OK;
 			if (client->state == OK || client->state == FULL_PIPE)
 				_handle(*client);

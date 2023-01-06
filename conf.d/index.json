@@ -1,11 +1,7 @@
 {
 	"server" : {
 		"listen" : "localhost:8000",
-		"client_max_body_size" : 214748647,
-		"error_page" : {
-			"/" : 500,
-			"/www/html/404.html" : 404
-		},
+		"client_max_body_size" : 10000000,
 		"location" : {
 			"/" : {
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/cgi-bin/",
@@ -13,7 +9,11 @@
 				"cgi" : "/nfs/homes/daalmeid/Desktop/webserv/cgi-bin/",
 				"upload_store" : "/nfs/homes/daalmeid/Desktop/webserv/uploads/"
 			},
+			"=/uploads/" : {
+				"redirect" : [301, "/"]
+			},
 			"/uploads/" : {
+				"limit_except" : "GET",
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
 				"index" : "_"
 			},
@@ -22,6 +22,7 @@
 				"upload_store" : "/nfs/homes/daalmeid/Desktop/webserv/uploads/"
 			},
 			"/www/" : {
+				"limit_except" : "GET",
 				"root" : "/nfs/homes/daalmeid/Desktop/webserv/"
 			}
 		}

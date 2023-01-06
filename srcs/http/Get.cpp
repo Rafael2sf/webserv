@@ -60,7 +60,7 @@ namespace HTTP
 			client.res.setField("content-type", mime_val->second);
 		else
 			client.res.setField("content-type", "application/octet-stream");
-		if (client.checkAccept(mime_val->second) == -1)
+		if (client.checkAccept(*client.res.getField("content-type")) == -1)
 			return client.error(406, false);
 		if ((client.req.getField("connection")
 				&& *client.req.getField("connection") == "close")
@@ -69,10 +69,10 @@ namespace HTTP
 			client.res.setField("connection", "close");
 		else
 			client.res.setField("connection", "keep-alive");
-		//Last-Modified header creation
 		struct stat f_info;
 		lstat(path.c_str(), &f_info);
 		client.res.setField("last-modified", getDate(f_info.st_mtime));
-		client.contentEncoding();	//Any errors here will set the state for client cleanup after _methodChoice() in server class.
+		//Any errors here will set the state for client cleanup after _methodChoice() in server class.
+		client.contentEncoding();
 	};
 }

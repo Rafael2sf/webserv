@@ -48,7 +48,6 @@ namespace HTTP
 		std::string const* req_server_name  = cli.req.getField("host");
 		if (!req_server_name)
 			return (*interest.begin())->config;
-		// PART 2 match exact server_name
 		for (std::list<t_sock_info>::const_iterator it = so.list.begin();
 			it != so.list.end(); it++)
 		{
@@ -190,7 +189,7 @@ namespace HTTP
 		{
 			if (loc->getProperty()[0] == '*'
 				|| loc->getProperty()[0] == '=')
-				continue ; // wrong / match =/
+				continue ;
 			i = path.find(loc->getProperty(), 0);
 			if (i != std::string::npos && i == 0)
 			{

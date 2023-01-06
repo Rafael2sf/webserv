@@ -13,7 +13,6 @@ def checkAccept():
 		return 0
 	return -1
 
-
 now = datetime.now()
 stamp = mktime(now.timetuple())
 form = cgi.FieldStorage()
@@ -42,7 +41,7 @@ try:
 	if checkAccept() != -1:
 		s += "content-length: " + str(len(message)) + "\r\n" + "content-type: text/html\r\n\r\n"
 		s += message
-	
+
 	print(s)
 except IOError as e:
 	if e.errno == 2:

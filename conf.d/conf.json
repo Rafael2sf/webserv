@@ -1,10 +1,9 @@
 {
 	"server" : {
 		"listen" : "localhost",
-		"server_name" : "wtf",
-		"client_max_body_size" : 150000,
-		"error_page" : {
-			"/html/400.html" : 404
+		"error_page": {
+			"/html/404.html": 404,
+			"/html/403.html": 403
 		},
 		"location" : {
 			"/" : {

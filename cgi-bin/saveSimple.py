@@ -14,6 +14,7 @@ def checkAccept():
 		return 0
 	return -1
 
+
 now = datetime.now()
 stamp = mktime(now.timetuple())
 file = sys.stdin.read() 
@@ -21,8 +22,11 @@ file = sys.stdin.read()
 try:
 	open(os.getenv('DOCUMENT_ROOT') + "test.html", 'wb').write(bytes(file, 'UTF-8'))
 	message = 'The file "test.txt" was uploaded successfully'
-	s = "HTTP/1.1 201 Created\r\nlocation: " + "test.txt" + "\r\n"
+	s = "HTTP/1.1 201 Created\r\n"
+	if os.getenv('FORCE_CODE') != '0':
+		s = "HTTP/1.1 " + os.getenv('FORCE_CODE') + "\r\n"
 	
+	s += "location: " + "test.txt" + "\r\n"
 	s += "connection: " + os.environ['HTTP_CONNECTION'] + "\r\nserver: " + os.environ['SERVER_SOFTWARE'] + "\r\n"
 	s += "date: " + str(format_date_time(stamp)) + "\r\n"
 	if checkAccept() != -1:

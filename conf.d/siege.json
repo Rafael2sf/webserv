@@ -1,0 +1,10 @@
+{
+	"server" : {
+		"location" : {
+			"/" : {
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/html/",
+				"index" : "empty.html"
+			}
+		}
+	}
+}

@@ -145,9 +145,6 @@ namespace JSON
 				rprint(*it, depth + 1);
 			}
 			i = 0;
-			// while (i++ != depth)
-			// 	std::cout << " ";
-			//std::cerr << std::endl;
 			return ;
 		}
 		else if (p->type() == array)
@@ -160,9 +157,6 @@ namespace JSON
 				rprint(*it, depth + 2);
 			}
 			i = 0;
-			// while (i++ != depth)
-			// 	std::cout << " ";
-			//std::cerr << std::endl;
 			return ;
 		}
 		switch (p->type())

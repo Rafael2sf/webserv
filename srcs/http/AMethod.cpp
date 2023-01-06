@@ -29,7 +29,7 @@ namespace HTTP
 		{
 			if (pipe(client.clientPipe) == -1)
 				return client.error(500, true);
-			if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1) // only the server-side pipe will be NONBLOCK, CGI uses STDIN as the other side of the pipe!
+			if (fcntl(client.clientPipe[1], F_SETFL, O_NONBLOCK )  == -1)
 				return client.error(500, true);
 			client.childPid = fork();
 			if (client.childPid == -1)
@@ -81,10 +81,13 @@ namespace HTTP
 			}
 			else
 			{
-				client.state = FULL_PIPE;	//Due to being non-blocking fds, the pipe buffer might be still full when the server gets here, this state allows it to return to the loop without erasing stuff.
+				/*Due to being non-blocking fds, the pipe buffer might be still full when the server
+					gets here, this state allows it to return to the loop without erasing stuff.*/
+				client.state = FULL_PIPE;
 				return;
 			}
-			if (client.cgiSentBytes < client.req.content_length) // 0 is acceptable too
+			// 0 is acceptable too
+			if (client.cgiSentBytes < client.req.content_length)
 				client.state = CGI_PIPING;
 			else
 			{
@@ -115,6 +118,11 @@ namespace HTTP
 			path.erase(--path.end());
 		std::string filePath = path + client.req.getMethod()[1];
 		int	fileAccess = client.fopenr(filePath);
+		if (client.fp != NULL)
+		{
+			fclose(client.fp);
+			client.fp = NULL;
+		}	
 		if (fileAccess == 0)
 			return 0;
 		else if (fileAccess == 1)

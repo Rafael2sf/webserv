@@ -25,8 +25,6 @@ namespace HTTP
 			*/
 			std::vector<std::string> const&	getMethod(void) const;
 
-			// std::string & getMethodAt( size_t i );
-
 			/**
 			 * @brief Getter for a mapped value in the headers map.
 			 * @param key Key value to look for in the map (name of a header).
@@ -81,13 +79,4 @@ namespace HTTP
 			void	clear();
 	};
 
-	/**
-	 * @brief Produces an int value based on a string representation, using the
-	 * stringstream method.
-	 * @param str Original string.
-	 * @return If successful, return the correct int. Undefined behaviour if the
-	 * string is poorly formatted.
-	*/
-	// int	ftStoi(std::string const& str);
-	// std::string	ftItos(int const& n);
 }

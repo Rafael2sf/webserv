@@ -86,16 +86,6 @@ namespace HTTP
 		return final_str;
 	};
 
-	// std::string const& Message::getBody(void) const
-	// {
-	// 	return this->_body;
-	// };
-
-	// void Message::setBody(std::string const& str)
-	// {
-	// 	_body += bod;
-	// };
-
 	void Message::clear( void )
 	{
 		method.clear();

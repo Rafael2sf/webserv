@@ -201,6 +201,12 @@ namespace HTTP
 		std::string str;
 		size_t		start;
 
+		req.header_bytes += n;
+		if (n > S_HEADERS_MAX)
+		{
+			error(431, true);
+			return -1;
+		}
 		req.createMethodVec(std::string().assign(buff, n));
 		if (req.method.size() != 3
 			|| _checkSpacesRequestLine(buff, n) < 0)
@@ -368,14 +374,29 @@ namespace HTTP
 			res.setField("content-length", itos(res.body.size(), std::dec));
 		}
 	}
-
+	static int	ft_is(char c, std::string s)
+	{
+		if (s.find(c) != std::string::npos)
+			return 0;
+		return -1;
+	}
 	int	Client::checkAccept(std::string mime)
 	{
 		std::string *reqAccept = req.getField("accept");
 
 		if (reqAccept != NULL && *reqAccept != "")
 		{
-			if (reqAccept->find(mime) != std::string::npos
+			size_t index = reqAccept->find(mime);
+			if (index != std::string::npos)
+			{
+				if (index + mime.size() < reqAccept->size()
+						&& ft_is((*reqAccept)[index + mime.size()], ", ") == -1)
+					return -1;
+				if (index != 0
+						&& ft_is((*reqAccept)[index - 1], ", \0") == -1)
+					return -1;
+			}
+			if (index != std::string::npos
 					|| reqAccept->find(mime.substr(0, mime.find_first_of('/')) + "/*") != std::string::npos
 					|| reqAccept->find("*/*") != std::string::npos)
 				return 0;
@@ -435,8 +456,9 @@ namespace HTTP
 		}
 		if (req.method[0] != "GET" && req.getField("content-length"))
 		{
+			//transfer-encoding and content-length cannot be both in request (potential attack)
 			if (validateContentLength(*req.getField("content-length")) < 0
-					|| req.getField("transfer-encoding"))	//transfer-encoding and content-length cannot be both in request (potential attack)
+					|| req.getField("transfer-encoding"))
 			{
 				error(400, true);
 				return -1;
@@ -490,7 +512,8 @@ namespace HTTP
 				state = OK;
 			req.body.append(buff, readval);
 		}
-		else if (req.getField("transfer-encoding")) //Checked before getting here, if transfer-encoding exists, it is chunked
+		//Checked before getting here, if transfer-encoding exists, it is chunked
+		else if (req.getField("transfer-encoding"))
 		{
 			req.body.append(buff, readval);
 			req.content_length += readval;
@@ -802,7 +825,7 @@ namespace HTTP
 		JSON::Node *	var = 0;
 
 		code = fopenr(path);
-		if (code == 1)// dir
+		if (code == 1)
 		{
 			if (*--path.end() != '/')
 			{
@@ -885,7 +908,8 @@ namespace HTTP
 		buf[read_nbr] = 0;
 		if (state == OK) 
 		{
-			if (read_nbr < S_BUFFER_SIZE) //Good also for read of 0
+			//Good also for read of 0
+			if (read_nbr < S_BUFFER_SIZE)
 			{
 				res.setField("content-length", itos(read_nbr, std::dec));
 				res.body.assign(buf, read_nbr);
