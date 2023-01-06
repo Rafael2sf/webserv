@@ -14,7 +14,7 @@
 			},
 			"/uploads/" : {
 				"limit_except" : "GET",
-				"root" : "/nfs/homes/daalmeid/Desktop/webserv/www/",
+				"root" : "/nfs/homes/daalmeid/Desktop/webserv/",
 				"index" : "_"
 			},
 			"*.py" : {
