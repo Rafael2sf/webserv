@@ -103,7 +103,7 @@ namespace HTTP
 		*/
 		void	dirIndex(std::string const& path, bool status_ok);
 		void	redirect( std::string const& address );
-		int		fopenr(std::string& path);
+		int		fopenr(std::string const& path);
 		int		checkAccept(std::string mime);
 
 		int		force_code;

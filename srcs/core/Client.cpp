@@ -37,6 +37,22 @@ namespace HTTP
 		return *this;
 	}
 
+	static void	hexTranslate(std::string& path)
+	{
+		for (std::string::iterator it = path.begin(); it != path.end();)
+		{
+			if (*it == '%')
+			{
+				std::string hex(it + 1, it + 3);
+				it = path.insert(it, stoi(hex, std::hex));
+				it++;
+				it = path.erase(it, it + 3);
+			}
+			else
+				it++;
+		}
+	}
+
 	void Client::_owsTrimmer(std::string& str)
 	{
 		if (str.empty())
@@ -237,6 +253,7 @@ namespace HTTP
 			req.method.push_back("");
 		if (_validateRequestLine() < 0)
 			return -1;
+		hexTranslate(req.method[1]);
 		state = HEADER_FIELDS;
 		return 0;
 	}
@@ -679,6 +696,7 @@ namespace HTTP
 			{
 				req.method.clear();
 				req.createMethodVec("GET " + *ep + " HTTP/1.1");
+				hexTranslate(req.method[1]);
 				location = matchLocation(server, req.method[1]);
 				if (location && !location->search(1, "redirect")
 					&& isMethodAllowed(req.method[0], location))
@@ -728,25 +746,11 @@ namespace HTTP
 		clientPipe[1] = 0;
 		timestamp = time(NULL);
 	}
-	static void	hexTranslate(std::string& path)
-	{
-		for (std::string::iterator it = path.begin(); it != path.end(); it++)
-		{
-			if (*it == '%')
-			{
-				std::string hex(it + 1, it + 3);
-				it = path.insert(it, stoi(hex, std::hex));
-				it++;
-				it = path.erase(it, it + 3);
-			}
-		}
-	}
 
-	int Client::fopenr(std::string& path)
+	int Client::fopenr(std::string const& path)
 	{
 		struct stat		stat;
 
-		hexTranslate(path);
 		fp = fopen(path.c_str(), "r");
 
 		if (fp == NULL)

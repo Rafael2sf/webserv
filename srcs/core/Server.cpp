@@ -375,7 +375,10 @@ namespace HTTP
 					childProcInfo.erase(it->second.childPid);
 					it->second.childPid = 0;
 				}
-				it->second.error(408, true);
+				if (it->second.state != CONNECTED)
+					it->second.error(408, true);
+				else
+					it->second.req.setField("connection", "close");
 				_updateConnection(it->second);
 				it = clients.begin();
 				continue;
