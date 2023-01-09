@@ -711,13 +711,13 @@ namespace HTTP
 			ep = _errorPage(code);
 			if (ep && !force_code)
 			{
-				req.method.clear();
-				req.method.push_back("GET");
-				req.method.push_back(*ep);
-				req.method.push_back("HTTP/1.1");
-				hexTranslate(req.method[1]);
 				if (*ep != req.method[1])
 				{
+					req.method.clear();
+					req.method.push_back("GET");
+					req.method.push_back(*ep);
+					req.method.push_back("HTTP/1.1");
+					hexTranslate(req.method[1]);
 					location = matchLocation(server, req.method[1]);
 					if (location && !location->search(1, "redirect")
 						&& isMethodAllowed(req.method[0], location))
