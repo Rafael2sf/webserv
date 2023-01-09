@@ -43,10 +43,27 @@ namespace HTTP
 		{
 			if (*it == '%')
 			{
-				std::string hex(it + 1, it + 3);
-				it = path.insert(it, stoi(hex, std::hex));
-				it++;
-				it = path.erase(it, it + 3);
+				std::string hex;
+				int			eraser;
+				if (it + 1 != path.end() && it + 2 != path.end())
+				{
+					hex.append(it + 1, it + 3);
+					eraser = 3;
+				}
+				else if (it + 1 != path.end())
+				{
+					hex.push_back(*(it + 1));
+					hex += '0';
+					eraser = 2;
+				}
+				else
+					eraser = 1;
+				if (hex.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos)
+				{
+					it = path.insert(it, stoi(hex, std::hex));
+					it++;
+				}		
+				it = path.erase(it, it + eraser);
 			}
 			else
 				it++;
@@ -692,23 +709,28 @@ namespace HTTP
 		if (server && code >= 400)
 		{
 			ep = _errorPage(code);
-			if (ep && *ep != req.method[1])
+			if (ep && !force_code)
 			{
 				req.method.clear();
-				req.createMethodVec("GET " + *ep + " HTTP/1.1");
+				req.method.push_back("GET");
+				req.method.push_back(*ep);
+				req.method.push_back("HTTP/1.1");
 				hexTranslate(req.method[1]);
-				location = matchLocation(server, req.method[1]);
-				if (location && !location->search(1, "redirect")
-					&& isMethodAllowed(req.method[0], location))
+				if (*ep != req.method[1])
 				{
-					if (close_connection)
-						req.setField("connection", "close");
-					else
-						req.setField("connection", "keep-alive");
-					force_code = code;
-					state = OK;
-					Get().response(*this);
-					return ;
+					location = matchLocation(server, req.method[1]);
+					if (location && !location->search(1, "redirect")
+						&& isMethodAllowed(req.method[0], location))
+					{
+						if (close_connection)
+							req.setField("connection", "close");
+						else
+							req.setField("connection", "keep-alive");
+						force_code = code;
+						state = OK;
+						Get().response(*this);
+						return ;
+					}
 				}
 			}
 		}

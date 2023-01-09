@@ -213,7 +213,7 @@ namespace HTTP
 		}
 		for (it++; it != str.end(); it++)
 		{
-			if (!isgraph(*it) || *it == '*')
+			if (*it == '*')
 				return -1;
 		}
 		return 0;
